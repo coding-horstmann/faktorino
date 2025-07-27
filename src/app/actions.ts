@@ -78,7 +78,8 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        const cleanedValue = value.replace('.', '').replace(',', '.');
+        // Ersetze zuerst Tausendertrennzeichen (Punkte), dann das Dezimalkomma durch einen Punkt.
+        const cleanedValue = value.replace(/\./g, '').replace(',', '.');
         const parsed = parseFloat(cleanedValue);
         return isNaN(parsed) ? 0 : parsed;
     }
@@ -91,6 +92,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     const parseResult = Papa.parse(csvData, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: header => header.trim(),
     });
 
     if (parseResult.errors.length > 0) {
@@ -118,10 +120,9 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const firstRow = rows[0];
       const country = firstRow['Ship To Country'] || firstRow['Shipping Country'];
       
-      const saleRow = rows.find(r => 
-        (r['Type'] === 'Sale') ||
-        (r['Type'] === 'Transaction') && parseFloatSafe(r['Amount']) > 0
-      ) || rows[0];
+      const saleRow = rows.find(r => (r['Type'] === 'Sale' || r['Type'] === 'Transaction') && parseFloatSafe(r['Amount']) > 0) || 
+                      rows.find(r => r['Title'] || r['Item Name']) || 
+                      rows[0];
 
       const transactionType = saleRow ? saleRow['Type'] : 'Unknown';
       
@@ -132,31 +133,38 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       let orderVatTotal = 0;
       let orderGrossTotal = 0;
 
-      const productRow = saleRow || rows.find(r => (r['Title'] || r['Item Name']));
-      if (productRow) {
-        const quantity = parseInt(productRow['Items'] || productRow['Quantity'], 10) || 1;
-        
-        // Versuchen, den Nettobetrag aus mehreren möglichen Spalten zu lesen
-        const netAmount = parseFloatSafe(productRow['Net'] || productRow['Item Subtotal'] || productRow['Amount']);
+      // Logik zur Verarbeitung der Artikel verbessert.
+      rows.forEach(row => {
+          const itemName = row['Title'] || row['Item Name'];
+          const amount = parseFloatSafe(row['Amount']);
+          const netAmount = parseFloatSafe(row['Net']);
 
-        if (netAmount > 0) {
-            const vatAmount = netAmount * (vatRate / 100);
-            const grossAmount = netAmount + vatAmount;
+          // Wir suchen Zeilen, die einen Artikel darstellen.
+          // Das ist oft der Fall, wenn 'Sale' im Typ steht oder ein Titel vorhanden ist
+          // und der Betrag positiv ist.
+          if (itemName && (row['Type'] === 'Sale' || amount > 0 || netAmount > 0)) {
+              const quantity = parseInt(row['Items'] || row['Quantity'], 10) || 1;
+              const itemNet = netAmount > 0 ? netAmount : amount / (1 + (vatRate/100)); // Rückrechnung falls nur Brutto da ist
 
-            items.push({
-              quantity,
-              name: productRow['Title'] || productRow['Item Name'] || `Bestellung ${saleId}`,
-              netAmount,
-              vatRate,
-              vatAmount,
-              grossAmount,
-            });
+              if(itemNet > 0) {
+                const vatAmount = itemNet * (vatRate / 100);
+                const grossAmount = itemNet + vatAmount;
 
-            orderNetTotal += netAmount;
-            orderVatTotal += vatAmount;
-            orderGrossTotal += grossAmount;
-        }
-      }
+                items.push({
+                  quantity,
+                  name: itemName,
+                  netAmount: itemNet,
+                  vatRate,
+                  vatAmount,
+                  grossAmount,
+                });
+                
+                orderNetTotal += itemNet;
+                orderVatTotal += vatAmount;
+                orderGrossTotal += grossAmount;
+              }
+          }
+      });
       
       if (items.length === 0) {
         continue;
@@ -166,13 +174,13 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         invoiceNumber: `RE-${new Date().getFullYear()}-${String(invoiceCounter++).padStart(4, '0')}`,
         orderDate: firstRow['Sale Date'] || firstRow['Date'],
         buyerName: firstRow['Full Name'] || firstRow['Buyer'] || 'N/A',
-        buyerAddress: `${firstRow['Ship To Street 1'] || ''}\n${firstRow['Ship To Zipcode'] || ''} ${firstRow['Ship To City'] || ''}\n${firstRow['Ship To Country'] || ''}`.trim(),
+        buyerAddress: `${firstRow['Ship To Street 1'] || ''}\n${firstRow['Ship To Zipcode'] || ''} ${firstRow['Ship To City'] || ''}\n${country || ''}`.trim(),
         items,
         netTotal: orderNetTotal,
         vatTotal: orderVatTotal,
         grossTotal: orderGrossTotal,
         taxNote,
-        country,
+        country: country || 'Unbekannt',
       };
 
       orders.set(saleId, invoice);
