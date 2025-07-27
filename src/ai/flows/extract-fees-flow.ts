@@ -47,9 +47,6 @@ Analyze the provided Etsy statement PDF and extract the following summary values
 Return the extracted values in the specified JSON format. Ensure that "Gebühren & Steuern" is a negative number.
 
 Document: {{media url=pdfDataUri}}`,
-  config: {
-    model: 'googleai/gemini-1.5-pro-latest',
-  }
 });
 
 const extractFeesFlow = ai.defineFlow(
@@ -59,10 +56,19 @@ const extractFeesFlow = ai.defineFlow(
     outputSchema: FeeExtractionOutputSchema,
   },
   async (input) => {
-    const { output } = await extractFeesPrompt(input);
+    const { output } = await ai.generate({
+        prompt: extractFeesPrompt.prompt!,
+        model: 'googleai/gemini-1.5-pro-latest',
+        input: input,
+        output: {
+            schema: extractFeesPrompt.output.schema!,
+        }
+    });
+
     if (!output) {
       throw new Error("The AI service did not return a valid structured response.");
     }
     return output;
   }
 );
+
