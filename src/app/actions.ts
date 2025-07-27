@@ -3,7 +3,6 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
-import { extractFees } from '@/ai/flows/extract-fees-flow';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -267,18 +266,5 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
   } catch (error) {
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
-  }
-}
-
-export async function extractFeesFromPdfAction(pdfDataUri: string) {
-  try {
-    const result = await extractFees({ pdfDataUri });
-    if (!result) {
-        throw new Error("Leere Antwort von KI-Dienst");
-    }
-    return { data: result, error: null };
-  } catch (e) {
-    console.error(e);
-    return { data: null, error: 'Ein Fehler ist bei der Kommunikation mit dem KI-Dienst aufgetreten.' };
   }
 }

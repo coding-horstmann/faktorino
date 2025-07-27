@@ -1,21 +1,21 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { extractFeesFromPdfAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, FileSignature, Upload, Wallet } from 'lucide-react';
+import { FileSignature, Wallet, Calculator } from 'lucide-react';
 
 const formSchema = z.object({
-  pdfFile: z.any().refine(files => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
+  sales: z.string().min(1, 'Bitte geben Sie einen Wert ein.'),
+  feesAndTaxes: z.string().min(1, 'Bitte geben Sie einen Wert ein.'),
+  netAmount: z.string().min(1, 'Bitte geben Sie einen Wert ein.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -31,41 +31,31 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
 
+const parseFloatFromString = (value: string) => {
+    return parseFloat(value.replace('.', '').replace(',', '.'));
+}
+
 export function EtsyFeeParser() {
   const [result, setResult] = useState<FeeResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+        sales: '',
+        feesAndTaxes: '',
+        netAmount: '',
+    }
   });
 
-  async function onSubmit(values: FormValues) {
-    setIsLoading(true);
-    setError(null);
-    setResult(null);
-
-    const file = values.pdfFile[0];
-    const reader = new FileReader();
-
-    reader.onload = async (e) => {
-        const pdfDataUri = e.target?.result as string;
-        const response = await extractFeesFromPdfAction(pdfDataUri);
-        if (response.error) {
-            setError(response.error);
-        } else if (response.data) {
-            setResult(response.data);
+  function onSubmit(values: FormValues) {
+    const newResult = {
+        summary: {
+            sales: parseFloatFromString(values.sales),
+            feesAndTaxes: parseFloatFromString(values.feesAndTaxes) * -1, // Ensure it's negative
+            netAmount: parseFloatFromString(values.netAmount),
         }
-        setIsLoading(false);
     };
-
-    reader.onerror = () => {
-        setError("Fehler beim Lesen der Datei.");
-        setIsLoading(false);
-    }
-    
-    reader.readAsDataURL(file);
+    setResult(newResult);
   }
 
   return (
@@ -74,41 +64,49 @@ export function EtsyFeeParser() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
                 <FileSignature className="text-primary"/>
-                Schritt 2: Gebühren aus Etsy-Abrechnung extrahieren
+                Schritt 2: Gebühren aus Etsy-Abrechnung eintragen
             </CardTitle>
             <CardDescription>
-                Laden Sie Ihre monatliche Etsy-Abrechnungs-PDF hoch, um die Gebühren automatisch zu extrahieren.
+                Öffnen Sie Ihre monatliche Etsy-Abrechnungs-PDF und übertragen Sie die summierten Werte in die entsprechenden Felder.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <FormField
                     control={form.control}
-                    name="pdfFile"
+                    name="sales"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Etsy-Abrechnungs-PDF</FormLabel>
+                        <FormLabel>Umsatz</FormLabel>
                         <FormControl>
-                            <div className="relative">
-                                <Input 
-                                    type="file" 
-                                    accept=".pdf"
-                                    className="pr-20"
-                                    ref={fileInputRef}
-                                    onChange={(e) => field.onChange(e.target.files)}
-                                />
-                                <Button 
-                                    type="button"
-                                    size="sm"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={isLoading}
-                                >
-                                    <Upload className="mr-2"/>
-                                    Datei wählen
-                                </Button>
-                            </div>
+                            <Input type="text" placeholder="z.B. 1.234,56" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="feesAndTaxes"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Gebühren & Steuern (als positiven Wert eingeben)</FormLabel>
+                        <FormControl>
+                             <Input type="text" placeholder="z.B. 123,45" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="netAmount"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Nettobetrag</FormLabel>
+                        <FormControl>
+                            <Input type="text" placeholder="z.B. 1.111,11" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -116,28 +114,14 @@ export function EtsyFeeParser() {
                 />
               </CardContent>
               <CardFooter>
-                <Button type="submit" disabled={isLoading} className="w-full">
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Extrahiere Daten...
-                    </>
-                  ) : (
-                    'Gebühren extrahieren'
-                  )}
+                <Button type="submit" className="w-full">
+                    <Calculator className="mr-2"/>
+                    Zusammenfassung anzeigen
                 </Button>
               </CardFooter>
             </form>
           </Form>
         </Card>
-
-        {error && (
-            <Alert variant="destructive" className="mt-6">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Fehler</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-            </Alert>
-        )}
 
         {result && (
             <Card className="animate-in fade-in-50">
