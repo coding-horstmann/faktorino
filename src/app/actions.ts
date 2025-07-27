@@ -84,20 +84,24 @@ function parseFloatSafe(value: string | number | null | undefined): number {
 }
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
+    // First, try exact match (case sensitive)
     for (const name of potentialNames) {
         if (row[name] !== undefined && row[name] !== null && String(row[name]).trim() !== '') {
             return String(row[name]);
         }
     }
-    // Fallback for case-insensitivity and trimming
+    
+    // Then, try case-insensitive and trimmed match on keys
     const lowerCaseTrimmedNames = potentialNames.map(n => n.toLowerCase().trim());
     for (const key in row) {
-        if (lowerCaseTrimmedNames.includes(key.toLowerCase().trim())) {
+        const trimmedKey = key.toLowerCase().trim();
+        if (lowerCaseTrimmedNames.includes(trimmedKey)) {
              if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
                 return String(row[key]);
             }
         }
     }
+
     return undefined;
 }
 
