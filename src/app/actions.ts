@@ -108,7 +108,6 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         return { data: null, error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
     }
     
-    const orders = new Map<string, Invoice>();
     let totalNetSales = 0;
     let totalVat = 0;
 
@@ -122,6 +121,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       rowsBySaleId.get(saleId)!.push(row);
     }
 
+    const invoices: Invoice[] = [];
     let invoiceCounter = 1;
 
     for (const [saleId, rows] of rowsBySaleId.entries()) {
@@ -222,27 +222,26 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         country: countryDisplay,
       };
 
-      orders.set(saleId, invoice);
+      invoices.push(invoice);
       totalNetSales += orderNetTotal;
       totalVat += orderVatTotal;
     }
 
+    if (invoices.length === 0) {
+        return { data: null, error: "Keine gültigen Bestellungen zur Rechnungsstellung in der CSV-Datei gefunden. Bitte prüfen Sie das Dateiformat." };
+    }
+
     const result: ProcessCsvOutput = {
-      invoices: Array.from(orders.values()),
+      invoices,
       summary: {
         totalNetSales,
         totalVat,
       },
     };
     
-    if (result.invoices.length === 0) {
-        return { data: null, error: "Keine gültigen Bestellungen zur Rechnungsstellung in der CSV-Datei gefunden. Bitte prüfen Sie das Dateiformat." };
-    }
-    
     return { data: result, error: null };
   } catch (error) {
     console.error("Error in generateInvoicesAction:", error);
-    const errorMessage = error instanceof Error ? error.message : "Ein unbekannter interner Fehler ist aufgetreten.";
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
 }
