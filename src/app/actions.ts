@@ -3,7 +3,6 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
-import { extractFees, type FeeExtractionInput } from '@/ai/flows/extract-fees-flow';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -264,40 +263,4 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
-}
-
-// Schema for Fee Extraction
-const feeItemSchema = z.object({
-  description: z.string().describe('Die Beschreibung der Gebühr.'),
-  amount: z.number().describe('Der Betrag der Gebühr in EUR. Dies ist immer ein negativer Wert oder 0.'),
-});
-
-const feeSummarySchema = z.object({
-  sales: z.number().describe('Die Summe aller Umsätze (immer positiv).'),
-  feesAndTaxes: z.number().describe('Die Summe aller Gebühren und Steuern (immer negativ).'),
-  netAmount: z.number().describe('Der Nettobetrag (Umsätze + Gebühren).'),
-});
-
-const feeExtractionResultSchema = z.object({
-  fees: z.array(feeItemSchema).describe('Eine Liste aller einzelnen Gebühren.'),
-  summary: feeSummarySchema.describe('Eine Zusammenfassung der Finanzdaten.'),
-});
-
-export type FeeExtractionResult = z.infer<typeof feeExtractionResultSchema>;
-
-export async function extractFeesFromPdfAction(pdfDataUri: string): Promise<{ data: FeeExtractionResult | null; error: string | null; }> {
-    try {
-        const result = await extractFees({ pdfDataUri });
-        
-        const validation = feeExtractionResultSchema.safeParse(result);
-        if (!validation.success) {
-            console.error("AI Response Validation Error:", validation.error);
-            return { data: null, error: "Die KI konnte die Daten nicht im erwarteten Format extrahieren. Bitte versuchen Sie es erneut." };
-        }
-        
-        return { data: validation.data, error: null };
-    } catch (error) {
-        console.error("Error in extractFeesFromPdfAction:", error);
-        return { data: null, error: 'Ein Fehler ist bei der Kommunikation mit dem KI-Dienst aufgetreten.' };
-    }
 }
