@@ -51,6 +51,14 @@ WICHTIG:
 - Extrahiere jede einzelne Gebührenposition aus der detaillierten Auflistung unter "Gebühren & Steuern".
 
 PDF-Inhalt: {{media url=pdfDataUri}}`,
+  config: {
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_NONE',
+      },
+    ],
+  },
 });
 
 const extractFeesFlow = ai.defineFlow(
