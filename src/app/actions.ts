@@ -92,10 +92,10 @@ function getColumn(row: any, potentialNames: string[]): string | undefined {
             return String(row[name]);
         }
     }
-    // Fallback for case-insensitivity
-    const lowerCaseNames = potentialNames.map(n => n.toLowerCase());
+    // Fallback for case-insensitivity and trimming
+    const lowerCaseTrimmedNames = potentialNames.map(n => n.toLowerCase().trim());
     for (const key in row) {
-        if (lowerCaseNames.includes(key.toLowerCase())) {
+        if (lowerCaseTrimmedNames.includes(key.toLowerCase().trim())) {
              if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
                 return String(row[key]);
             }
@@ -206,7 +206,8 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         continue;
       }
       
-      const taxNote = getTaxInfo(country, !!getColumn(rows[0], ['SKU'])).taxNote;
+      const hasAnySKU = rows.some(r => !!getColumn(r, ['SKU']));
+      const taxNote = getTaxInfo(country, hasAnySKU).taxNote;
 
       const buyerFullName = getColumn(firstRow, ['shipname', 'Full Name', 'Buyer', 'Name']) || 'N/A';
       const address1 = getColumn(firstRow, ['Ship To Street 1', 'Empfänger Adresse 1', 'Street 1']) || '';
@@ -261,3 +262,5 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
 }
+
+    
