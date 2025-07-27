@@ -64,7 +64,7 @@ function getTaxInfo(country: string, hasSKU: boolean): { vatRate: number; taxNot
         if (isEU) {
             return { vatRate: 0, taxNote: "Umsatzsteuer wird von Etsy gemäß den geltenden Vorschriften abgeführt (One-Stop-Shop-Verfahren)." };
         } else { // Drittland
-            return { vatRate: 0, taxNote: "Nicht steuerbare Leistung im Drittland." };
+            return { vatRate: 0, taxNote: "Leistung außerhalb EU, keine USt" };
         }
     }
 }
@@ -203,7 +203,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const hasAnySKU = rows.some(r => !!getColumn(r, ['SKU']));
       const { taxNote } = getTaxInfo(country, hasAnySKU);
 
-      const buyerFullName = getColumn(firstRow, ['shipname', 'shipname ']) || 'N/A';
+      const buyerFullName = getColumn(firstRow, ['ship name', 'shipname', 'shipname ']) || 'N/A';
       const address1 = getColumn(firstRow, ['Ship To Street 1', 'Empfänger Adresse 1', 'Street 1']) || '';
       const address2 = getColumn(firstRow, ['Ship To Street 2', 'Empfänger Adresse 2', 'Street 2']) || '';
       const city = getColumn(firstRow, ['Ship To City', 'Empfänger Stadt', 'City']) || '';
@@ -263,5 +263,4 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
-
-    
+}
