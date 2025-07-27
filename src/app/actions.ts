@@ -73,11 +73,10 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        // Normalize the string: remove thousand separators (dots or commas), then replace comma decimal separator with a dot.
         const cleanedValue = value.trim()
-            .replace(/\s/g, '') // remove spaces
-            .replace(/\./g, (match, offset, full) => offset < full.lastIndexOf(',') ? '' : '.') // remove dots if they are thousand separators
-            .replace(/,/g, '.'); // replace comma with dot for decimal
+            .replace(/\s/g, '')
+            .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
+            .replace(/,/g, '.');
         const parsed = parseFloat(cleanedValue);
         return isNaN(parsed) ? 0 : parsed;
     }
@@ -131,7 +130,6 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const isDigitalOrder = rows.some(r => {
         const shipping = parseFloatSafe(getColumn(r, ['Versandkosten', 'Shipping']));
         const title = (getColumn(r, ['Titel', 'Title', 'Item Name']) || '').toLowerCase();
-        // A simple heuristic: if shipping is 0 and the title contains "digital" or "pdf", it's likely digital.
         return shipping === 0 && (title.includes('digital') || title.includes('pdf'));
       });
       
