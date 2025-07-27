@@ -82,7 +82,7 @@ function parseFloatSafe(value: string | number | null | undefined): number {
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
     for (const name of potentialNames) {
-        if (row[name] !== undefined && row[name] !== null) {
+        if (row[name] !== undefined && row[name] !== null && String(row[name]).trim() !== '') {
             return String(row[name]);
         }
     }
@@ -110,7 +110,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     const rowsBySaleId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
       const saleId = getColumn(row, ['Bestellnummer', 'Sale ID', 'Order ID']);
-      if (!saleId || saleId.trim() === '') continue;
+      if (!saleId) continue;
       if (!rowsBySaleId.has(saleId)) {
         rowsBySaleId.set(saleId, []);
       }
@@ -125,7 +125,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       
       const isDigitalOrder = rows.some(r => {
         const shipping = parseFloatSafe(getColumn(r, ['Versandkosten', 'Shipping']));
-        return shipping === 0;
+        return shipping === 0 && (getColumn(r, ['Titel', 'Title', 'Item Name']) || '').toLowerCase().includes('digital');
       });
       
       const { vatRate, taxNote } = getTaxInfo(country, isDigitalOrder);
@@ -137,32 +137,28 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
       rows.forEach(row => {
           const itemName = getColumn(row, ['Titel', 'Title', 'Item Name']);
-          const itemPrice = parseFloatSafe(getColumn(row, ['Artikelpreis', 'Item Price', 'Price']));
+          const itemTotalStr = getColumn(row, ['Artikelsumme', 'Item Total']);
           
-          if (itemName && itemPrice > 0) {
-              const quantity = parseInt(getColumn(row, ['Anzahl', 'Items', 'Quantity']) || '1', 10) || 1;
-              const itemTotal = parseFloatSafe(getColumn(row, ['Artikelsumme', 'Item Total']));
-              const grossAmount = itemTotal > 0 ? itemTotal : itemPrice * quantity;
-              
-              const itemNet = vatRate > 0 ? grossAmount / (1 + (vatRate / 100)) : grossAmount;
-              
-              if(itemNet > 0) {
-                const vatAmount = itemNet * (vatRate / 100);
-                const itemGrossTotal = itemNet + vatAmount;
+          if (itemName && itemTotalStr) {
+              const grossAmount = parseFloatSafe(itemTotalStr);
+              if (grossAmount <= 0) return;
 
-                items.push({
-                  quantity,
-                  name: itemName,
-                  netAmount: itemNet,
-                  vatRate,
-                  vatAmount,
-                  grossAmount: itemGrossTotal,
-                });
-                
-                orderNetTotal += itemNet;
-                orderVatTotal += vatAmount;
-                orderGrossTotal += itemGrossTotal;
-              }
+              const quantity = parseInt(getColumn(row, ['Anzahl', 'Items', 'Quantity']) || '1', 10) || 1;
+              const netAmount = vatRate > 0 ? grossAmount / (1 + vatRate / 100) : grossAmount;
+              const vatAmount = grossAmount - netAmount;
+
+              items.push({
+                quantity,
+                name: itemName,
+                netAmount: netAmount,
+                vatRate,
+                vatAmount: vatAmount,
+                grossAmount: grossAmount,
+              });
+              
+              orderNetTotal += netAmount;
+              orderVatTotal += vatAmount;
+              orderGrossTotal += grossAmount;
           }
       });
       
@@ -170,7 +166,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const shippingCost = parseFloatSafe(getColumn(shippingRow, ['Versandkosten', 'Shipping']));
       if (shippingCost > 0) {
           const shippingNet = vatRate > 0 ? shippingCost / (1 + (vatRate / 100)) : shippingCost;
-          const shippingVat = shippingNet * (vatRate / 100);
+          const shippingVat = shippingCost - shippingNet;
           
           items.push({
               quantity: 1,
@@ -212,7 +208,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         items,
         netTotal: orderNetTotal,
         vatTotal: orderVatTotal,
-        grossTotal: orderNetTotal + orderVatTotal,
+        grossTotal: orderGrossTotal,
         taxNote,
         country: country || 'Unbekannt',
       };
