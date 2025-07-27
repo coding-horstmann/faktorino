@@ -53,10 +53,10 @@ function isEUDestination(countryCode: string): boolean {
 
 function getTaxInfo(country: string, transactionType: string): { vatRate: number; taxNote: string } {
     const isEU = isEUDestination(country);
-
-    // Heuristik: Wir nehmen an, dass "Sale" physisch und "Etsy Payment" digital ist, wenn keine besseren Daten verfügbar sind.
-    // Dies ist eine Vereinfachung und muss evtl. angepasst werden, wenn die CSV mehr Details liefert.
-    const isDigital = transactionType.toLowerCase().includes('payment');
+    
+    // Annahme: "Sale" ist physisch, alles andere (insb. "Transaction") könnte digital sein.
+    // Dies ist eine Vereinfachung. Eine bessere Logik könnte auf SKU oder Titel basieren.
+    const isDigital = transactionType.toLowerCase().includes('transaction') || transactionType.toLowerCase().includes('payment');
 
     if (isEU) {
         if (isDigital) {
@@ -73,13 +73,11 @@ function getTaxInfo(country: string, transactionType: string): { vatRate: number
     }
 }
 
-// Funktion zum sicheren Parsen von Zahlen, die Kommas als Dezimaltrennzeichen verwenden könnten.
 function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        // Ersetze zuerst Tausendertrennzeichen (Punkte), dann das Dezimalkomma durch einen Punkt.
-        const cleanedValue = value.replace(/\./g, '').replace(',', '.');
+        const cleanedValue = value.trim().replace(/\./g, '').replace(',', '.');
         const parsed = parseFloat(cleanedValue);
         return isNaN(parsed) ? 0 : parsed;
     }
@@ -118,13 +116,10 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
     for (const [saleId, rows] of rowsBySaleId.entries()) {
       const firstRow = rows[0];
-      const country = firstRow['Ship To Country'] || firstRow['Shipping Country'];
+      const country = firstRow['Ship To Country'] || firstRow['Shipping Country'] || firstRow['Country'];
       
-      const saleRow = rows.find(r => (r['Type'] === 'Sale' || r['Type'] === 'Transaction') && parseFloatSafe(r['Amount']) > 0) || 
-                      rows.find(r => r['Title'] || r['Item Name']) || 
-                      rows[0];
-
-      const transactionType = saleRow ? saleRow['Type'] : 'Unknown';
+      const saleRow = rows.find(r => r['Type'] === 'Sale') || rows.find(r => r['Type'] === 'Transaction') || rows[0];
+      const transactionType = saleRow['Type'] || 'Sale';
       
       const { vatRate, taxNote } = getTaxInfo(country, transactionType);
 
@@ -133,26 +128,25 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       let orderVatTotal = 0;
       let orderGrossTotal = 0;
 
-      // Logik zur Verarbeitung der Artikel verbessert.
       rows.forEach(row => {
           const itemName = row['Title'] || row['Item Name'];
+          const itemType = row['Type'];
           const amount = parseFloatSafe(row['Amount']);
           const netAmount = parseFloatSafe(row['Net']);
 
-          // Wir suchen Zeilen, die einen Artikel darstellen.
-          // Das ist oft der Fall, wenn 'Sale' im Typ steht oder ein Titel vorhanden ist
-          // und der Betrag positiv ist.
-          if (itemName && (row['Type'] === 'Sale' || amount > 0 || netAmount > 0)) {
+          if ((itemType === 'Sale' || itemType === 'Transaction') && amount > 0) {
               const quantity = parseInt(row['Items'] || row['Quantity'], 10) || 1;
-              const itemNet = netAmount > 0 ? netAmount : amount / (1 + (vatRate/100)); // Rückrechnung falls nur Brutto da ist
-
+              
+              // Wenn Netto vorhanden ist, verwenden wir es. Ansonsten rechnen wir Brutto zurück.
+              const itemNet = netAmount > 0 ? netAmount : (vatRate > 0 ? amount / (1 + (vatRate / 100)) : amount);
+              
               if(itemNet > 0) {
                 const vatAmount = itemNet * (vatRate / 100);
                 const grossAmount = itemNet + vatAmount;
 
                 items.push({
                   quantity,
-                  name: itemName,
+                  name: itemName || `Bestellung ${saleId}`,
                   netAmount: itemNet,
                   vatRate,
                   vatAmount,
@@ -170,11 +164,25 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         continue;
       }
 
+      const buyerFullName = firstRow['Full Name'] || firstRow['Buyer'] || firstRow['Name'] || 'N/A';
+      const address1 = firstRow['Ship To Street 1'] || '';
+      const address2 = firstRow['Ship To Street 2'] || '';
+      const city = firstRow['Ship To City'] || '';
+      const state = firstRow['Ship To State'] || '';
+      const zipcode = firstRow['Ship To Zipcode'] || firstRow['Shipping Zipcode'] || '';
+
+      let buyerAddress = address1;
+      if (address2) buyerAddress += `\n${address2}`;
+      buyerAddress += `\n${zipcode} ${city}`;
+      if (state && state !== city) buyerAddress += `, ${state}`;
+      buyerAddress += `\n${country || ''}`;
+
+
       const invoice: Invoice = {
         invoiceNumber: `RE-${new Date().getFullYear()}-${String(invoiceCounter++).padStart(4, '0')}`,
         orderDate: firstRow['Sale Date'] || firstRow['Date'],
-        buyerName: firstRow['Full Name'] || firstRow['Buyer'] || 'N/A',
-        buyerAddress: `${firstRow['Ship To Street 1'] || ''}\n${firstRow['Ship To Zipcode'] || ''} ${firstRow['Ship To City'] || ''}\n${country || ''}`.trim(),
+        buyerName: buyerFullName,
+        buyerAddress: buyerAddress.trim(),
         items,
         netTotal: orderNetTotal,
         vatTotal: orderVatTotal,
@@ -203,6 +211,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     return { data: result, error: null };
   } catch (error) {
     console.error("Error in generateInvoicesAction:", error);
-    return { data: null, error: "Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut." };
+    const errorMessage = error instanceof Error ? error.message : "Ein unbekannter interner Fehler ist aufgetreten.";
+    return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten: ${errorMessage}. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
 }
