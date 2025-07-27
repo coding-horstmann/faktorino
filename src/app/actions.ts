@@ -90,6 +90,15 @@ function getColumn(row: any, potentialNames: string[]): string | undefined {
             return String(row[name]);
         }
     }
+    // Fallback for case-insensitivity
+    const lowerCaseNames = potentialNames.map(n => n.toLowerCase());
+    for (const key in row) {
+        if (lowerCaseNames.includes(key.toLowerCase())) {
+             if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                return String(row[key]);
+            }
+        }
+    }
     return undefined;
 }
 
