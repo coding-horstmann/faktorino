@@ -10,6 +10,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { googleAI } from '@genkit-ai/googleai';
 
 const FeeExtractionInputSchema = z.object({
   pdfDataUri: z
@@ -59,6 +60,7 @@ PDF-Inhalt: {{media url=pdfDataUri}}`,
       },
     ],
   },
+  model: googleAI.model('gemini-1.5-pro-latest'),
 });
 
 const extractFeesFlow = ai.defineFlow(
