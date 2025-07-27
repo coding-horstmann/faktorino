@@ -47,6 +47,7 @@ const EU_COUNTRIES = [
 ];
 
 function isEUDestination(countryCode: string): boolean {
+    if (!countryCode) return false;
     return EU_COUNTRIES.includes(countryCode.toUpperCase());
 }
 
@@ -89,10 +90,9 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     let totalNetSales = 0;
     let totalVat = 0;
 
-    // Gruppieren der Zeilen nach Bestell-ID ("Sale ID")
     const rowsBySaleId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
-      const saleId = row['Sale ID'];
+      const saleId = row['Sale ID'] || row['Order ID'];
       if (!saleId) continue;
       if (!rowsBySaleId.has(saleId)) {
         rowsBySaleId.set(saleId, []);
@@ -106,9 +106,8 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const firstRow = rows[0];
       const country = firstRow['Ship To Country'];
       
-      // Bestimme den Transaktionstyp aus den Zeilen. Wir suchen nach "Sale" für das Produkt.
-      const saleRow = rows.find(r => r['Type'] === 'Sale');
-      const transactionType = saleRow ? 'Sale' : (firstRow['Type'] || 'Unknown');
+      const saleRow = rows.find(r => r['Type'] === 'Sale' || (r['Amount'] && parseFloat(r['Amount'].replace(',','.')) > 0));
+      const transactionType = saleRow ? saleRow['Type'] : 'Unknown';
       
       const { vatRate, taxNote } = getTaxInfo(country, transactionType);
 
@@ -117,16 +116,17 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       let orderVatTotal = 0;
       let orderGrossTotal = 0;
 
-      // Verarbeite nur die "Sale"-Zeile für die Rechnungsposition
-      if (saleRow) {
-        const quantity = parseInt(saleRow['Items'], 10) || 1;
-        const netAmount = parseFloat(saleRow['Net'].replace(',', '.')) || 0;
+      const productRow = saleRow || rows.find(r => (r['Title'] || r['Item Name']));
+      if (productRow) {
+        const quantity = parseInt(productRow['Items'] || productRow['Quantity'], 10) || 1;
+        const netAmountString = productRow['Net'] || productRow['Item Subtotal'];
+        const netAmount = parseFloat(netAmountString.replace(',', '.')) || 0;
         const vatAmount = netAmount * (vatRate / 100);
         const grossAmount = netAmount + vatAmount;
 
         items.push({
           quantity,
-          name: saleRow['Title'] || `Bestellung ${saleId}`,
+          name: productRow['Title'] || productRow['Item Name'] || `Bestellung ${saleId}`,
           netAmount,
           vatRate,
           vatAmount,
@@ -137,15 +137,14 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         orderVatTotal += vatAmount;
         orderGrossTotal += grossAmount;
       }
-
-      // Wenn es keine explizite "Sale"-Zeile gab, überspringen wir die Rechnungserstellung für diese Gruppe.
+      
       if (items.length === 0) {
         continue;
       }
 
       const invoice: Invoice = {
         invoiceNumber: `RE-${new Date().getFullYear()}-${String(invoiceCounter++).padStart(4, '0')}`,
-        orderDate: firstRow['Sale Date'],
+        orderDate: firstRow['Sale Date'] || firstRow['Date'],
         buyerName: firstRow['Full Name'] || 'N/A',
         buyerAddress: `${firstRow['Ship To Street 1'] || ''}\n${firstRow['Ship To Zipcode'] || ''} ${firstRow['Ship To City'] || ''}\n${firstRow['Ship To Country'] || ''}`.trim(),
         items,
@@ -168,6 +167,10 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         totalVat,
       },
     };
+    
+    if (result.invoices.length === 0) {
+        return { data: null, error: "Keine gültigen Bestellungen zur Rechnungsstellung in der CSV-Datei gefunden. Bitte prüfen Sie das Dateiformat." };
+    }
     
     return { data: result, error: null };
   } catch (error) {

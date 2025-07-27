@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro } from 'lucide-react';
 
 const formSchema = z.object({
-  csvFile: z.instanceof(FileList).refine(files => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
+  csvFile: z.any().refine(files => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
