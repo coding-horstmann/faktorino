@@ -74,7 +74,7 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
         const cleanedValue = value.trim()
-            .replace(/\s/g, '')
+            .replace(/\s/g, '',)
             .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
             .replace(/,/g, '.');
         const parsed = parseFloat(cleanedValue);
@@ -84,14 +84,7 @@ function parseFloatSafe(value: string | number | null | undefined): number {
 }
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
-    // First, try exact match (case sensitive)
-    for (const name of potentialNames) {
-        if (row[name] !== undefined && row[name] !== null && String(row[name]).trim() !== '') {
-            return String(row[name]);
-        }
-    }
-    
-    // Then, try case-insensitive and trimmed match on keys
+    // First, try case-insensitive and trimmed match on keys
     const lowerCaseTrimmedNames = potentialNames.map(n => n.toLowerCase().trim());
     for (const key in row) {
         const trimmedKey = key.toLowerCase().trim();
@@ -168,9 +161,9 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
               items.push({
                 quantity,
                 name: itemName,
-                netAmount: netAmount, // Gesamt Netto
+                netAmount: netAmount / quantity,
                 vatRate,
-                vatAmount: vatAmount,
+                vatAmount,
                 grossAmount: grossAmount,
               });
               
@@ -231,7 +224,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         orderDate: orderDate || new Date().toLocaleDateString('de-DE'),
         buyerName: buyerFullName,
         buyerAddress: buyerAddress.trim(),
-        items: items.map(item => ({...item, netAmount: item.grossAmount / (1 + item.vatRate / 100) / item.quantity})),
+        items: items,
         netTotal: orderNetTotal,
         vatTotal: orderVatTotal,
         grossTotal: orderGrossTotal,
@@ -270,4 +263,5 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
-}
+
+    
