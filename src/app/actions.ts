@@ -3,6 +3,7 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
+import { extractFees, type FeeExtractionInput } from '@/ai/flows/extract-fees-flow';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -104,7 +105,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     const parseResult = Papa.parse(csvData, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: header => header.trim(),
+      transformHeader: header => header.trim().toLowerCase(),
     });
 
     if (parseResult.errors.length > 0) {
@@ -117,7 +118,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
     const rowsBySaleId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
-      const saleId = getColumn(row, ['Order ID', 'Bestellnummer', 'Sale ID']);
+      const saleId = getColumn(row, ['order id', 'bestellnummer', 'sale id']);
       if (!saleId) continue;
       if (!rowsBySaleId.has(saleId)) {
         rowsBySaleId.set(saleId, []);
@@ -130,7 +131,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
     for (const [saleId, rows] of rowsBySaleId.entries()) {
       const firstRow = rows[0];
-      const country = getColumn(firstRow, ['Ship country', 'Versandland', 'Ship To Country', 'Shipping Country']) || '';
+      const country = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || '';
       
       const items: Invoice['items'] = [];
       let orderNetTotal = 0;
@@ -138,13 +139,13 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       let orderGrossTotal = 0;
 
       rows.forEach(row => {
-          const itemName = getColumn(row, ['Titel', 'Title', 'Item Name']);
-          const itemTotalStr = getColumn(row, ['Item Total', 'Artikelsumme']);
-          const sku = getColumn(row, ['SKU']);
+          const itemName = getColumn(row, ['titel', 'title', 'item name']);
+          const itemTotalStr = getColumn(row, ['item total', 'artikelsumme']);
+          const sku = getColumn(row, ['sku']);
 
           if (itemName && itemTotalStr) {
               const itemTotal = parseFloatSafe(itemTotalStr);
-              const discountAmount = parseFloatSafe(getColumn(row, ['Discount Amount']));
+              const discountAmount = parseFloatSafe(getColumn(row, ['discount amount']));
               const shippingDiscount = parseFloatSafe(getColumn(row, ['shipping discount']));
               
               const grossAmount = itemTotal - discountAmount - shippingDiscount;
@@ -154,7 +155,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
               const hasSKU = !!sku && sku.trim() !== '';
               const { vatRate } = getTaxInfo(country, hasSKU);
 
-              const quantity = parseInt(getColumn(row, ['Anzahl', 'Items', 'Quantity']) || '1', 10) || 1;
+              const quantity = parseInt(getColumn(row, ['anzahl', 'items', 'quantity']) || '1', 10) || 1;
               const netAmount = vatRate > 0 ? grossAmount / (1 + vatRate / 100) : grossAmount;
               const vatAmount = grossAmount - netAmount;
 
@@ -173,8 +174,8 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           }
       });
       
-      const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, ['Shipping', 'Versandkosten'])) > 0) || rows[0]; 
-      const shippingCost = parseFloatSafe(getColumn(shippingRow, ['Shipping', 'Versandkosten']));
+      const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, ['shipping', 'versandkosten'])) > 0) || rows[0]; 
+      const shippingCost = parseFloatSafe(getColumn(shippingRow, ['shipping', 'versandkosten']));
 
       if (shippingCost > 0) {
           const hasSKU = true; // Versand ist immer physisch
@@ -200,23 +201,23 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         continue;
       }
       
-      const hasAnySKU = rows.some(r => !!getColumn(r, ['SKU']));
+      const hasAnySKU = rows.some(r => !!getColumn(r, ['sku']));
       const { taxNote } = getTaxInfo(country, hasAnySKU);
 
       const buyerFullName = getColumn(firstRow, ['ship name', 'shipname', 'shipname ']) || 'N/A';
-      const address1 = getColumn(firstRow, ['Ship To Street 1', 'Empfänger Adresse 1', 'Street 1']) || '';
-      const address2 = getColumn(firstRow, ['Ship To Street 2', 'Empfänger Adresse 2', 'Street 2']) || '';
-      const city = getColumn(firstRow, ['Ship To City', 'Empfänger Stadt', 'City']) || '';
-      const state = getColumn(firstRow, ['Ship To State', 'Empfänger Bundesland', 'State']) || '';
-      const zipcode = getColumn(firstRow, ['Ship To Zipcode', 'Empfänger PLZ', 'Shipping Zipcode', 'Zipcode']) || '';
-      const orderDate = getColumn(firstRow, ['Sale Date', 'Bestelldatum', 'Date']);
+      const address1 = getColumn(firstRow, ['ship to street 1', 'empfänger adresse 1', 'street 1']) || '';
+      const address2 = getColumn(firstRow, ['ship to street 2', 'empfänger adresse 2', 'street 2']) || '';
+      const city = getColumn(firstRow, ['ship to city', 'empfänger stadt', 'city']) || '';
+      const state = getColumn(firstRow, ['ship to state', 'empfänger bundesland', 'state']) || '';
+      const zipcode = getColumn(firstRow, ['ship to zipcode', 'empfänger plz', 'shipping zipcode', 'zipcode']) || '';
+      const orderDate = getColumn(firstRow, ['sale date', 'bestelldatum', 'date']);
       
       let buyerAddress = address1;
       if (address2) buyerAddress += `\n${address2}`;
       buyerAddress += `\n${zipcode} ${city}`;
       if (state && state !== city) buyerAddress += `, ${state}`;
       
-      const countryDisplay = getColumn(firstRow, ['Ship country', 'Versandland', 'Ship To Country', 'Shipping Country']) || 'Unbekannt';
+      const countryDisplay = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || 'Unbekannt';
       buyerAddress += `\n${countryDisplay}`;
 
       const invoice: Invoice = {
@@ -263,4 +264,40 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
+}
+
+// Schema for Fee Extraction
+const feeItemSchema = z.object({
+  description: z.string().describe('Die Beschreibung der Gebühr.'),
+  amount: z.number().describe('Der Betrag der Gebühr in EUR. Dies ist immer ein negativer Wert oder 0.'),
+});
+
+const feeSummarySchema = z.object({
+  sales: z.number().describe('Die Summe aller Umsätze (immer positiv).'),
+  feesAndTaxes: z.number().describe('Die Summe aller Gebühren und Steuern (immer negativ).'),
+  netAmount: z.number().describe('Der Nettobetrag (Umsätze + Gebühren).'),
+});
+
+const feeExtractionResultSchema = z.object({
+  fees: z.array(feeItemSchema).describe('Eine Liste aller einzelnen Gebühren.'),
+  summary: feeSummarySchema.describe('Eine Zusammenfassung der Finanzdaten.'),
+});
+
+export type FeeExtractionResult = z.infer<typeof feeExtractionResultSchema>;
+
+export async function extractFeesFromPdfAction(pdfDataUri: string): Promise<{ data: FeeExtractionResult | null; error: string | null; }> {
+    try {
+        const result = await extractFees({ pdfDataUri });
+        
+        const validation = feeExtractionResultSchema.safeParse(result);
+        if (!validation.success) {
+            console.error("AI Response Validation Error:", validation.error);
+            return { data: null, error: "Die KI konnte die Daten nicht im erwarteten Format extrahieren. Bitte versuchen Sie es erneut." };
+        }
+        
+        return { data: validation.data, error: null };
+    } catch (error) {
+        console.error("Error in extractFeesFromPdfAction:", error);
+        return { data: null, error: 'Ein Fehler ist bei der Kommunikation mit dem KI-Dienst aufgetreten.' };
+    }
 }
