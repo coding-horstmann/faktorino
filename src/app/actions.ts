@@ -53,12 +53,11 @@ function isEUDestination(countryCode: string): boolean {
 
 function getTaxInfo(country: string, hasSKU: boolean): { vatRate: number; taxNote: string } {
     const isEU = isEUDestination(country);
-    const isPhysical = hasSKU;
 
-    if (isPhysical) { // Physisches Produkt
+    if (hasSKU) { // Physisches Produkt
         if (isEU) { // EU-Inland / Fernverkauf
             return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
-        } else { // Drittland
+        } else { // Drittland (Export)
             return { vatRate: 0, taxNote: "Steuerfreie Ausfuhrlieferung in ein Drittland (§ 4 Nr. 1a UStG)." };
         }
     } else { // Digitales Produkt
@@ -69,7 +68,6 @@ function getTaxInfo(country: string, hasSKU: boolean): { vatRate: number; taxNot
         }
     }
 }
-
 
 function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
@@ -84,7 +82,6 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     }
     return 0;
 }
-
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
     for (const name of potentialNames) {
@@ -136,7 +133,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
     for (const [saleId, rows] of rowsBySaleId.entries()) {
       const firstRow = rows[0];
-      const country = getColumn(firstRow, ['Ship country']) || '';
+      const country = getColumn(firstRow, ['Ship country', 'Versandland', 'Ship To Country', 'Shipping Country']) || '';
       
       const items: Invoice['items'] = [];
       let orderNetTotal = 0;
@@ -158,7 +155,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
               if (grossAmount <= 0) return;
 
               const hasSKU = !!sku && sku.trim() !== '';
-              const { vatRate, taxNote } = getTaxInfo(country, hasSKU);
+              const { vatRate } = getTaxInfo(country, hasSKU);
 
               const quantity = parseInt(getColumn(row, ['Anzahl', 'Items', 'Quantity']) || '1', 10) || 1;
               const netAmount = vatRate > 0 ? grossAmount / (1 + vatRate / 100) : grossAmount;
@@ -167,7 +164,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
               items.push({
                 quantity,
                 name: itemName,
-                netAmount: netAmount / quantity, // Einzelpreis Netto
+                netAmount: netAmount, // Gesamt Netto
                 vatRate,
                 vatAmount: vatAmount,
                 grossAmount: grossAmount,
@@ -184,7 +181,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
       if (shippingCost > 0) {
           const hasSKU = true; // Versand ist immer physisch
-          const { vatRate, taxNote } = getTaxInfo(country, hasSKU);
+          const { vatRate } = getTaxInfo(country, hasSKU);
 
           const shippingNet = vatRate > 0 ? shippingCost / (1 + (vatRate / 100)) : shippingCost;
           const shippingVat = shippingCost - shippingNet;
@@ -207,9 +204,9 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       }
       
       const hasAnySKU = rows.some(r => !!getColumn(r, ['SKU']));
-      const taxNote = getTaxInfo(country, hasAnySKU).taxNote;
+      const { taxNote } = getTaxInfo(country, hasAnySKU);
 
-      const buyerFullName = getColumn(firstRow, ['shipname', 'Full Name', 'Buyer', 'Name']) || 'N/A';
+      const buyerFullName = getColumn(firstRow, ['shipname', 'shipname ']) || 'N/A';
       const address1 = getColumn(firstRow, ['Ship To Street 1', 'Empfänger Adresse 1', 'Street 1']) || '';
       const address2 = getColumn(firstRow, ['Ship To Street 2', 'Empfänger Adresse 2', 'Street 2']) || '';
       const city = getColumn(firstRow, ['Ship To City', 'Empfänger Stadt', 'City']) || '';
@@ -222,26 +219,34 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       buyerAddress += `\n${zipcode} ${city}`;
       if (state && state !== city) buyerAddress += `, ${state}`;
       
-      const countryDisplay = getColumn(firstRow, ['Ship country', 'Versandland']) || 'Unbekannt';
+      const countryDisplay = getColumn(firstRow, ['Ship country', 'Versandland', 'Ship To Country', 'Shipping Country']) || 'Unbekannt';
       buyerAddress += `\n${countryDisplay}`;
-
 
       const invoice: Invoice = {
         invoiceNumber: `RE-${new Date().getFullYear()}-${String(invoiceCounter++).padStart(4, '0')}`,
         orderDate: orderDate || new Date().toLocaleDateString('de-DE'),
         buyerName: buyerFullName,
         buyerAddress: buyerAddress.trim(),
-        items,
+        items: items.map(item => ({...item, netAmount: item.grossAmount / (1 + item.vatRate / 100) / item.quantity})),
         netTotal: orderNetTotal,
         vatTotal: orderVatTotal,
         grossTotal: orderGrossTotal,
         taxNote,
         country: countryDisplay,
       };
+      
+      // Recalculate totals based on potentially adjusted items
+      const finalNetTotal = invoice.items.reduce((sum, item) => sum + (item.netAmount * item.quantity), 0);
+      const finalVatTotal = invoice.items.reduce((sum, item) => sum + item.vatAmount, 0);
+      const finalGrossTotal = invoice.items.reduce((sum, item) => sum + item.grossAmount, 0);
+
+      invoice.netTotal = finalNetTotal;
+      invoice.vatTotal = finalVatTotal;
+      invoice.grossTotal = finalGrossTotal;
 
       invoices.push(invoice);
-      totalNetSales += orderNetTotal;
-      totalVat += orderVatTotal;
+      totalNetSales += finalNetTotal;
+      totalVat += finalVatTotal;
     }
 
     if (invoices.length === 0) {
@@ -262,5 +267,3 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
 }
-
-    
