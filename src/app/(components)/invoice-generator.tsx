@@ -72,7 +72,7 @@ export function InvoiceGenerator() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="text-primary"/>
-            Schritt 1: Rechnungen aus Bestell-CSV generieren
+            Schritt 1: Rechnungen generieren
           </CardTitle>
           <CardDescription>
             Laden Sie Ihre Etsy-Bestell-CSV-Datei hoch, um automatisch Rechnungen zu erstellen und eine Umsatzübersicht zu erhalten.
@@ -166,35 +166,37 @@ export function InvoiceGenerator() {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Rechnungsnr.</TableHead>
-                                <TableHead>Datum</TableHead>
-                                <TableHead>Käufer</TableHead>
-                                <TableHead>Land</TableHead>
-                                <TableHead className="text-right">Betrag</TableHead>
-                                <TableHead className="text-center">Aktion</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {result.invoices.map((invoice) => (
-                                <TableRow key={invoice.invoiceNumber}>
-                                    <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
-                                    <TableCell>{invoice.orderDate}</TableCell>
-                                    <TableCell>{invoice.buyerName}</TableCell>
-                                    <TableCell>{invoice.country}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(invoice.grossTotal)}</TableCell>
-                                    <TableCell className="text-center">
-                                        <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
-                                            <Download className="mr-2"/>
-                                            PDF
-                                        </Button>
-                                    </TableCell>
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Rechnungsnr.</TableHead>
+                                    <TableHead>Datum</TableHead>
+                                    <TableHead>Käufer</TableHead>
+                                    <TableHead>Land</TableHead>
+                                    <TableHead className="text-right">Betrag</TableHead>
+                                    <TableHead className="text-center">Aktion</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {result.invoices.map((invoice) => (
+                                    <TableRow key={invoice.invoiceNumber}>
+                                        <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                                        <TableCell>{invoice.orderDate}</TableCell>
+                                        <TableCell>{invoice.buyerName}</TableCell>
+                                        <TableCell>{invoice.country}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(invoice.grossTotal)}</TableCell>
+                                        <TableCell className="text-center">
+                                            <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
+                                                <Download className="mr-2"/>
+                                                PDF
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>

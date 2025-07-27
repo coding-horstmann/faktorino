@@ -1,5 +1,8 @@
+
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { EtsyFeeParser } from '@/app/(components)/etsy-fee-parser';
+import { PayoutValidator } from '@/app/(components)/payout-validator';
+
 
 export default function Home() {
   return (
@@ -11,8 +14,15 @@ export default function Home() {
             Ihr smartes Tool für die automatisierte Etsy-Buchhaltung.
           </p>
         </header>
-        <InvoiceGenerator />
-        <EtsyFeeParser />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-8">
+                <InvoiceGenerator />
+            </div>
+            <div className="space-y-8">
+                <EtsyFeeParser />
+                <PayoutValidator />
+            </div>
+        </div>
         <footer className="text-center mt-8 text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} EtsyBuchhalter. Alle Rechte vorbehalten.</p>
         </footer>

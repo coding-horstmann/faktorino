@@ -3,6 +3,7 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
+import pdf from 'pdf-parse';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -84,20 +85,15 @@ function parseFloatSafe(value: string | number | null | undefined): number {
 }
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
-    const lowerCaseTrimmedNames = potentialNames.map(n => n.toLowerCase().trim());
-    for (const key in row) {
-        const trimmedKey = key.toLowerCase().trim();
-        if (lowerCaseTrimmedNames.includes(trimmedKey)) {
-             if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
-                return String(row[key]);
+    for (const name of potentialNames) {
+        const lowerCaseTrimmedName = name.toLowerCase().trim();
+        for (const key in row) {
+            if (key.toLowerCase().trim() === lowerCaseTrimmedName) {
+                const value = row[key];
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    return String(value);
+                }
             }
-        }
-    }
-
-    // Fallback for exact match if the above fails
-    for(const name of potentialNames) {
-        if(row[name] !== undefined && row[name] !== null && String(row[name]).trim() !== '') {
-            return String(row[name]);
         }
     }
     return undefined;
@@ -208,7 +204,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const hasAnySKU = rows.some(r => !!getColumn(r, ['sku']));
       const { taxNote } = getTaxInfo(country, hasAnySKU);
 
-      const buyerFullName = getColumn(firstRow, ['ship name']) || 'N/A';
+      const buyerFullName = getColumn(firstRow, ['ship name', 'ship to name']) || 'N/A';
       const address1 = getColumn(firstRow, ['ship to street 1', 'empfänger adresse 1', 'street 1']) || '';
       const address2 = getColumn(firstRow, ['ship to street 2', 'empfänger adresse 2', 'street 2']) || '';
       const city = getColumn(firstRow, ['ship to city', 'empfänger stadt', 'city']) || '';
@@ -266,5 +262,49 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
   } catch (error) {
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
+  }
+}
+
+type FeeData = {
+  total: number;
+  date: string;
+};
+
+export async function extractFeesFromPdfAction(pdfBuffer: Buffer): Promise<{ data: FeeData | null; error: string | null; }> {
+  try {
+    const data = await pdf(pdfBuffer);
+    const text = data.text;
+
+    let total = 0;
+    let date = 'N/A';
+
+    // Find Total
+    const totalRegex = /Total\s*€?([\d,]+\.\d{2})/i;
+    const totalMatch = text.match(totalRegex);
+    if (totalMatch && totalMatch[1]) {
+      total = parseFloatSafe(totalMatch[1]);
+    } else {
+        const subtotalRegex = /Subtotal\s*€?([\d,]+\.\d{2})/i;
+        const subtotalMatch = text.match(subtotalRegex);
+         if (subtotalMatch && subtotalMatch[1]) {
+            total = parseFloatSafe(subtotalMatch[1]);
+        }
+    }
+
+    if (total === 0) {
+        return { data: null, error: "Gesamtgebühr (Total) konnte in der PDF nicht gefunden werden." };
+    }
+
+    // Find Invoice Date
+    const dateRegex = /Invoice Date:\s*(\d{1,2}\s+\w+,\s+\d{4})/i;
+    const dateMatch = text.match(dateRegex);
+    if (dateMatch && dateMatch[1]) {
+      date = dateMatch[1];
+    }
+
+    return { data: { total, date }, error: null };
+  } catch (error) {
+    console.error("Error in extractFeesFromPdfAction:", error);
+    return { data: null, error: "Fehler beim Verarbeiten der PDF-Datei." };
   }
 }

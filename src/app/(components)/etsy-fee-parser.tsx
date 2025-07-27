@@ -1,162 +1,164 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { extractFeesFromPdfAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileSignature, Wallet, Calculator } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileSignature, Wallet } from 'lucide-react';
 
 const formSchema = z.object({
-  sales: z.string().min(1, 'Bitte geben Sie einen Wert ein.'),
-  feesAndTaxes: z.string().min(1, 'Bitte geben Sie einen Wert ein.'),
-  netAmount: z.string().min(1, 'Bitte geben Sie einen Wert ein.'),
+  pdfFile: z.any().refine(files => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
-type FeeResult = {
-  summary: {
-    sales: number;
-    feesAndTaxes: number;
-    netAmount: number;
-  }
-}
 
-const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+type FeeResult = {
+  total: number;
+  date: string;
 };
 
-const parseFloatFromString = (value: string) => {
-    return parseFloat(value.replace('.', '').replace(',', '.'));
-}
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+};
 
 export function EtsyFeeParser() {
   const [result, setResult] = useState<FeeResult | null>(null);
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-        sales: '',
-        feesAndTaxes: '',
-        netAmount: '',
-    }
   });
 
-  function onSubmit(values: FormValues) {
-    const newResult = {
-        summary: {
-            sales: parseFloatFromString(values.sales),
-            feesAndTaxes: parseFloatFromString(values.feesAndTaxes) * -1, // Ensure it's negative
-            netAmount: parseFloatFromString(values.netAmount),
-        }
-    };
-    setResult(newResult);
+  async function onSubmit(values: FormValues) {
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+
+    const file = values.pdfFile[0];
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const response = await extractFeesFromPdfAction(buffer);
+
+    if (response.error) {
+      setError(response.error);
+    } else if (response.data) {
+      setResult(response.data);
+    }
+
+    setIsLoading(false);
   }
 
   return (
     <div className="space-y-6">
-        <Card className="w-full shadow-lg">
+      <Card className="w-full shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSignature className="text-primary"/>
+            Schritt 2: Gebühren aus Etsy-Abrechnung
+          </CardTitle>
+          <CardDescription>
+            Laden Sie Ihre monatliche Etsy-Abrechnungs-PDF hoch, um die Gesamtgebühren automatisch zu extrahieren.
+          </CardDescription>
+        </CardHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="pdfFile"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Etsy-Abrechnungs-PDF</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="file"
+                          accept=".pdf"
+                          className="pr-20"
+                          ref={fileInputRef}
+                          onChange={(e) => field.onChange(e.target.files)}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="absolute right-1 top-1/2 -translate-y-1/2"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isLoading}
+                        >
+                          <Upload className="mr-2"/>
+                          Datei wählen
+                        </Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" disabled={isLoading} className="w-full">
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Extrahiere Daten...
+                  </>
+                ) : (
+                  'Gebühren extrahieren'
+                )}
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
+
+      {error && (
+        <Alert variant="destructive" className="mt-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Fehler</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {result && (
+        <Card className="animate-in fade-in-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-                <FileSignature className="text-primary"/>
-                Schritt 2: Gebühren aus Etsy-Abrechnung eintragen
+              <Wallet className="text-primary"/>
+              Extrahierte Gebühren
             </CardTitle>
-            <CardDescription>
-                Öffnen Sie Ihre monatliche Etsy-Abrechnungs-PDF und übertragen Sie die summierten Werte in die entsprechenden Felder.
+             <CardDescription>
+                Abrechnungsdatum: {result.date}
             </CardDescription>
           </CardHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="space-y-4">
-                <FormField
-                    control={form.control}
-                    name="sales"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Umsatz</FormLabel>
-                        <FormControl>
-                            <Input type="text" placeholder="z.B. 1.234,56" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="feesAndTaxes"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Gebühren & Steuern (als positiven Wert eingeben)</FormLabel>
-                        <FormControl>
-                             <Input type="text" placeholder="z.B. 123,45" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="netAmount"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Nettobetrag</FormLabel>
-                        <FormControl>
-                            <Input type="text" placeholder="z.B. 1.111,11" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full">
-                    <Calculator className="mr-2"/>
-                    Zusammenfassung anzeigen
-                </Button>
-              </CardFooter>
-            </form>
-          </Form>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Kategorie</TableHead>
+                  <TableHead className="text-right">Betrag</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-medium">Gesamtgebühren (Total)</TableCell>
+                  <TableCell className="text-right font-bold text-red-600">{formatCurrency(result.total)}</TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
         </Card>
-
-        {result && (
-            <Card className="animate-in fade-in-50">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Wallet className="text-primary"/>
-                        Zusammenfassung Ihrer Abrechnung
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Kategorie</TableHead>
-                                <TableHead className="text-right">Betrag</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell className="font-medium">Umsätze</TableCell>
-                                <TableCell className="text-right font-bold text-green-600">{formatCurrency(result.summary.sales)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell className="font-medium">Gebühren & Steuern</TableCell>
-                                <TableCell className="text-right font-bold text-red-600">{formatCurrency(result.summary.feesAndTaxes)}</TableCell>
-                            </TableRow>
-                             <TableRow>
-                                <TableCell className="font-medium">Nettobetrag</TableCell>
-                                <TableCell className="text-right font-bold">{formatCurrency(result.summary.netAmount)}</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        )}
+      )}
     </div>
   );
 }
