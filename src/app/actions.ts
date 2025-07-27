@@ -73,12 +73,17 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        const cleanedValue = value.trim().replace(/\./g, '').replace(',', '.');
+        // Normalize the string: remove thousand separators (dots or commas), then replace comma decimal separator with a dot.
+        const cleanedValue = value.trim()
+            .replace(/\s/g, '') // remove spaces
+            .replace(/\./g, (match, offset, full) => offset < full.lastIndexOf(',') ? '' : '.') // remove dots if they are thousand separators
+            .replace(/,/g, '.'); // replace comma with dot for decimal
         const parsed = parseFloat(cleanedValue);
         return isNaN(parsed) ? 0 : parsed;
     }
     return 0;
 }
+
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
     for (const name of potentialNames) {
@@ -125,7 +130,9 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       
       const isDigitalOrder = rows.some(r => {
         const shipping = parseFloatSafe(getColumn(r, ['Versandkosten', 'Shipping']));
-        return shipping === 0 && (getColumn(r, ['Titel', 'Title', 'Item Name']) || '').toLowerCase().includes('digital');
+        const title = (getColumn(r, ['Titel', 'Title', 'Item Name']) || '').toLowerCase();
+        // A simple heuristic: if shipping is 0 and the title contains "digital" or "pdf", it's likely digital.
+        return shipping === 0 && (title.includes('digital') || title.includes('pdf'));
       });
       
       const { vatRate, taxNote } = getTaxInfo(country, isDigitalOrder);
@@ -197,7 +204,9 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       if (address2) buyerAddress += `\n${address2}`;
       buyerAddress += `\n${zipcode} ${city}`;
       if (state && state !== city) buyerAddress += `, ${state}`;
-      buyerAddress += `\n${country || ''}`;
+      
+      const countryDisplay = getColumn(firstRow, ['Versandland', 'Ship To Country', 'Shipping Country', 'Country']) || 'Unbekannt';
+      buyerAddress += `\n${countryDisplay}`;
 
 
       const invoice: Invoice = {
@@ -210,7 +219,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         vatTotal: orderVatTotal,
         grossTotal: orderGrossTotal,
         taxNote,
-        country: country || 'Unbekannt',
+        country: countryDisplay,
       };
 
       orders.set(saleId, invoice);
