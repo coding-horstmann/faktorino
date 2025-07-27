@@ -3,6 +3,7 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
+import { extractFees } from '@/ai/flows/extract-fees-flow';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -84,7 +85,6 @@ function parseFloatSafe(value: string | number | null | undefined): number {
 }
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
-    // First, try case-insensitive and trimmed match on keys
     const lowerCaseTrimmedNames = potentialNames.map(n => n.toLowerCase().trim());
     for (const key in row) {
         const trimmedKey = key.toLowerCase().trim();
@@ -95,6 +95,12 @@ function getColumn(row: any, potentialNames: string[]): string | undefined {
         }
     }
 
+    // Fallback for exact match if the above fails
+    for(const name of potentialNames) {
+        if(row[name] !== undefined && row[name] !== null && String(row[name]).trim() !== '') {
+            return String(row[name]);
+        }
+    }
     return undefined;
 }
 
@@ -104,7 +110,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     const parseResult = Papa.parse(csvData, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: header => header.trim().toLowerCase(),
+      transformHeader: header => header.trim(),
     });
 
     if (parseResult.errors.length > 0) {
@@ -232,7 +238,6 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         country: countryDisplay,
       };
       
-      // Recalculate totals based on potentially adjusted items
       const finalNetTotal = invoice.items.reduce((sum, item) => sum + (item.netAmount * item.quantity), 0);
       const finalVatTotal = invoice.items.reduce((sum, item) => sum + item.vatAmount, 0);
       const finalGrossTotal = invoice.items.reduce((sum, item) => sum + item.grossAmount, 0);
@@ -262,5 +267,18 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
   } catch (error) {
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
+  }
+}
+
+export async function extractFeesFromPdfAction(pdfDataUri: string) {
+  try {
+    const result = await extractFees({ pdfDataUri });
+    if (!result) {
+        throw new Error("Leere Antwort von KI-Dienst");
+    }
+    return { data: result, error: null };
+  } catch (e) {
+    console.error(e);
+    return { data: null, error: 'Ein Fehler ist bei der Kommunikation mit dem KI-Dienst aufgetreten.' };
   }
 }
