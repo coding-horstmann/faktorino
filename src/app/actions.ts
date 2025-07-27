@@ -82,8 +82,8 @@ function parseFloatSafe(value: string | number | null | undefined): number {
 
 function getColumn(row: any, potentialNames: string[]): string | undefined {
     for (const name of potentialNames) {
-        if (row[name] !== undefined) {
-            return row[name];
+        if (row[name] !== undefined && row[name] !== null) {
+            return String(row[name]);
         }
     }
     return undefined;
@@ -110,7 +110,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     const rowsBySaleId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
       const saleId = getColumn(row, ['Bestellnummer', 'Sale ID', 'Order ID']);
-      if (!saleId) continue;
+      if (!saleId || saleId.trim() === '') continue;
       if (!rowsBySaleId.has(saleId)) {
         rowsBySaleId.set(saleId, []);
       }
