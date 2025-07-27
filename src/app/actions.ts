@@ -203,7 +203,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const hasAnySKU = rows.some(r => !!getColumn(r, ['sku']));
       const { taxNote } = getTaxInfo(country, hasAnySKU);
 
-      const buyerFullName = getColumn(firstRow, ['ship name', 'shipname', 'shipname ']) || 'N/A';
+      const buyerFullName = getColumn(firstRow, ['ship name']) || 'N/A';
       const address1 = getColumn(firstRow, ['ship to street 1', 'empfänger adresse 1', 'street 1']) || '';
       const address2 = getColumn(firstRow, ['ship to street 2', 'empfänger adresse 2', 'street 2']) || '';
       const city = getColumn(firstRow, ['ship to city', 'empfänger stadt', 'city']) || '';
