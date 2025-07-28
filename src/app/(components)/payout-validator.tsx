@@ -12,14 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Scale, Banknote, AlertCircle, CheckCircle2, Loader2, Upload, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import * as pdfjs from 'pdfjs-dist';
-
-// Configure the worker for pdfjs
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
+import { processBankStatementAction } from '@/app/actions';
 
 const formSchema = z.object({
-  pdfFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
+  csvFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -32,14 +28,6 @@ interface PayoutValidatorProps {
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
-
-const parseFloatSafe = (value: string | null | undefined): number => {
-    if (!value) return 0;
-    // Replace comma with dot for float conversion, remove currency symbols and thousands separators.
-    const cleanedValue = value.replace(/[€$A-Z\s]/g, '').replace(/\./g, '').replace(',', '.').trim();
-    const parsed = parseFloat(cleanedValue);
-    return isNaN(parsed) ? 0 : parsed;
-}
 
 export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorProps) {
   const [validationResult, setValidationResult] = useState<any | null>(null);
@@ -64,49 +52,39 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
     setBankStatementTotal(null);
     setValidationResult(null);
 
-    const file = values.pdfFile[0];
+    const file = values.csvFile[0];
     if (!file) {
         setError("Keine Datei ausgewählt.");
         setIsLoading(false);
         return;
     }
 
-    try {
-        const arrayBuffer = await file.arrayBuffer();
-        const data = new Uint8Array(arrayBuffer);
-        const doc = await pdfjs.getDocument(data).promise;
-        let text = '';
-        for (let i = 1; i <= doc.numPages; i++) {
-            const page = await doc.getPage(i);
-            const content = await page.getTextContent();
-            text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
-        }
-        
-        const etsyTransactionRegex = /.*Etsy.*?[^\d\n,.-]*([+-]?\s?[\d.,]+(?:,\d{2})?)/gi;
-        let match;
-        let totalAmount = 0;
-        let foundEtsyTransaction = false;
-
-        while ((match = etsyTransactionRegex.exec(text)) !== null) {
-            const amountStr = match[1];
-            if (amountStr) {
-                const amount = parseFloatSafe(amountStr);
-                totalAmount += amount;
-                foundEtsyTransaction = true;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const csvData = e.target?.result as string;
+        try {
+            const result = await processBankStatementAction(csvData);
+            if (result.error) {
+                setError(result.error);
+            } else if (result.totalAmount !== undefined) {
+                if (result.totalAmount === 0 && !result.foundEtsyTransaction) {
+                     setError("Keine Transaktionen mit dem Stichwort 'Etsy' in der CSV-Datei gefunden.");
+                } else {
+                    setBankStatementTotal(result.totalAmount);
+                }
             }
+        } catch (err: any) {
+             console.error("Error processing CSV:", err);
+             setError(err.message || "Fehler beim Verarbeiten der CSV-Datei.");
+        } finally {
+            setIsLoading(false);
         }
-        
-        if (!foundEtsyTransaction) {
-            setError("Keine Transaktionen mit dem Stichwort 'Etsy' in der PDF gefunden.");
-        } else {
-            setBankStatementTotal(totalAmount);
-        }
-    } catch (err: any) {
-        console.error("Error processing PDF:", err);
-        setError(err.message || "Fehler beim Verarbeiten der PDF-Datei.");
-    } finally {
+    };
+    reader.onerror = () => {
+        setError("Fehler beim Lesen der Datei.");
         setIsLoading(false);
-    }
+    };
+    reader.readAsText(file, 'UTF-8');
   }
 
   function validatePayout(gross: number, fees: number, payout: number) {
@@ -131,7 +109,7 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
                 Schritt 3: Kontoauszug hochladen & prüfen
             </CardTitle>
             <CardDescription>
-                Laden Sie einen PDF-Export Ihres Kontoauszugs hoch. Das Tool summiert automatisch alle Gutschriften von Etsy und Zahlungen an Etsy.
+                Laden Sie einen CSV-Export Ihres Kontoauszugs hoch. Das Tool summiert automatisch alle Gutschriften von Etsy und Zahlungen an Etsy.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
@@ -139,12 +117,12 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
               <CardContent>
                 <FormField
                     control={form.control}
-                    name="pdfFile"
+                    name="csvFile"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Kontoauszug (PDF-Datei)</FormLabel>
+                        <FormLabel>Kontoauszug (CSV-Datei)</FormLabel>
                         <FormControl>
-                            <Input type="file" accept=".pdf" onChange={(e) => field.onChange(e.target.files)} />
+                            <Input type="file" accept=".csv" onChange={(e) => field.onChange(e.target.files)} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>

@@ -266,3 +266,41 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
 }
+
+
+export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; foundEtsyTransaction?: boolean; error?: string; }> {
+    try {
+        const parseResult = Papa.parse(csvData, {
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: header => header.trim().toLowerCase(),
+        });
+
+        if (parseResult.errors.length > 0) {
+            return { error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
+        }
+
+        let totalAmount = 0;
+        let foundEtsyTransaction = false;
+
+        const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text'];
+        const amountKeys = ['betrag', 'amount'];
+
+        for (const row of parseResult.data as any[]) {
+            const description = getColumn(row, descriptionKeys) || '';
+
+            if (description.toLowerCase().includes('etsy')) {
+                foundEtsyTransaction = true;
+                const amountStr = getColumn(row, amountKeys);
+                const amount = parseFloatSafe(amountStr);
+                totalAmount += amount;
+            }
+        }
+        
+        return { totalAmount, foundEtsyTransaction };
+
+    } catch (error) {
+        console.error("Error processing bank statement CSV:", error);
+        return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
+    }
+}

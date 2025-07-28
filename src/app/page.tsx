@@ -13,6 +13,14 @@ export default function Home() {
   const [grossInvoices, setGrossInvoices] = useState<number | null>(null);
   const [totalFees, setTotalFees] = useState<number | null>(null);
 
+  const handleInvoicesGenerated = (gross: number) => {
+    setGrossInvoices(gross);
+  };
+  
+  const handleFeesParsed = (fees: number) => {
+    setTotalFees(fees);
+  };
+
   const isStep1Complete = grossInvoices !== null;
   const isStep2Complete = totalFees !== null;
 
@@ -34,7 +42,7 @@ export default function Home() {
                     Schritt 1: Rechnungen
                 </div>
             </TabsTrigger>
-            <TabsTrigger value="step2">
+            <TabsTrigger value="step2" disabled={!isStep1Complete}>
                 <div className="flex items-center gap-2">
                     {isStep2Complete ? <CheckCircle className="text-green-500"/> : <FileSignature />}
                     Schritt 2: Gebühren
@@ -48,10 +56,10 @@ export default function Home() {
             </TabsTrigger>
           </TabsList>
           <TabsContent value="step1" className="mt-6">
-            <InvoiceGenerator onInvoicesGenerated={(gross) => setGrossInvoices(gross)} />
+            <InvoiceGenerator onInvoicesGenerated={handleInvoicesGenerated} />
           </TabsContent>
           <TabsContent value="step2" className="mt-6">
-            <EtsyFeeParser onFeesParsed={(fees) => setTotalFees(fees)} />
+            <EtsyFeeParser onFeesParsed={handleFeesParsed} />
           </TabsContent>
           <TabsContent value="step3" className="mt-6">
             <PayoutValidator grossInvoices={grossInvoices} totalFees={totalFees} />
