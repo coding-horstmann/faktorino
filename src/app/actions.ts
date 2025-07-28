@@ -48,10 +48,10 @@ export type BankTransaction = {
 }
 
 const EU_COUNTRY_NAMES = [
-  'belgien', 'bulgarien', 'dänemark', 'estland', 'finnland', 'frankreich', 
+  'belgien', 'bulgarien', 'daenemark', 'estland', 'finnland', 'frankreich', 
   'griechenland', 'irland', 'italien', 'kroatien', 'lettland', 'litauen', 
-  'luxemburg', 'malta', 'niederlande', 'österreich', 'polen', 'portugal', 
-  'rumänien', 'schweden', 'slowakei', 'slowenien', 'spanien', 'tschechien', 
+  'luxemburg', 'malta', 'niederlande', 'oesterreich', 'polen', 'portugal', 
+  'rumaenien', 'schweden', 'slowakei', 'slowenien', 'spanien', 'tschechien', 
   'ungarn', 'zypern'
 ];
 
@@ -63,7 +63,9 @@ const ETSY_ADDRESS_INFO = {
 
 function getCountryClassification(countryName: string): Invoice['countryClassification'] {
     if (!countryName) return 'Drittland';
-    const name = countryName.toLowerCase().trim();
+    const name = countryName.toLowerCase().trim()
+        .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+    
     if (name === 'deutschland') {
         return 'Deutschland';
     }
@@ -108,21 +110,22 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     return 0;
 }
 
-function getColumn(row: any, potentialNames: string[]): string | undefined {
+// Normalisiert einen String für den Schlüsselvergleich (Kleinschreibung, keine Leerzeichen)
+const normalizeKey = (key: string) => key.toLowerCase().replace(/\s+/g, '');
+
+function getColumn(row: any, potentialNames: string[], normalizedKeys: { [key: string]: string }): string | undefined {
     for (const name of potentialNames) {
-        const lowerCaseTrimmedName = name.toLowerCase().trim();
-        for (const key in row) {
-            if (key.toLowerCase().trim() === lowerCaseTrimmedName) {
-                const value = row[key];
-                if (value !== undefined && value !== null && String(value).trim() !== '') {
-                    return String(value);
-                }
+        const normalizedName = normalizeKey(name);
+        const actualKey = normalizedKeys[normalizedName];
+        if (actualKey && row[actualKey] !== undefined && row[actualKey] !== null) {
+            const value = String(row[actualKey]).trim();
+            if (value !== '') {
+                return value;
             }
         }
     }
     return undefined;
 }
-
 
 export async function generateInvoicesAction(csvData: string): Promise<{ data: ProcessCsvOutput | null; error: string | null; }> {
   try {
@@ -137,12 +140,20 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         return { data: null, error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
     }
     
+    // Erstelle eine Map von normalisierten Schlüsseln zu den Originalschlüsseln aus dem Header
+    const normalizedHeaderMap: { [key: string]: string } = {};
+    if (parseResult.meta.fields) {
+        for (const field of parseResult.meta.fields) {
+            normalizedHeaderMap[normalizeKey(field)] = field;
+        }
+    }
+
     let totalNetSales = 0;
     let totalVat = 0;
     
     const rowsByOrderId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
-      const orderId = getColumn(row, ['order id', 'bestellnummer', 'sale id']);
+      const orderId = getColumn(row, ['order id', 'bestellnummer', 'sale id'], normalizedHeaderMap);
       if (!orderId) continue;
       if (!rowsByOrderId.has(orderId)) {
         rowsByOrderId.set(orderId, []);
@@ -155,9 +166,9 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
     for (const [orderId, rows] of rowsByOrderId.entries()) {
       const firstRow = rows[0];
-      const countryName = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || '';
+      const countryName = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country', 'country'], normalizedHeaderMap) || '';
       const countryClassification = getCountryClassification(countryName);
-      const hasAnySKU = rows.some(r => !!getColumn(r, ['sku']) && (getColumn(r, ['sku']) || '').trim() !== '');
+      const hasAnySKU = rows.some(r => !!getColumn(r, ['sku'], normalizedHeaderMap) && (getColumn(r, ['sku'], normalizedHeaderMap) || '').trim() !== '');
 
       const { taxNote, recipient } = getTaxInfo(countryClassification, hasAnySKU);
 
@@ -167,15 +178,15 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       let orderGrossTotal = 0;
 
       rows.forEach(row => {
-          const itemName = getColumn(row, ['titel', 'title', 'item name']);
-          const itemTotalStr = getColumn(row, ['item total', 'artikelsumme']);
-          const sku = getColumn(row, ['sku']);
+          const itemName = getColumn(row, ['titel', 'title', 'item name'], normalizedHeaderMap);
+          const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
+          const sku = getColumn(row, ['sku'], normalizedHeaderMap);
 
           // Process item only if it has a name and a total value
           if (itemName && itemTotalStr) {
               const itemTotal = parseFloatSafe(itemTotalStr);
-              const discountAmount = parseFloatSafe(getColumn(row, ['discount amount']));
-              const shippingDiscount = parseFloatSafe(getColumn(row, ['shipping discount']));
+              const discountAmount = parseFloatSafe(getColumn(row, ['discount amount'], normalizedHeaderMap));
+              const shippingDiscount = parseFloatSafe(getColumn(row, ['shipping discount'], normalizedHeaderMap));
               
               const grossAmount = itemTotal - discountAmount - shippingDiscount;
 
@@ -184,7 +195,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
                   const hasSKU = !!sku && sku.trim() !== '';
                   const { vatRate: itemVatRate } = getTaxInfo(countryClassification, hasSKU);
                   
-                  const quantity = parseInt(getColumn(row, ['anzahl', 'items', 'quantity']) || '1', 10) || 1;
+                  const quantity = parseInt(getColumn(row, ['anzahl', 'items', 'quantity'], normalizedHeaderMap) || '1', 10) || 1;
                   const netAmount = itemVatRate > 0 ? grossAmount / (1 + itemVatRate / 100) : grossAmount;
                   const vatAmount = grossAmount - netAmount;
 
@@ -204,8 +215,8 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           }
       });
       
-      const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, ['shipping', 'versand'])) > 0) || rows[0];
-      const shippingCost = parseFloatSafe(getColumn(shippingRow, ['shipping', 'versand', 'shipping costs']));
+      const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, ['shipping', 'versand', 'shipping costs'], normalizedHeaderMap)) > 0) || rows[0];
+      const shippingCost = parseFloatSafe(getColumn(shippingRow, ['shipping', 'versand', 'shipping costs'], normalizedHeaderMap));
 
       if (shippingCost > 0) {
           // Shipping is always treated as a physical product delivery for tax purposes
@@ -239,13 +250,13 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           buyerName = ETSY_ADDRESS_INFO.name;
           buyerAddress = ETSY_ADDRESS_INFO.fullAddress;
       } else {
-          buyerName = getColumn(firstRow, ['ship name', 'ship to name']) || 'N/A';
-          const address1 = getColumn(firstRow, ['ship to street 1', 'empfänger adresse 1', 'street 1']) || '';
-          const address2 = getColumn(firstRow, ['ship to street 2', 'empfänger adresse 2', 'street 2']) || '';
-          const city = getColumn(firstRow, ['ship to city', 'empfänger stadt', 'city']) || '';
-          const state = getColumn(firstRow, ['ship to state', 'empfänger bundesland', 'state']) || '';
-          const zipcode = getColumn(firstRow, ['ship to zipcode', 'empfänger plz', 'shipping zipcode', 'zipcode']) || '';
-          const countryDisplay = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || 'Unbekannt';
+          buyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name'], normalizedHeaderMap) || 'N/A';
+          const address1 = getColumn(firstRow, ['ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap) || '';
+          const address2 = getColumn(firstRow, ['ship to street 2', 'empfaenger adresse 2', 'street 2'], normalizedHeaderMap) || '';
+          const city = getColumn(firstRow, ['ship to city', 'empfaenger stadt', 'city'], normalizedHeaderMap) || '';
+          const state = getColumn(firstRow, ['ship to state', 'empfaenger bundesland', 'state'], normalizedHeaderMap) || '';
+          const zipcode = getColumn(firstRow, ['ship to zipcode', 'empfaenger plz', 'shipping zipcode', 'zipcode'], normalizedHeaderMap) || '';
+          const countryDisplay = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country', 'country'], normalizedHeaderMap) || 'Unbekannt';
 
           let address = address1;
           if (address2) address += `\n${address2}`;
@@ -255,7 +266,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           buyerAddress = address.trim();
       }
       
-      const orderDate = getColumn(firstRow, ['sale date', 'bestelldatum', 'date']);
+      const orderDate = getColumn(firstRow, ['sale date', 'bestelldatum', 'date'], normalizedHeaderMap);
       
       const invoice: Invoice = {
         invoiceNumber: `RE-${new Date().getFullYear()}-${String(invoiceCounter++).padStart(4, '0')}`,
@@ -267,7 +278,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         vatTotal: orderVatTotal,
         grossTotal: orderGrossTotal,
         taxNote,
-        country: getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || 'Unbekannt',
+        country: countryName || 'Unbekannt',
         countryClassification,
       };
       
@@ -377,5 +388,3 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
-
-    
