@@ -3,7 +3,6 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
-import pdf from 'pdf-parse';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -262,49 +261,5 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
   } catch (error) {
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
-  }
-}
-
-type FeeData = {
-  total: number;
-  date: string;
-};
-
-export async function extractFeesFromPdfAction(pdfBuffer: Buffer): Promise<{ data: FeeData | null; error: string | null; }> {
-  try {
-    const data = await pdf(pdfBuffer);
-    const text = data.text;
-
-    let total = 0;
-    let date = 'N/A';
-
-    // Find Total
-    const totalRegex = /Total\s*€?([\d,]+\.\d{2})/i;
-    const totalMatch = text.match(totalRegex);
-    if (totalMatch && totalMatch[1]) {
-      total = parseFloatSafe(totalMatch[1]);
-    } else {
-        const subtotalRegex = /Subtotal\s*€?([\d,]+\.\d{2})/i;
-        const subtotalMatch = text.match(subtotalRegex);
-         if (subtotalMatch && subtotalMatch[1]) {
-            total = parseFloatSafe(subtotalMatch[1]);
-        }
-    }
-
-    if (total === 0) {
-        return { data: null, error: "Gesamtgebühr (Total) konnte in der PDF nicht gefunden werden." };
-    }
-
-    // Find Invoice Date
-    const dateRegex = /Invoice Date:\s*(\d{1,2}\s+\w+,\s+\d{4})/i;
-    const dateMatch = text.match(dateRegex);
-    if (dateMatch && dateMatch[1]) {
-      date = dateMatch[1];
-    }
-
-    return { data: { total, date }, error: null };
-  } catch (error) {
-    console.error("Error in extractFeesFromPdfAction:", error);
-    return { data: null, error: "Fehler beim Verarbeiten der PDF-Datei." };
   }
 }

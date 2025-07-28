@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+   webpack: (config, { isServer }) => {
+    // Externe Abhängigkeiten für pdfjs-dist auf dem Server bündeln
+    if (isServer) {
+        config.externals.push('canvas');
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

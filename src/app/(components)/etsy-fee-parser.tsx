@@ -5,7 +5,6 @@ import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { extractFeesFromPdfAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -13,6 +12,11 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, AlertTriangle, Upload, FileSignature, Wallet } from 'lucide-react';
+
+// This is a browser-only import
+import * as pdfjsLib from 'pdfjs-dist/build/pdf';
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 
 const formSchema = z.object({
   pdfFile: z.any().refine(files => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
@@ -29,6 +33,20 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
 
+const parseFloatSafe = (value: string | number | null | undefined): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const cleanedValue = value.trim()
+            .replace(/\s/g, '')
+            .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
+            .replace(/,/g, '.');
+        const parsed = parseFloat(cleanedValue);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+}
+
 export function EtsyFeeParser() {
   const [result, setResult] = useState<FeeResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,24 +57,61 @@ export function EtsyFeeParser() {
     resolver: zodResolver(formSchema),
   });
 
+  const extractFeesFromPdf = async (file: File): Promise<FeeResult> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+    let fullText = '';
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        fullText += textContent.items.map(item => ('str' in item ? item.str : '')).join(' ');
+    }
+
+    let total = 0;
+    let date = 'N/A';
+    
+    const totalRegex = /Total\s*€?([\d,]+\.\d{2})/i;
+    const totalMatch = fullText.match(totalRegex);
+    if (totalMatch && totalMatch[1]) {
+        total = parseFloatSafe(totalMatch[1]);
+    } else {
+        const subtotalRegex = /Subtotal\s*€?([\d,]+\.\d{2})/i;
+        const subtotalMatch = fullText.match(subtotalRegex);
+         if (subtotalMatch && subtotalMatch[1]) {
+            total = parseFloatSafe(subtotalMatch[1]);
+        }
+    }
+    
+    if (total === 0) {
+        throw new Error("Gesamtgebühr (Total) konnte in der PDF nicht gefunden werden.");
+    }
+    
+    const dateRegex = /Invoice Date:\s*(\d{1,2}\s+\w+,\s+\d{4})/i;
+    const dateMatch = fullText.match(dateRegex);
+    if (dateMatch && dateMatch[1]) {
+      date = dateMatch[1];
+    }
+
+    return { total, date };
+  };
+
+
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
     setError(null);
     setResult(null);
 
     const file = values.pdfFile[0];
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const response = await extractFeesFromPdfAction(buffer);
-
-    if (response.error) {
-      setError(response.error);
-    } else if (response.data) {
-      setResult(response.data);
+    
+    try {
+        const extractedData = await extractFeesFromPdf(file);
+        setResult(extractedData);
+    } catch(err: any) {
+        setError(err.message || "Fehler beim Verarbeiten der PDF-Datei.");
+    } finally {
+        setIsLoading(false);
     }
-
-    setIsLoading(false);
   }
 
   return (
@@ -127,7 +182,7 @@ export function EtsyFeeParser() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Fehler</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
+        </Aler>
       )}
 
       {result && (
