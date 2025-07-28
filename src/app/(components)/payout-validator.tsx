@@ -10,9 +10,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Scale, Banknote, AlertCircle, CheckCircle2, Loader2, Upload, AlertTriangle } from 'lucide-react';
+import { Scale, Banknote, AlertCircle, CheckCircle2, Loader2, Upload, AlertTriangle, List } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { processBankStatementAction } from '@/app/actions';
+import { processBankStatementAction, type BankTransaction } from '@/app/actions';
 
 const formSchema = z.object({
   csvFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
@@ -32,6 +32,7 @@ const formatCurrency = (value: number) => {
 export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorProps) {
   const [validationResult, setValidationResult] = useState<any | null>(null);
   const [bankStatementTotal, setBankStatementTotal] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -51,6 +52,7 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
     setError(null);
     setBankStatementTotal(null);
     setValidationResult(null);
+    setTransactions([]);
 
     const file = values.csvFile[0];
     if (!file) {
@@ -71,6 +73,7 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
                      setError("Keine Transaktionen mit dem Stichwort 'Etsy' in der CSV-Datei gefunden.");
                 } else {
                     setBankStatementTotal(result.totalAmount);
+                    setTransactions(result.transactions || []);
                 }
             }
         } catch (err: any) {
@@ -170,6 +173,37 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
                     </div>
                 </CardContent>
              </Card>
+        )}
+
+        {transactions.length > 0 && (
+            <Card className="animate-in fade-in-50">
+                 <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <List className="text-primary"/>
+                        Erkannte Etsy-Transaktionen
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Datum</TableHead>
+                                <TableHead>Beschreibung</TableHead>
+                                <TableHead className="text-right">Betrag</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {transactions.map((t, i) => (
+                                <TableRow key={i}>
+                                    <TableCell>{t.date}</TableCell>
+                                    <TableCell>{t.description}</TableCell>
+                                    <TableCell className={`text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
         )}
 
         {validationResult && (

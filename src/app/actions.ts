@@ -40,6 +40,11 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 export type Summary = z.infer<typeof summarySchema>;
 export type ProcessCsvOutput = z.infer<typeof processCsvOutputSchema>;
 
+export type BankTransaction = {
+    date: string;
+    description: string;
+    amount: number;
+}
 
 const EU_COUNTRIES = [
   'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR',
@@ -268,7 +273,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 }
 
 
-export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; foundEtsyTransaction?: boolean; error?: string; }> {
+export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; transactions?: BankTransaction[]; foundEtsyTransaction?: boolean; error?: string; }> {
     try {
         const parseResult = Papa.parse(csvData, {
             skipEmptyLines: true,
@@ -281,7 +286,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
 
         const data = parseResult.data as string[][];
 
-        const headerKeywords = ['betrag', 'verwendungszweck', 'auftraggeber', 'empfänger', 'buchungstext'];
+        const headerKeywords = ['betrag', 'verwendungszweck', 'auftraggeber', 'empfänger', 'buchungstext', 'beschreibung'];
         let headerRowIndex = -1;
         let headers: string[] = [];
 
@@ -300,42 +305,45 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
 
         const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber/empfänger', 'empfänger/auftraggeber', 'beguenstigter/zahlungspflichtiger', 'name'];
         const amountKeys = ['betrag', 'amount', 'gutschrift', 'lastschrift'];
+        const dateKeys = ['datum', 'buchungsdatum', 'valuta', 'buchungstag'];
         
         let amountIndex = -1;
+        let dateIndex = -1;
         const descriptionIndices: number[] = [];
 
         headers.forEach((header, index) => {
-            if (amountKeys.some(key => header.includes(key))) {
-                amountIndex = index;
-            }
-            if (descriptionKeys.some(key => header.includes(key))) {
-                descriptionIndices.push(index);
-            }
+            if (amountKeys.some(key => header.includes(key))) amountIndex = index;
+            if (dateKeys.some(key => header.includes(key))) dateIndex = index;
+            if (descriptionKeys.some(key => header.includes(key))) descriptionIndices.push(index);
         });
 
-        if (amountIndex === -1) {
-             return { error: "Konnte die 'Betrag'-Spalte in der CSV nicht finden." };
-        }
-        if (descriptionIndices.length === 0) {
-             return { error: "Konnte keine Spalte für den Verwendungszweck oder die Beschreibung in der CSV finden." };
-        }
+        if (amountIndex === -1) return { error: "Konnte die 'Betrag'-Spalte in der CSV nicht finden." };
+        if (descriptionIndices.length === 0) return { error: "Konnte keine Spalte für den Verwendungszweck oder die Beschreibung in der CSV finden." };
+        if (dateIndex === -1) return { error: "Konnte die 'Datum'-Spalte in der CSV nicht finden."};
 
         let totalAmount = 0;
         let foundEtsyTransaction = false;
+        const transactions: BankTransaction[] = [];
 
         for (let i = headerRowIndex + 1; i < data.length; i++) {
             const row = data[i];
+            if(row.length < Math.max(amountIndex, dateIndex, ...descriptionIndices)) continue;
+
             const fullDescription = descriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
 
             if (fullDescription.includes('etsy')) {
                 foundEtsyTransaction = true;
-                const amountStr = row[amountIndex];
-                const amount = parseFloatSafe(amountStr);
+                const amount = parseFloatSafe(row[amountIndex]);
                 totalAmount += amount;
+                transactions.push({
+                    date: row[dateIndex] || 'N/A',
+                    description: descriptionIndices.map(idx => row[idx] || '').join(' '),
+                    amount: amount
+                });
             }
         }
         
-        return { totalAmount, foundEtsyTransaction };
+        return { totalAmount, transactions, foundEtsyTransaction };
 
     } catch (error) {
         console.error("Error processing bank statement CSV:", error);
