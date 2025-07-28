@@ -40,7 +40,7 @@ export default function Home() {
                     Schritt 2: Gebühren
                 </div>
             </TabsTrigger>
-            <TabsTrigger value="step3" disabled={!isStep1Complete || !isStep2Complete}>
+            <TabsTrigger value="step3">
                 <div className="flex items-center gap-2">
                      <Scale/>
                     Schritt 3: Prüfung

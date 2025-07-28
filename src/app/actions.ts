@@ -115,6 +115,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     
     let totalNetSales = 0;
     let totalVat = 0;
+    let totalGrossSales = 0;
 
     const rowsBySaleId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
@@ -244,6 +245,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       invoices.push(invoice);
       totalNetSales += finalNetTotal;
       totalVat += finalVatTotal;
+      totalGrossSales += finalGrossTotal;
     }
 
     if (invoices.length === 0) {
@@ -263,4 +265,46 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     console.error("Error in generateInvoicesAction:", error);
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
+}
+
+export async function processBankStatementAction(csvData: string): Promise<{ data: number | null; error: string | null; }> {
+    try {
+        const parseResult = Papa.parse(csvData, {
+            header: true,
+            skipEmptyLines: true,
+            transformHeader: header => header.trim(),
+        });
+
+        if (parseResult.errors.length > 0) {
+            console.error("Bank Statement CSV Parsing Errors:", parseResult.errors);
+            return { data: null, error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
+        }
+
+        let totalAmount = 0;
+        let foundEtsyTransaction = false;
+        
+        const descriptionKeys = ['verwendungszweck', 'beschreibung', 'empfänger', 'auftraggeber', 'beguenstigter/zahlungspflichtiger', 'payee', 'description'];
+        const amountKeys = ['betrag', 'amount'];
+
+        for (const row of parseResult.data as any[]) {
+            const description = getColumn(row, descriptionKeys);
+            const amountStr = getColumn(row, amountKeys);
+
+            if (description && description.toLowerCase().includes('etsy') && amountStr) {
+                const amount = parseFloatSafe(amountStr);
+                totalAmount += amount;
+                foundEtsyTransaction = true;
+            }
+        }
+
+        if (!foundEtsyTransaction) {
+            return { data: null, error: "Keine Transaktionen mit dem Stichwort 'Etsy' in der CSV-Datei gefunden. Bitte prüfen Sie die Spaltennamen (z.B. 'Verwendungszweck', 'Betrag')." };
+        }
+        
+        return { data: totalAmount, error: null };
+
+    } catch (error) {
+        console.error("Error in processBankStatementAction:", error);
+        return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
+    }
 }
