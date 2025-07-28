@@ -271,10 +271,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; foundEtsyTransaction?: boolean; error?: string; }> {
     try {
         const parseResult = Papa.parse(csvData, {
-            header: true,
             skipEmptyLines: true,
-            dynamicTyping: true,
-            transformHeader: header => header.trim().toLowerCase(),
         });
 
         if (parseResult.errors.length > 0) {
@@ -282,18 +279,57 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
             return { error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
         }
 
-        let totalAmount = 0;
-        let foundEtsyTransaction = false;
+        const data = parseResult.data as string[][];
+
+        const headerKeywords = ['betrag', 'verwendungszweck', 'auftraggeber', 'empfänger', 'buchungstext'];
+        let headerRowIndex = -1;
+        let headers: string[] = [];
+
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i].map(h => h.toLowerCase().trim());
+            if (row.some(cell => headerKeywords.some(kw => cell.includes(kw)))) {
+                headerRowIndex = i;
+                headers = data[i].map(h => h.toLowerCase().trim());
+                break;
+            }
+        }
+
+        if (headerRowIndex === -1) {
+            return { error: "Konnte keine gültige Header-Zeile mit Spalten wie 'Betrag' oder 'Verwendungszweck' in der CSV-Datei finden." };
+        }
 
         const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber/empfänger', 'empfänger/auftraggeber', 'beguenstigter/zahlungspflichtiger', 'name'];
         const amountKeys = ['betrag', 'amount', 'gutschrift', 'lastschrift'];
+        
+        let amountIndex = -1;
+        const descriptionIndices: number[] = [];
 
-        for (const row of parseResult.data as any[]) {
-            const description = getColumn(row, descriptionKeys) || '';
+        headers.forEach((header, index) => {
+            if (amountKeys.some(key => header.includes(key))) {
+                amountIndex = index;
+            }
+            if (descriptionKeys.some(key => header.includes(key))) {
+                descriptionIndices.push(index);
+            }
+        });
 
-            if (description.toLowerCase().includes('etsy')) {
+        if (amountIndex === -1) {
+             return { error: "Konnte die 'Betrag'-Spalte in der CSV nicht finden." };
+        }
+        if (descriptionIndices.length === 0) {
+             return { error: "Konnte keine Spalte für den Verwendungszweck oder die Beschreibung in der CSV finden." };
+        }
+
+        let totalAmount = 0;
+        let foundEtsyTransaction = false;
+
+        for (let i = headerRowIndex + 1; i < data.length; i++) {
+            const row = data[i];
+            const fullDescription = descriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
+
+            if (fullDescription.includes('etsy')) {
                 foundEtsyTransaction = true;
-                const amountStr = getColumn(row, amountKeys);
+                const amountStr = row[amountIndex];
                 const amount = parseFloatSafe(amountStr);
                 totalAmount += amount;
             }
