@@ -92,6 +92,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
       grossTotal: -invoiceToCancel.grossTotal,
       items: invoiceToCancel.items.map(item => ({
         ...item,
+        quantity: item.quantity,
         netAmount: -item.netAmount,
         vatAmount: -item.vatAmount,
         grossAmount: -item.grossAmount,
@@ -142,7 +143,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     for (const invoice of invoices) {
         const pdfBlob = await generatePdf(invoice, userInfo, 'blob');
         if (pdfBlob) {
-            const fileName = invoice.isCancellation ? `Stornorechnung-${invoice.invoiceNumber}.pdf` : `Rechnung-${invoice.invoiceNumber}.pdf`;
+            const fileName = invoice.isCancellation ? `Stornorechnung-${invoice.invoiceNumber.replace('-STORNO','')}.pdf` : `Rechnung-${invoice.invoiceNumber}.pdf`;
             zip.file(fileName, pdfBlob);
         }
     }
@@ -334,7 +335,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                         <TableCell>{invoice.buyerName}</TableCell>
                                         <TableCell>{invoice.country}</TableCell>
                                         <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
-                                        <TableCell className={`text-right ${invoice.isCancellation ? 'text-destructive' : ''}`}>{formatCurrency(invoice.grossTotal)}</TableCell>
+                                        <TableCell className={`text-right font-semibold ${invoice.isCancellation ? 'text-destructive' : ''}`}>{formatCurrency(invoice.grossTotal)}</TableCell>
                                         <TableCell className="text-center space-x-1">
                                             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
                                                 <Download className="mr-2 h-4 w-4"/>
@@ -343,7 +344,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                             <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)} disabled={invoice.isCancellation}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                             <Button variant="ghost" size="icon" onClick={() => handleCreateCancellation(invoice)} disabled={invoice.isCancellation}>
+                                             <Button variant="ghost" size="icon" onClick={() => handleCreateCancellation(invoice)} disabled={invoice.isCancellation || invoices.some(i => i.invoiceNumber === `${invoice.invoiceNumber}-STORNO`)}>
                                                 <RotateCcw className="h-4 w-4" />
                                             </Button>
                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}>
