@@ -34,24 +34,8 @@ interface EtsyFeeParserProps {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
-    
-    // Remove currency symbols and whitespace
-    let cleanedValue = value.replace(/[€$A-Z\s]/g, '').trim();
-
-    // Check if the last separator is a comma (European format, e.g., 1.234,56)
-    const lastCommaIndex = cleanedValue.lastIndexOf(',');
-    const lastDotIndex = cleanedValue.lastIndexOf('.');
-
-    let parsableValue: string;
-
-    if (lastCommaIndex > lastDotIndex) {
-        // Comma is the decimal separator, remove dots as thousand separators
-        parsableValue = cleanedValue.replace(/\./g, '').replace(',', '.');
-    } else {
-        // Dot is the decimal separator, remove commas as thousand separators
-        parsableValue = cleanedValue.replace(/,/g, '');
-    }
-    
+    // Remove thousand separators (dots), then replace comma with dot for decimal
+    const parsableValue = value.replace(/\./g, '').replace(',', '.');
     const parsed = parseFloat(parsableValue);
     return isNaN(parsed) ? 0 : parsed;
 };
@@ -93,8 +77,8 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
         for (let i = 1; i <= doc.numPages; i++) {
             const page = await doc.getPage(i);
             const content = await page.getTextContent();
-            // Join items without adding extra spaces that might break number parsing
-            text += content.items.map(item => ('str' in item ? item.str : '')).join('');
+            // Join items with spaces to preserve structure for regex
+            text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
         }
         
         // Normalize text to handle various spacing issues
@@ -103,10 +87,11 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
         let total = 0;
         let date = 'N/A';
         
-        // Regex to find "Total" or "Subtotal" followed by a currency amount, allowing for spaces.
-        const totalRegex = /(?:Total|Subtotal)\s*€?([\d,.]+)/i;
+        // Regex to find "Total" or "Subtotal" followed by an optional currency symbol and the amount.
+        // This is more robust against spacing issues.
+        const totalRegex = /(?:Total|Subtotal)\s*€?\s*([\d,.-]+)/i;
         const totalMatch = normalizedText.match(totalRegex);
-
+        
         if (totalMatch && totalMatch[1]) {
             total = parseFloatSafe(totalMatch[1]);
         }
