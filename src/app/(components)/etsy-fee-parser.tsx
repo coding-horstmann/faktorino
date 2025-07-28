@@ -14,8 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, AlertTriangle, Upload, FileSignature, Wallet } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 
-// Configure the workerSrc to point to the correct path
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Configure the workerSrc to point to the locally hosted worker file.
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 
 const formSchema = z.object({
@@ -118,6 +118,7 @@ export function EtsyFeeParser() {
         setResult({ total, date });
 
     } catch(err: any) {
+        console.error("Error processing PDF on client:", err);
         setError(err.message || "Fehler beim Verarbeiten der PDF-Datei.");
     } finally {
         setIsLoading(false);
