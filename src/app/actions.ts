@@ -292,14 +292,15 @@ export async function extractFeesFromPdfAction(formData: FormData): Promise<{ da
         let total = 0;
         let date = 'N/A';
         
-        // Regex to find "Total" followed by an amount. Handles different spacings and currency symbols.
-        const totalRegex = /Total\s+€?(-?[\s\d.,]+)/i;
+        // Regex to find "Total" followed by an amount. More robust.
+        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*(?:\(EUR\))?\s*€?(-?[\s\d.,]+)/i;
         const totalMatch = text.match(totalRegex);
+        
         if (totalMatch && totalMatch[1]) {
             total = parseFloatSafe(totalMatch[1]);
         } else {
-             // Fallback for "Subtotal" if "Total" isn't found
-            const subtotalRegex = /Subtotal\s+€?(-?[\s\d.,]+)/i;
+             // Fallback for "Subtotal" or similar keywords if "Total" isn't found
+            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?(-?[\s\d.,]+)/i;
             const subtotalMatch = text.match(subtotalRegex);
             if (subtotalMatch && subtotalMatch[1]) {
                 total = parseFloatSafe(subtotalMatch[1]);
@@ -310,11 +311,11 @@ export async function extractFeesFromPdfAction(formData: FormData): Promise<{ da
              return { data: null, error: "Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt." };
         }
         
-        // Regex for date like "Month Day, Year" or "Day Month, Year"
-        const dateRegex = /Invoice Date:\s*(\d{1,2}\s+\w+,\s+\d{4})/i;
+        // Regex for date like "Month Day, Year", "Day Month, Year", or German "DD.MM.YYYY"
+        const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
         const dateMatch = text.match(dateRegex);
         if (dateMatch && dateMatch[1]) {
-            date = dateMatch[1];
+            date = dateMatch[1].trim();
         }
 
         return { data: { total, date }, error: null };
