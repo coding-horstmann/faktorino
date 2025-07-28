@@ -34,8 +34,9 @@ interface EtsyFeeParserProps {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
-
-    const cleanedValue = value.replace(/[€$A-Z\s]/g, '').trim();
+    
+    // Remove currency symbols and whitespace
+    let cleanedValue = value.replace(/[€$A-Z\s]/g, '').trim();
 
     // Check if the last separator is a comma (European format, e.g., 1.234,56)
     const lastCommaIndex = cleanedValue.lastIndexOf(',');
@@ -92,25 +93,22 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
         for (let i = 1; i <= doc.numPages; i++) {
             const page = await doc.getPage(i);
             const content = await page.getTextContent();
-            text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+            // Join items without adding extra spaces that might break number parsing
+            text += content.items.map(item => ('str' in item ? item.str : '')).join('');
         }
+        
+        // Normalize text to handle various spacing issues
+        const normalizedText = text.replace(/\s+/g, ' ').trim();
         
         let total = 0;
         let date = 'N/A';
         
-        // Regex to find "Total" or "Subtotal" followed by a currency amount
-        const totalRegex = /(?:Total|Subtotal)\s*€?([\d.,]+)\s*€?/i;
-        const totalMatch = text.match(totalRegex);
-        
+        // Regex to find "Total" or "Subtotal" followed by a currency amount, allowing for spaces.
+        const totalRegex = /(?:Total|Subtotal)\s*€?([\d,.]+)/i;
+        const totalMatch = normalizedText.match(totalRegex);
+
         if (totalMatch && totalMatch[1]) {
             total = parseFloatSafe(totalMatch[1]);
-        } else {
-             // Fallback for different formats
-             const fallbackRegex = /Total\s+([€\d,.]+)/i;
-             const fallbackMatch = text.match(fallbackRegex);
-             if(fallbackMatch && fallbackMatch[1]) {
-                 total = parseFloatSafe(fallbackMatch[1]);
-             }
         }
         
 
@@ -118,7 +116,7 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
              setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
         } else {
             const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\w+\s\d{1,2},\s\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
-            const dateMatch = text.match(dateRegex);
+            const dateMatch = normalizedText.match(dateRegex);
             if (dateMatch && dateMatch[1]) {
                 date = dateMatch[1].trim();
             }
