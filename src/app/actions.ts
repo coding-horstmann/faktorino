@@ -87,35 +87,55 @@ function getTaxInfo(
     taxStatus: UserInfo['taxStatus']
 ): { vatRate: number; taxNote: string; recipient: 'buyer' | 'etsy' } {
     
-    if (taxStatus === 'small_business') {
-        return {
-            vatRate: 0,
-            taxNote: "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer.",
-            recipient: 'buyer' // For small businesses, the invoice is always to the buyer
-        };
-    }
-
-    // Regular tax payer logic below
-    if (isPhysical) {
-        const recipient = 'buyer';
-        if (classification === 'Deutschland' || classification === 'EU-Ausland') {
-            return { vatRate: 19, taxNote: "Enthält 19% deutsche USt.", recipient };
-        } else { // Drittland
-            return { vatRate: 0, taxNote: "Steuerfreie Ausfuhrlieferung gemäß § 4 Nr. 1 a UStG.", recipient };
-        }
-    } else { // Digital Product
-        if (classification === 'Drittland') {
-             return {
+    // Regular tax payer logic
+    if (taxStatus === 'regular') {
+        if (isPhysical) {
+            const recipient = 'buyer';
+            if (classification === 'Deutschland' || classification === 'EU-Ausland') {
+                return { vatRate: 19, taxNote: "Enthält 19% deutsche USt.", recipient };
+            } else { // Drittland
+                return { vatRate: 0, taxNote: "Steuerfreie Ausfuhrlieferung gemäß § 4 Nr. 1 a UStG.", recipient };
+            }
+        } else { // Digital Product
+            if (classification === 'Drittland') {
+                 return {
+                    recipient: 'etsy',
+                    vatRate: 0,
+                    taxNote: "Leistung außerhalb EU, keine Ust."
+                };
+            }
+            return {
                 recipient: 'etsy',
                 vatRate: 0,
-                taxNote: "Leistung außerhalb EU, keine Ust."
+                taxNote: "USt wird von Etsy abgeführt (One-Stop-Shop).\nSteuerschuldnerschaft des Leistungsempfängers/Reverse Charge."
             };
         }
+    }
+    
+    // Small business logic below
+    const smallBusinessNote = "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer.";
+    const smallBusinessVatRate = 0;
+
+    if (isPhysical) {
         return {
-            recipient: 'etsy',
-            vatRate: 0,
-            taxNote: "USt wird von Etsy abgeführt (One-Stop-Shop).\nSteuerschuldnerschaft des Leistungsempfängers/Reverse Charge."
+            vatRate: smallBusinessVatRate,
+            taxNote: smallBusinessNote,
+            recipient: 'buyer'
         };
+    } else { // Digital Product
+        if (classification === 'Deutschland') {
+            return {
+                vatRate: smallBusinessVatRate,
+                taxNote: smallBusinessNote,
+                recipient: 'buyer'
+            };
+        } else { // EU-Ausland oder Drittland
+             return {
+                recipient: 'etsy',
+                vatRate: smallBusinessVatRate,
+                taxNote: smallBusinessNote
+            };
+        }
     }
 }
 
@@ -370,15 +390,16 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
 
         const headerKeywords = {
             amount: ['betrag', 'amount', 'summe'],
-            description: ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber', 'empfänger', 'beguenstigter/zahlungspflichtiger', 'name'],
+            description: ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber', 'empfänger', 'beguenstigter/zahlungspflichtiger', 'name', 'auftraggeber / empfänger'],
             date: ['datum', 'date', 'buchungstag', 'valuta']
         };
 
         let headerRowIndex = -1;
         let headers: string[] = [];
-
         let maxScore = 0;
-        for (let i = 0; i < data.length; i++) {
+
+        // Find the most likely header row
+        for (let i = 0; i < data.length && i < 15; i++) { // Only scan first 15 lines
             const row = data[i];
             if (!Array.isArray(row) || row.length < 2) continue;
             
@@ -390,8 +411,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
                     score++;
                 }
             }
-
-            if (score > maxScore && score > 1) { // A good header should have at least amount and description/date
+            if (score > maxScore && score > 1) { 
                 maxScore = score;
                 headerRowIndex = i;
                 headers = lowerCaseRow;
@@ -431,21 +451,21 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         for (let i = dataStartIndex; i < data.length; i++) {
             const row = data[i];
             if (!Array.isArray(row) || row.length <= Math.max(amountIndex, dateIndex, ...uniqueDescriptionIndices)) continue;
-
-            const amountStr = row[amountIndex];
-            const dateStr = row[dateIndex];
+            
             const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
-
-            if (!amountStr || !dateStr || parseFloatSafe(amountStr) === 0) {
-                continue;
+            const amountStr = row[amountIndex];
+            
+            if (!amountStr || !dateStr || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
+                continue; // Skip invalid or empty lines
             }
 
             if (fullDescription.includes('etsy')) {
                 foundEtsyTransaction = true;
                 const amount = parseFloatSafe(amountStr);
                 totalAmount += amount;
+                
                 transactions.push({
-                    date: dateStr || 'N/A',
+                    date: row[dateIndex] || 'N/A',
                     description: uniqueDescriptionIndices.map(idx => row[idx] || '').join(' '),
                     amount: amount
                 });
