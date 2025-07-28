@@ -67,7 +67,7 @@ export function EtsyFeeParser() {
 
     try {
         const arrayBuffer = await file.arrayBuffer();
-        const data = new Uint8_Array(arrayBuffer);
+        const data = new Uint8Array(arrayBuffer);
         const doc = await pdfjs.getDocument(data).promise;
         let text = '';
         for (let i = 1; i <= doc.numPages; i++) {
