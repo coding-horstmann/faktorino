@@ -15,6 +15,7 @@ export type UserInfo = {
     address: string;
     city: string;
     taxInfo: string;
+    taxStatus: 'regular' | 'small_business';
 }
 
 export function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'save'): void;
@@ -119,7 +120,7 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     if (outputType === 'save') {
         doc.save(fileName);
         return Promise.resolve(null);
-    } else if (outputType === 'blob') {
+    } else {
         return Promise.resolve(doc.output('blob'));
     }
 }

@@ -3,6 +3,7 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
+import type { UserInfo } from '@/lib/pdf-generator';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -80,7 +81,21 @@ function getCountryClassification(countryName: string): Invoice['countryClassifi
     return 'Drittland';
 }
 
-function getTaxInfo(classification: Invoice['countryClassification'], isPhysical: boolean): { vatRate: number; taxNote: string; recipient: 'buyer' | 'etsy' } {
+function getTaxInfo(
+    classification: Invoice['countryClassification'], 
+    isPhysical: boolean,
+    taxStatus: UserInfo['taxStatus']
+): { vatRate: number; taxNote: string; recipient: 'buyer' | 'etsy' } {
+    
+    if (taxStatus === 'small_business') {
+        return {
+            vatRate: 0,
+            taxNote: "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer.",
+            recipient: 'buyer' // For small businesses, the invoice is always to the buyer
+        };
+    }
+
+    // Regular tax payer logic below
     if (isPhysical) {
         const recipient = 'buyer';
         if (classification === 'Deutschland' || classification === 'EU-Ausland') {
@@ -164,7 +179,7 @@ function formatDate(dateStr: string): string {
 }
 
 
-export async function generateInvoicesAction(csvData: string): Promise<{ data: ProcessCsvOutput | null; error: string | null; }> {
+export async function generateInvoicesAction(csvData: string, taxStatus: UserInfo['taxStatus']): Promise<{ data: ProcessCsvOutput | null; error: string | null; }> {
   try {
     const parseResult = Papa.parse(csvData, {
       header: true,
@@ -205,7 +220,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const countryClassification = getCountryClassification(countryName);
       
       const isOrderPhysical = rows.some(r => getColumn(r, ['sku'], normalizedHeaderMap).trim() !== '');
-      const { taxNote, recipient } = getTaxInfo(countryClassification, isOrderPhysical);
+      const { taxNote, recipient } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
 
       let orderNetTotal = 0;
       let orderVatTotal = 0;
@@ -216,7 +231,6 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           const itemName = getColumn(row, ['artikelname', 'titel', 'title', 'item name'], normalizedHeaderMap);
           const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
 
-          // We check item name because some rows are just shipping/discounts without an item
           if (itemName && itemTotalStr) {
               const itemTotal = parseFloatSafe(itemTotalStr);
               const discountAmount = parseFloatSafe(getColumn(row, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
@@ -226,7 +240,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
               if (grossAmount > 0) {
                   const isItemPhysical = getColumn(row, ['sku'], normalizedHeaderMap).trim() !== '';
-                  const { vatRate: itemVatRate } = getTaxInfo(countryClassification, isItemPhysical);
+                  const { vatRate: itemVatRate } = getTaxInfo(countryClassification, isItemPhysical, taxStatus);
                   
                   const quantity = parseInt(getColumn(row, ['anzahl', 'items', 'quantity'], normalizedHeaderMap) || '1', 10) || 1;
                   const netAmount = itemVatRate > 0 ? grossAmount / (1 + itemVatRate / 100) : grossAmount;
@@ -248,12 +262,11 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           }
       });
       
-      // Handle shipping costs for the entire order
       const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, ['shipping', 'versand', 'shipping costs', 'versandkosten'], normalizedHeaderMap)) > 0) || rows[0];
       const shippingCost = parseFloatSafe(getColumn(shippingRow, ['shipping', 'versand', 'shipping costs', 'versandkosten'], normalizedHeaderMap));
 
       if (shippingCost > 0) {
-          const { vatRate: shippingVatRate } = getTaxInfo(countryClassification, true); // Shipping is always physical
+          const { vatRate: shippingVatRate } = getTaxInfo(countryClassification, true, taxStatus); // Shipping is always physical
           const shippingNet = shippingVatRate > 0 ? shippingCost / (1 + shippingVatRate / 100) : shippingCost;
           const shippingVat = shippingCost - shippingNet;
           
@@ -270,7 +283,6 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           orderGrossTotal += shippingCost;
       }
       
-      // Only create an invoice if there's a positive total amount
       if (orderGrossTotal <= 0) {
         continue;
       }
@@ -365,7 +377,6 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         let headerRowIndex = -1;
         let headers: string[] = [];
 
-        // Find the header row by scoring each row
         let maxScore = 0;
         for (let i = 0; i < data.length; i++) {
             const row = data[i];
@@ -425,7 +436,6 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
             const dateStr = row[dateIndex];
             const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
 
-            // Skip rows that are clearly not transactions
             if (!amountStr || !dateStr || parseFloatSafe(amountStr) === 0) {
                 continue;
             }

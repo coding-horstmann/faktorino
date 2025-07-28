@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { FileText, FileSignature, Upload, Building, CheckCircle, AlertCircle } from 'lucide-react';
 import type { UserInfo } from '@/lib/pdf-generator';
 import type { BankTransaction } from '@/app/actions';
@@ -31,7 +32,8 @@ export default function Home() {
     name: '',
     address: '',
     city: '',
-    taxInfo: ''
+    taxInfo: '',
+    taxStatus: 'regular',
   });
   const [isUserInfoComplete, setIsUserInfoComplete] = useState(false);
 
@@ -39,6 +41,10 @@ export default function Home() {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
   };
   
+  const handleTaxStatusChange = (value: 'regular' | 'small_business') => {
+    setUserInfo({ ...userInfo, taxStatus: value });
+  };
+
   const checkUserInfo = () => {
     if(userInfo.name && userInfo.address && userInfo.city && userInfo.taxInfo) {
       setIsUserInfoComplete(true);
@@ -79,11 +85,10 @@ export default function Home() {
   
   const handlePayoutValidated = useCallback((payout: number | null, result: any, transactions: BankTransaction[]) => {
      setValidationResult(prev => {
-         // Deep comparison to prevent unnecessary re-renders
          if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
          return result;
      });
-     // We no longer need to manage bankTransactions here as they are displayed inside PayoutValidator
+     setBankTransactions(transactions);
   }, []);
 
   const isStep1Complete = validationResult.grossInvoices !== null;
@@ -136,6 +141,19 @@ export default function Home() {
                         <Label htmlFor="taxInfo">Steuernummer oder USt-IdNr.</Label>
                         <Input id="taxInfo" name="taxInfo" value={userInfo.taxInfo} onChange={handleUserInfoChange} placeholder="DE123456789"/>
                      </div>
+                      <div className="space-y-2">
+                        <Label>Besteuerungsart</Label>
+                        <RadioGroup defaultValue="regular" onValueChange={handleTaxStatusChange} value={userInfo.taxStatus}>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="regular" id="r1" />
+                            <Label htmlFor="r1">Umsatzsteuerpflichtig</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="small_business" id="r2" />
+                            <Label htmlFor="r2">Kleinunternehmer (§ 19 UStG)</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
                      <Button onClick={checkUserInfo} disabled={!userInfo.name || !userInfo.address || !userInfo.city || !userInfo.taxInfo}>
                         Angaben speichern & übernehmen
                      </Button>

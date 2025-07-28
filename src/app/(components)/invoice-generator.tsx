@@ -196,7 +196,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
             return;
         }
 
-        const response = await generateInvoicesAction(combinedCsvData);
+        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus);
         if (response.error) {
             setError(response.error);
         } else if (response.data) {
@@ -244,7 +244,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
               />
             </CardContent>
             <CardFooter>
-              <Button type="submit" disabled={isLoading} className="w-full">
+              <Button type="submit" disabled={isLoading || !userInfo.taxStatus} className="w-full">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -282,7 +282,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                         <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalNetSales)}</span>
                     </div>
                      <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
-                        <span className="font-medium">Umsatzsteuer Gesamt (19%):</span>
+                        <span className="font-medium">Umsatzsteuer Gesamt:</span>
                         <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalVat)}</span>
                     </div>
                 </CardContent>
