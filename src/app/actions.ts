@@ -265,3 +265,55 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut.` };
   }
 }
+
+export async function extractFeesFromPdfAction(formData: FormData): Promise<{ data: { total: number; date: string; } | null; error: string | null; }> {
+    const file = formData.get('pdfFile') as File;
+    if (!file) {
+        return { data: null, error: 'Keine Datei hochgeladen.' };
+    }
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const doc = await pdfjs.getDocument(data).promise;
+
+        let text = '';
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+        }
+        
+        let total = 0;
+        let date = 'N/A';
+        
+        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*(?:\(EUR\))?\s*€?\s*(-?[\s\d.,]+)/i;
+        const totalMatch = text.match(totalRegex);
+        
+        if (totalMatch && totalMatch[1]) {
+            total = parseFloatSafe(totalMatch[1]);
+        } else {
+            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*(-?[\s\d.,]+)/i;
+            const subtotalMatch = text.match(subtotalRegex);
+            if (subtotalMatch && subtotalMatch[1]) {
+                total = parseFloatSafe(subtotalMatch[1]);
+            }
+        }
+        
+        if (total === 0) {
+             return { data: null, error: "Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt." };
+        }
+        
+        const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
+        const dateMatch = text.match(dateRegex);
+        if (dateMatch && dateMatch[1]) {
+            date = dateMatch[1].trim();
+        }
+
+        return { data: { total, date }, error: null };
+
+    } catch(err: any) {
+        console.error("Error processing PDF on server:", err);
+        return { data: null, error: "Fehler beim Verarbeiten der PDF-Datei auf dem Server." };
+    }
+}
