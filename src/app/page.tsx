@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { EtsyFeeParser } from '@/app/(components)/etsy-fee-parser';
 import { PayoutValidator, ValidationResultDisplay } from '@/app/(components)/payout-validator';
@@ -11,14 +11,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { FileText, FileSignature, Upload, Building, CheckCircle, AlertCircle } from 'lucide-react';
+import { FileText, FileSignature, Upload, Building, CheckCircle, AlertCircle, Banknote, List, Scale } from 'lucide-react';
 import type { UserInfo } from '@/lib/pdf-generator';
+import type { BankTransaction } from './actions';
 
 export default function Home() {
-  const [grossInvoices, setGrossInvoices] = useState<number | null>(null);
-  const [totalFees, setTotalFees] = useState<number | null>(null);
-  const [payout, setPayout] = useState<number | null>(null);
-  const [validationResult, setValidationResult] = useState<any | null>(null);
+  
+  const [validationResult, setValidationResult] = useState({
+    grossInvoices: null as number | null,
+    totalFees: null as number | null,
+    payoutAmount: null as number | null
+  });
 
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
@@ -41,21 +44,20 @@ export default function Home() {
   }
 
   const handleInvoicesGenerated = (gross: number) => {
-    setGrossInvoices(gross);
+    setValidationResult(prev => ({...prev, grossInvoices: gross}));
   };
   
   const handleFeesParsed = (fees: number) => {
-    setTotalFees(fees);
+    setValidationResult(prev => ({...prev, totalFees: -fees}));
   };
   
-  const handlePayoutValidated = (payout: number, result: any) => {
-    setPayout(payout);
-    setValidationResult(result);
+  const handlePayoutValidated = (payout: number) => {
+     setValidationResult(prev => ({...prev, payoutAmount: payout}));
   }
 
-  const isStep1Complete = grossInvoices !== null;
-  const isStep2Complete = totalFees !== null;
-  const isStep3Complete = payout !== null;
+  const isStep1Complete = validationResult.grossInvoices !== null;
+  const isStep2Complete = validationResult.totalFees !== null;
+  const isStep3Complete = validationResult.payoutAmount !== null;
 
   return (
     <main className="flex min-h-screen flex-col items-center p-4 sm:p-8 md:p-12 bg-background">
@@ -126,7 +128,7 @@ export default function Home() {
                     Etsy-Gebühren
                 </div>
             </TabsTrigger>
-            <TabsTrigger value="step3" disabled={!isUserInfoComplete}>
+            <TabsTrigger value="step3" disabled={!isStep1Complete}>
                 <div className="flex items-center gap-2">
                      {isStep3Complete ? <CheckCircle className="text-green-500"/> : <Upload/>}
                     Kontoauszug hochladen
@@ -141,16 +143,16 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="step3" className="mt-6">
             <PayoutValidator 
-              grossInvoices={grossInvoices} 
-              totalFees={totalFees} 
-              onPayoutValidated={handlePayoutValidated}
+              grossInvoices={validationResult.grossInvoices} 
+              totalFees={validationResult.totalFees} 
+              onPayoutValidated={(payout, result, transactions) => {
+                 setValidationResult(prev => ({...prev, payoutAmount: payout}));
+              }}
             />
           </TabsContent>
         </Tabs>
         
-        {validationResult && (
-            <ValidationResultDisplay result={validationResult}/>
-        )}
+        <ValidationResultDisplay result={validationResult}/>
 
 
         <footer className="text-center mt-8 text-sm text-muted-foreground">

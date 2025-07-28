@@ -23,7 +23,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface PayoutValidatorProps {
   grossInvoices: number | null;
   totalFees: number | null;
-  onPayoutValidated: (payout: number, result: any) => void;
+  onPayoutValidated: (payout: number, result: any, transactions: BankTransaction[]) => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -67,12 +67,15 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
             const result = await processBankStatementAction(csvData);
             if (result.error) {
                 setError(result.error);
-            } else if (result.totalAmount !== undefined) {
+            } else if (result.totalAmount !== undefined && result.transactions) {
                 if (result.totalAmount === 0 && !result.foundEtsyTransaction) {
                      setError("Keine Transaktionen mit dem Stichwort 'Etsy' in der CSV-Datei gefunden.");
                 } else {
                     setBankStatementTotal(result.totalAmount);
-                    setTransactions(result.transactions || []);
+                    setTransactions(result.transactions);
+                     if (grossInvoices !== null && totalFees !== null) {
+                        validatePayout(grossInvoices, totalFees, result.totalAmount, result.transactions);
+                    }
                 }
             }
         } catch (err: any) {
@@ -89,7 +92,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
     reader.readAsText(file, 'UTF-8');
   }
 
-  function validatePayout(gross: number, fees: number, payout: number) {
+  function validatePayout(gross: number, fees: number, payout: number, transactions: BankTransaction[]) {
     const expectedPayout = gross - fees;
     const difference = payout - expectedPayout;
     const result = {
@@ -99,7 +102,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
         expectedPayout,
         difference,
     };
-    onPayoutValidated(payout, result);
+    onPayoutValidated(payout, result, transactions);
   }
 
   return (
@@ -210,7 +213,14 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
 
 
 export function ValidationResultDisplay({ result }: { result: any }) {
-    if (!result) return null;
+
+    const formatCurrency = (value: number) => {
+        if(value === null || value === undefined) return '-';
+        return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+    };
+
+    const isComplete = result.grossInvoices !== null && result.totalFees !== null && result.payoutAmount !== null;
+    const difference = isComplete ? result.payoutAmount - (result.grossInvoices + result.totalFees) : null;
 
     return (
         <Card className="animate-in fade-in-50 mt-8 border-primary border-2 shadow-2xl">
@@ -236,19 +246,21 @@ export function ValidationResultDisplay({ result }: { result: any }) {
                         </TableRow>
                          <TableRow className="font-bold border-t-2">
                             <TableCell className="text-base">Erwartete Auszahlung</TableCell>
-                            <TableCell className="text-right text-base">{formatCurrency(result.expectedPayout)}</TableCell>
+                            <TableCell className="text-right text-base">{formatCurrency(isComplete ? result.grossInvoices + result.totalFees : null)}</TableCell>
                         </TableRow>
                          <TableRow>
                             <TableCell className="text-base">Tatsächliche Auszahlung (aus Kontoauszug)</TableCell>
                             <TableCell className="text-right text-base">{formatCurrency(result.payoutAmount)}</TableCell>
                         </TableRow>
-                        <TableRow className={`font-extrabold ${Math.abs(result.difference) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
-                            <TableCell className="flex items-center gap-2 text-lg">
-                                 {Math.abs(result.difference) > 0.01 ? <AlertCircle/> : <CheckCircle2/>}
-                                Differenz
-                            </TableCell>
-                            <TableCell className="text-right text-lg">{formatCurrency(result.difference)}</TableCell>
-                        </TableRow>
+                         {isComplete && difference !== null && (
+                            <TableRow className={`font-extrabold ${Math.abs(difference) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                                <TableCell className="flex items-center gap-2 text-lg">
+                                    {Math.abs(difference) > 0.01 ? <AlertCircle/> : <CheckCircle2/>}
+                                    Differenz
+                                </TableCell>
+                                <TableCell className="text-right text-lg">{formatCurrency(difference)}</TableCell>
+                            </TableRow>
+                         )}
                     </TableBody>
                 </Table>
             </CardContent>
