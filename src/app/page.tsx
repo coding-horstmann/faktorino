@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { EtsyFeeParser } from '@/app/(components)/etsy-fee-parser';
 import { PayoutValidator, ValidationResultDisplay } from '@/app/(components)/payout-validator';
@@ -43,17 +43,27 @@ export default function Home() {
     }
   }
 
-  const handleInvoicesGenerated = (gross: number) => {
-    setValidationResult(prev => ({...prev, grossInvoices: gross}));
-  };
+  const handleInvoicesGenerated = useCallback((gross: number) => {
+    setValidationResult(prev => {
+        // Only update if the value has actually changed to prevent loops
+        if (prev.grossInvoices === gross) return prev;
+        return {...prev, grossInvoices: gross};
+    });
+  }, []);
   
-  const handleFeesParsed = (fees: number) => {
-    setValidationResult(prev => ({...prev, totalFees: -fees}));
-  };
+  const handleFeesParsed = useCallback((fees: number) => {
+    setValidationResult(prev => {
+        if (prev.totalFees === -fees) return prev;
+        return {...prev, totalFees: -fees};
+    });
+  }, []);
   
-  const handlePayoutValidated = (payout: number, result: any, transactions: BankTransaction[]) => {
-     setValidationResult(prev => ({...prev, payoutAmount: payout}));
-  }
+  const handlePayoutValidated = useCallback((payout: number, result: any, transactions: BankTransaction[]) => {
+     setValidationResult(prev => {
+         if (prev.payoutAmount === payout) return prev;
+         return {...prev, payoutAmount: payout};
+     });
+  }, []);
 
   const isStep1Complete = validationResult.grossInvoices !== null;
   const isStep2Complete = validationResult.totalFees !== null;
