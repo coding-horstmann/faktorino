@@ -61,15 +61,20 @@ const ETSY_ADDRESS_INFO = {
     fullAddress: 'Etsy Ireland UC\nOne Le Pole Square\nShip Street Great\nDublin 8\nIreland\nUSt-IdNr. IE9777587C'
 };
 
-function getCountryClassification(countryName: string): Invoice['countryClassification'] {
-    if (!countryName) return 'Drittland';
-    const name = countryName.toLowerCase().trim()
+function normalizeCountryName(countryName: string): string {
+    if (!countryName) return '';
+    return countryName.toLowerCase().trim()
         .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+}
+
+function getCountryClassification(countryName: string): Invoice['countryClassification'] {
+    const normalizedName = normalizeCountryName(countryName);
+    if (!normalizedName) return 'Drittland';
     
-    if (name === 'deutschland') {
+    if (normalizedName === 'deutschland') {
         return 'Deutschland';
     }
-    if (EU_COUNTRY_NAMES.includes(name)) {
+    if (EU_COUNTRY_NAMES.includes(normalizedName)) {
         return 'EU-Ausland';
     }
     return 'Drittland';
