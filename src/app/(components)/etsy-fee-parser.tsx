@@ -33,18 +33,15 @@ const parseFloatSafe = (value: string | number | null | undefined): number => {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        const cleanedValue = value.trim().replace(/€/g, '').trim();
-        const lastDot = cleanedValue.lastIndexOf('.');
-        const lastComma = cleanedValue.lastIndexOf(',');
-
-        let formattedValue;
-        if (lastDot > lastComma) {
-            // US-Format: 1,234.56 -> 1234.56
-            formattedValue = cleanedValue.replace(/,/g, '');
-        } else {
-            // Deutsches Format: 1.234,56 -> 1234.56
-            formattedValue = cleanedValue.replace(/\./g, '').replace(',', '.');
-        }
+        const cleanedValue = value
+            .trim()
+            .replace(/€/g, '')
+            .trim();
+        
+        // Zuerst alle Punkte (als Tausendertrenner) entfernen
+        const withoutDots = cleanedValue.replace(/\./g, '');
+        // Dann das Komma durch einen Punkt für parseFloat ersetzen
+        const formattedValue = withoutDots.replace(',', '.');
         
         const parsed = parseFloat(formattedValue);
         return isNaN(parsed) ? 0 : parsed;
@@ -94,6 +91,7 @@ export function EtsyFeeParser() {
         let total = 0;
         let date = 'N/A';
         
+        // Verbesserte Regex, die gezielter nach "Total" oder "Gesamtbetrag" sucht und den Betrag in der Nähe erfasst.
         const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*€?\s*(-?[\s\d.,]+€?)/i;
         const totalMatch = text.match(totalRegex);
         
