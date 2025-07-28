@@ -44,6 +44,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
     if (grossInvoices !== null && totalFees !== null && bankStatementTotal !== null) {
       validatePayout(grossInvoices, totalFees, bankStatementTotal);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grossInvoices, totalFees, bankStatementTotal]);
 
 
@@ -156,7 +157,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                 />
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading || bankStatementTotal !== null}>
+                <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -187,7 +188,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                         Summe der Etsy-Transaktionen
                     </CardTitle>
                      <CardDescription>
-                        Dieser Betrag wurde aus Ihren Kontoauszügen berechnet.
+                        Dieser Betrag wurde aus Ihren hochgeladenen Kontoauszügen berechnet.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -197,43 +198,12 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                 </CardContent>
              </Card>
         )}
-
-        {transactions.length > 0 && (
-            <Card className="animate-in fade-in-50">
-                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <List className="text-primary"/>
-                        Erkannte Etsy-Transaktionen
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Datum</TableHead>
-                                <TableHead>Beschreibung</TableHead>
-                                <TableHead className="text-right">Betrag</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {transactions.map((t, i) => (
-                                <TableRow key={i}>
-                                    <TableCell>{t.date}</TableCell>
-                                    <TableCell>{t.description}</TableCell>
-                                    <TableCell className={`text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        )}
     </div>
   );
 }
 
 
-export function ValidationResultDisplay({ result }: { result: any }) {
+export function ValidationResultDisplay({ result, transactions }: { result: any, transactions: BankTransaction[] }) {
 
     const formatCurrency = (value: number | null) => {
         if(value === null || value === undefined) return '-';
@@ -259,11 +229,11 @@ export function ValidationResultDisplay({ result }: { result: any }) {
                     <TableBody>
                         <TableRow>
                             <TableCell className="text-base">Rechnungen Brutto (aus Etsy-Rechnungen)</TableCell>
-                            <TableCell className="text-right text-base">{formatCurrency(result.grossInvoices)}</TableCell>
+                            <TableCell className="text-right text-base font-medium">{formatCurrency(result.grossInvoices)}</TableCell>
                         </TableRow>
                          <TableRow>
                             <TableCell className="text-base">Etsy-Gebühren (aus Etsy-Abrechnung)</TableCell>
-                            <TableCell className="text-right text-base text-red-600">{formatCurrency(result.totalFees)}</TableCell>
+                            <TableCell className="text-right text-base font-medium text-red-600">{formatCurrency(result.totalFees)}</TableCell>
                         </TableRow>
                          <TableRow className="font-bold border-t-2">
                             <TableCell className="text-base">Erwartete Auszahlung</TableCell>
@@ -271,7 +241,7 @@ export function ValidationResultDisplay({ result }: { result: any }) {
                         </TableRow>
                          <TableRow>
                             <TableCell className="text-base">Tatsächliche Auszahlung (aus Kontoauszug)</TableCell>
-                            <TableCell className="text-right text-base">{formatCurrency(result.payoutAmount)}</TableCell>
+                            <TableCell className="text-right text-base font-medium">{formatCurrency(result.payoutAmount)}</TableCell>
                         </TableRow>
                          {isComplete && difference !== null && (
                             <TableRow className={`font-extrabold ${Math.abs(difference) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
@@ -284,6 +254,33 @@ export function ValidationResultDisplay({ result }: { result: any }) {
                          )}
                     </TableBody>
                 </Table>
+
+                {transactions.length > 0 && (
+                    <div className="mt-6">
+                        <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                            <List className="text-primary"/>
+                            Erkannte Etsy-Transaktionen aus Kontoauszug
+                        </h4>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Datum</TableHead>
+                                    <TableHead>Beschreibung</TableHead>
+                                    <TableHead className="text-right">Betrag</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {transactions.map((t, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell>{t.date}</TableCell>
+                                        <TableCell>{t.description}</TableCell>
+                                        <TableCell className={`text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
             </CardContent>
         </Card>
     )

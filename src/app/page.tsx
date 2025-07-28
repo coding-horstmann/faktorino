@@ -23,6 +23,8 @@ export default function Home() {
     payoutAmount: null as number | null
   });
 
+  const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
+
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
     address: '',
@@ -45,7 +47,6 @@ export default function Home() {
 
   const handleInvoicesGenerated = useCallback((gross: number) => {
     setValidationResult(prev => {
-        // Only update if the value has actually changed to prevent loops
         if (prev.grossInvoices === gross) return prev;
         return {...prev, grossInvoices: gross};
     });
@@ -63,6 +64,7 @@ export default function Home() {
          if (prev.payoutAmount === payout) return prev;
          return {...prev, payoutAmount: payout};
      });
+     setBankTransactions(transactions);
   }, []);
 
   const isStep1Complete = validationResult.grossInvoices !== null;
@@ -160,7 +162,7 @@ export default function Home() {
           </TabsContent>
         </Tabs>
         
-        <ValidationResultDisplay result={validationResult}/>
+        <ValidationResultDisplay result={validationResult} transactions={bankTransactions} />
 
 
         <footer className="text-center mt-8 text-sm text-muted-foreground">
