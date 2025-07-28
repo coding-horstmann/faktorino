@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { processBankStatementAction } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -13,9 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Scale, Banknote, AlertCircle, CheckCircle2, Loader2, Upload, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import * as pdfjs from 'pdfjs-dist';
+
+// Configure the worker for pdfjs
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+
 
 const formSchema = z.object({
-  csvFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
+  pdfFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -29,6 +33,13 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
 
+const parseFloatSafe = (value: string | null | undefined): number => {
+    if (!value) return 0;
+    const cleanedValue = value.replace(/[€$A-Z\s]/g, '').replace(/\./g, '').replace(',', '.').trim();
+    const parsed = parseFloat(cleanedValue);
+    return isNaN(parsed) ? 0 : parsed;
+}
+
 export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorProps) {
   const [validationResult, setValidationResult] = useState<any | null>(null);
   const [bankStatementTotal, setBankStatementTotal] = useState<number | null>(null);
@@ -41,35 +52,58 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
 
   const isReadyForValidation = grossInvoices !== null && totalFees !== null && bankStatementTotal !== null;
 
-  async function onUpload(values: FormValues) {
+  async function onSubmit(values: FormValues) {
     setIsLoading(true);
     setError(null);
     setBankStatementTotal(null);
     setValidationResult(null);
 
-    const file = values.csvFile[0];
-    const reader = new FileReader();
-
-    reader.onload = async (e) => {
-        const csvData = e.target?.result as string;
-        const response = await processBankStatementAction(csvData);
-        if (response.error) {
-            setError(response.error);
-        } else if (response.data !== null) {
-            setBankStatementTotal(response.data);
-            if (grossInvoices !== null && totalFees !== null) {
-                validatePayout(grossInvoices, totalFees, response.data);
-            }
-        }
+    const file = values.pdfFile[0];
+    if (!file) {
+        setError("Keine Datei ausgewählt.");
         setIsLoading(false);
-    };
-
-    reader.onerror = () => {
-        setError("Fehler beim Lesen der Datei.");
-        setIsLoading(false);
+        return;
     }
 
-    reader.readAsText(file, 'UTF-8');
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const doc = await pdfjs.getDocument(data).promise;
+        let text = '';
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+        }
+        
+        const etsyTransactionRegex = /(?:Etsy Ireland Unlimited Company|ETSY PAYMENTS)[^\d\n,.-]*([+-]?\s?[\d.,]+)/g;
+        let match;
+        let totalAmount = 0;
+        let foundEtsyTransaction = false;
+
+        while ((match = etsyTransactionRegex.exec(text)) !== null) {
+            const amountStr = match[1];
+            if (amountStr) {
+                const amount = parseFloatSafe(amountStr);
+                totalAmount += amount;
+                foundEtsyTransaction = true;
+            }
+        }
+        
+        if (!foundEtsyTransaction) {
+            setError("Keine Transaktionen mit dem Stichwort 'Etsy' in der PDF gefunden.");
+        } else {
+            setBankStatementTotal(totalAmount);
+            if (grossInvoices !== null && totalFees !== null) {
+                validatePayout(grossInvoices, totalFees, totalAmount);
+            }
+        }
+    } catch (err: any) {
+        console.error("Error processing PDF:", err);
+        setError(err.message || "Fehler beim Verarbeiten der PDF-Datei.");
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   function validatePayout(gross: number, fees: number, payout: number) {
@@ -94,20 +128,20 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
                 Schritt 3: Kontoauszug hochladen & prüfen
             </CardTitle>
             <CardDescription>
-                Laden Sie einen CSV-Export Ihres Kontoauszugs hoch. Das Tool summiert automatisch alle Gutschriften von Etsy und Zahlungen an Etsy.
+                Laden Sie einen PDF-Export Ihres Kontoauszugs hoch. Das Tool summiert automatisch alle Gutschriften von Etsy und Zahlungen an Etsy.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onUpload)}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
               <CardContent>
                 <FormField
                     control={form.control}
-                    name="csvFile"
+                    name="pdfFile"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Kontoauszug (CSV-Datei)</FormLabel>
+                        <FormLabel>Kontoauszug (PDF-Datei)</FormLabel>
                         <FormControl>
-                            <Input type="file" accept=".csv" onChange={(e) => field.onChange(e.target.files)} />
+                            <Input type="file" accept=".pdf" onChange={(e) => field.onChange(e.target.files)} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
