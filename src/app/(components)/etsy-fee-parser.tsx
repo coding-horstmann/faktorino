@@ -34,12 +34,27 @@ interface EtsyFeeParserProps {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
-    // Cleans the string from currency symbols, thousand separators, and trims it.
-    // It specifically replaces a comma with a dot for float conversion.
-    const cleanedValue = value.replace(/[€$A-Z\s]/g, '').replace(/\./g, '').replace(',', '.').trim();
-    const parsed = parseFloat(cleanedValue);
+
+    const cleanedValue = value.replace(/[€$A-Z\s]/g, '').trim();
+
+    // Check if the last separator is a comma (European format, e.g., 1.234,56)
+    const lastCommaIndex = cleanedValue.lastIndexOf(',');
+    const lastDotIndex = cleanedValue.lastIndexOf('.');
+
+    let parsableValue: string;
+
+    if (lastCommaIndex > lastDotIndex) {
+        // Comma is the decimal separator, remove dots as thousand separators
+        parsableValue = cleanedValue.replace(/\./g, '').replace(',', '.');
+    } else {
+        // Dot is the decimal separator, remove commas as thousand separators
+        parsableValue = cleanedValue.replace(/,/g, '');
+    }
+    
+    const parsed = parseFloat(parsableValue);
     return isNaN(parsed) ? 0 : parsed;
-}
+};
+
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -83,23 +98,21 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
         let total = 0;
         let date = 'N/A';
         
-        const totalRegex = /(?:Total|Subtotal)\s*€?([\d,]+\.\d{2})|([\d\.]+,\d{2})\s*€/i;
+        // Regex to find "Total" or "Subtotal" followed by a currency amount
+        const totalRegex = /(?:Total|Subtotal)\s*€?([\d.,]+)\s*€?/i;
         const totalMatch = text.match(totalRegex);
         
-        if (totalMatch) {
-             const foundValue = totalMatch[1] ? totalMatch[1].replace('.', ',') : totalMatch[2];
-             if (foundValue) {
-                total = parseFloatSafe(foundValue.replace(',', '.')); // Force dot as decimal separator
+        if (totalMatch && totalMatch[1]) {
+            total = parseFloatSafe(totalMatch[1]);
+        } else {
+             // Fallback for different formats
+             const fallbackRegex = /Total\s+([€\d,.]+)/i;
+             const fallbackMatch = text.match(fallbackRegex);
+             if(fallbackMatch && fallbackMatch[1]) {
+                 total = parseFloatSafe(fallbackMatch[1]);
              }
         }
         
-        if (total === 0) {
-             const fallbackRegex = /Total\s+€?([0-9.,]+)/i;
-             const fallbackMatch = text.match(fallbackRegex);
-             if(fallbackMatch && fallbackMatch[1]) {
-                 total = parseFloatSafe(fallbackMatch[1].replace('.','').replace(',','.'));
-             }
-        }
 
         if (total === 0) {
              setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
