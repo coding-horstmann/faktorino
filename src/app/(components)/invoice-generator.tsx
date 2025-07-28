@@ -330,7 +330,12 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                     <TableRow key={invoice.invoiceNumber} className={invoice.isCancellation ? 'bg-red-100 dark:bg-red-900/30' : ''}>
                                         <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                                         <TableCell>{invoice.orderDate}</TableCell>
-                                        <TableCell>{invoice.buyerName}</TableCell>
+                                        <TableCell>
+                                            {invoice.buyerName}
+                                            {invoice.etsyCustomerName && (
+                                                <span className="text-muted-foreground ml-1">({invoice.etsyCustomerName})</span>
+                                            )}
+                                        </TableCell>
                                         <TableCell>{invoice.country}</TableCell>
                                         <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
                                         <TableCell className={`text-right font-semibold ${invoice.isCancellation ? 'text-destructive' : ''}`}>{formatCurrency(invoice.grossTotal)}</TableCell>

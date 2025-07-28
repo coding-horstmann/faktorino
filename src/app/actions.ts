@@ -18,6 +18,7 @@ const invoiceSchema = z.object({
   invoiceNumber: z.string(),
   orderDate: z.string(),
   buyerName: z.string(),
+  etsyCustomerName: z.string().optional(),
   buyerAddress: z.string(),
   items: z.array(invoiceItemSchema),
   netTotal: z.number(),
@@ -310,12 +311,16 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
 
       let buyerName: string;
       let buyerAddress: string;
+      let etsyCustomerName: string | undefined;
+
+      const actualBuyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer'], normalizedHeaderMap);
 
       if (recipient === 'etsy') {
           buyerName = ETSY_ADDRESS_INFO.name;
           buyerAddress = ETSY_ADDRESS_INFO.address;
+          etsyCustomerName = actualBuyerName;
       } else {
-          buyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer'], normalizedHeaderMap);
+          buyerName = actualBuyerName;
           const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
           const address2 = getColumn(firstRow, ['ship address2', 'ship to street 2', 'empfaenger adresse 2', 'street 2'], normalizedHeaderMap);
           const city = getColumn(firstRow, ['ship city', 'ship to city', 'empfaenger stadt', 'city'], normalizedHeaderMap);
@@ -339,6 +344,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
         invoiceNumber: `RE-${new Date().getFullYear()}-${String(invoiceCounter++).padStart(4, '0')}`,
         orderDate: orderDate || new Date().toLocaleDateString('de-DE'),
         buyerName,
+        etsyCustomerName,
         buyerAddress,
         items,
         netTotal: orderNetTotal,
