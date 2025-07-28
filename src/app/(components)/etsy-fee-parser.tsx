@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, FileSignature, Wallet, Upload } from 'lucide-react';
+import { Loader2, AlertTriangle, Wallet, Upload } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 
 // Configure the worker for pdfjs
@@ -34,6 +34,9 @@ interface EtsyFeeParserProps {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
+    // Cleans the string by removing thousand separators (commas) and keeping the dot as a decimal separator.
+    // This handles formats like "1,234.56" -> "1234.56"
+    // And also european formats by replacing the comma decimal separator with a dot
     const cleanedValue = value.trim().replace(/\s/g, '');
     
     const lastComma = cleanedValue.lastIndexOf(',');
@@ -48,6 +51,7 @@ const parseFloatSafe = (value: string | null | undefined): number => {
          // Format is like 1,234.56 -> remove commas
         parsableValue = cleanedValue.replace(/,/g, '');
     } else {
+        // Handles cases like 69.19 or 69,19
         parsableValue = cleanedValue.replace(',', '.');
     }
     
@@ -98,27 +102,18 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
             fullText += pageText + '\n';
         }
 
-        const totalRegex = /(?:Total|Subtotal)\s*€?([\d.,]+)/i;
+        // Regex to find "Total" or "Subtotal", followed by currency symbols and the amount.
+        // It looks for the last match in the whole text, which is usually the final total.
+        const totalRegex = /(?:Total|Subtotal)\s*€?\s*([\d,]+\.?\d*)/gi;
         let lastMatch: string | null = null;
         let match;
         
-        // Find the last match for Total or Subtotal in the document
         while ((match = totalRegex.exec(fullText)) !== null) {
             lastMatch = match[1];
         }
 
         if (lastMatch) {
             total = parseFloatSafe(lastMatch);
-        } else {
-            // Fallback for cases where numbers are split, e.g. "3 . 04"
-            const fallbackRegex = /(?:Total|Subtotal)\s*€?\s*([\d\s.,]+)/i;
-            while((match = fallbackRegex.exec(fullText)) !== null) {
-                const cleanedMatch = match[1].replace(/\s/g, ''); // Remove spaces from number
-                lastMatch = cleanedMatch;
-            }
-            if(lastMatch) {
-                total = parseFloatSafe(lastMatch);
-            }
         }
         
         if (total === 0) {
