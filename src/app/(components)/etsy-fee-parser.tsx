@@ -12,7 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, AlertTriangle, Upload, FileSignature, Wallet } from 'lucide-react';
-import { extractFeesFromPdfAction } from '@/app/actions';
+import * as pdfjs from 'pdfjs-dist';
+
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 
 const formSchema = z.object({
@@ -29,6 +31,33 @@ type FeeResult = {
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
+
+const parseFloatSafe = (value: string | number | null | undefined): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const cleanedValue = value.trim()
+            .replace(/\s/g, '',)
+            .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
+            .replace(/,/g, '.');
+        const parsed = parseFloat(cleanedValue);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+}
+
+async function extractTextFromPdf(file: File): Promise<string> {
+    const arrayBuffer = await file.arrayBuffer();
+    const data = new Uint8Array(arrayBuffer);
+    const doc = await pdfjs.getDocument(data).promise;
+    let text = '';
+    for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+    }
+    return text;
+}
 
 
 export function EtsyFeeParser() {
@@ -53,17 +82,40 @@ export function EtsyFeeParser() {
         setIsLoading(false);
         return;
     }
-    
-    const formData = new FormData();
-    formData.append('pdfFile', file);
 
     try {
-        const response = await extractFeesFromPdfAction(formData);
-        if (response.error) {
-            setError(response.error);
-        } else if (response.data) {
-            setResult(response.data);
+        const text = await extractTextFromPdf(file);
+        
+        let total = 0;
+        let date = 'N/A';
+        
+        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*(?:\(EUR\))?\s*€?(-?[\s\d.,]+)/i;
+        const totalMatch = text.match(totalRegex);
+        
+        if (totalMatch && totalMatch[1]) {
+            total = parseFloatSafe(totalMatch[1]);
+        } else {
+            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?(-?[\s\d.,]+)/i;
+            const subtotalMatch = text.match(subtotalRegex);
+            if (subtotalMatch && subtotalMatch[1]) {
+                total = parseFloatSafe(subtotalMatch[1]);
+            }
         }
+        
+        if (total === 0) {
+             setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
+             setIsLoading(false);
+             return;
+        }
+        
+        const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
+        const dateMatch = text.match(dateRegex);
+        if (dateMatch && dateMatch[1]) {
+            date = dateMatch[1].trim();
+        }
+
+        setResult({ total, date });
+
     } catch(err: any) {
         setError(err.message || "Fehler beim Verarbeiten der PDF-Datei.");
     } finally {
