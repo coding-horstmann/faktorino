@@ -24,6 +24,7 @@ const invoiceSchema = z.object({
   grossTotal: z.number(),
   taxNote: z.string(),
   country: z.string(),
+  countryClassification: z.enum(['Deutschland', 'EU-Ausland', 'Drittland']),
 });
 
 const summarySchema = z.object({
@@ -47,8 +48,8 @@ export type BankTransaction = {
 }
 
 const EU_COUNTRIES = [
-  'AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR',
-  'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'
+  'AT', 'BE', 'BG', 'CY', 'CZ', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 
+  'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'
 ];
 
 const ETSY_ADDRESS_INFO = {
@@ -57,13 +58,21 @@ const ETSY_ADDRESS_INFO = {
     fullAddress: 'Etsy Ireland UC\nOne Le Pole Square\nShip Street Great\nDublin 8\nIreland\nUSt-IdNr. IE9777587C'
 };
 
-function isEUDestination(countryCode: string): boolean {
-    if (!countryCode) return false;
-    return EU_COUNTRIES.includes(countryCode.toUpperCase());
+function getCountryClassification(countryCode: string): Invoice['countryClassification'] {
+    if (!countryCode) return 'Drittland';
+    const code = countryCode.toUpperCase();
+    if (code === 'DE') {
+        return 'Deutschland';
+    }
+    if (EU_COUNTRIES.includes(code)) {
+        return 'EU-Ausland';
+    }
+    return 'Drittland';
 }
 
-function getTaxInfo(country: string, hasSKU: boolean): { vatRate: number; taxNote: string; recipient: 'buyer' | 'etsy' } {
-    const isEU = isEUDestination(country);
+
+function getTaxInfo(classification: Invoice['countryClassification'], hasSKU: boolean): { vatRate: number; taxNote: string; recipient: 'buyer' | 'etsy' } {
+    const isEU = classification === 'Deutschland' || classification === 'EU-Ausland';
 
     if (hasSKU) { // Physisches Produkt
         if (isEU) { // EU-Inland / Fernverkauf
@@ -141,10 +150,11 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
     for (const [orderId, rows] of rowsByOrderId.entries()) {
       const firstRow = rows[0];
-      const country = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || '';
+      const countryCode = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || '';
+      const countryClassification = getCountryClassification(countryCode);
       const hasAnySKU = rows.some(r => !!getColumn(r, ['sku']) && (getColumn(r, ['sku']) || '').trim() !== '');
 
-      const { taxNote, recipient } = getTaxInfo(country, hasAnySKU);
+      const { taxNote, recipient } = getTaxInfo(countryClassification, hasAnySKU);
 
       const items: Invoice['items'] = [];
       let orderNetTotal = 0;
@@ -156,6 +166,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           const itemTotalStr = getColumn(row, ['item total', 'artikelsumme']);
           const sku = getColumn(row, ['sku']);
 
+          // Process item only if it has a name and a total value
           if (itemName && itemTotalStr) {
               const itemTotal = parseFloatSafe(itemTotalStr);
               const discountAmount = parseFloatSafe(getColumn(row, ['discount amount']));
@@ -163,27 +174,28 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
               
               const grossAmount = itemTotal - discountAmount - shippingDiscount;
 
-              if (grossAmount <= 0) return; // Skip only this item, not the whole order
+              // Only skip this specific item if its value is zero, not the whole order
+              if (grossAmount > 0) {
+                  const hasSKU = !!sku && sku.trim() !== '';
+                  const { vatRate: itemVatRate } = getTaxInfo(countryClassification, hasSKU);
+                  
+                  const quantity = parseInt(getColumn(row, ['anzahl', 'items', 'quantity']) || '1', 10) || 1;
+                  const netAmount = itemVatRate > 0 ? grossAmount / (1 + itemVatRate / 100) : grossAmount;
+                  const vatAmount = grossAmount - netAmount;
 
-              const hasSKU = !!sku && sku.trim() !== '';
-              const { vatRate: itemVatRate } = getTaxInfo(country, hasSKU);
-              
-              const quantity = parseInt(getColumn(row, ['anzahl', 'items', 'quantity']) || '1', 10) || 1;
-              const netAmount = itemVatRate > 0 ? grossAmount / (1 + itemVatRate / 100) : grossAmount;
-              const vatAmount = grossAmount - netAmount;
-
-              items.push({
-                quantity,
-                name: itemName,
-                netAmount: netAmount,
-                vatRate: itemVatRate,
-                vatAmount: vatAmount,
-                grossAmount: grossAmount,
-              });
-              
-              orderNetTotal += netAmount;
-              orderVatTotal += vatAmount;
-              orderGrossTotal += grossAmount;
+                  items.push({
+                    quantity,
+                    name: itemName,
+                    netAmount: netAmount,
+                    vatRate: itemVatRate,
+                    vatAmount: vatAmount,
+                    grossAmount: grossAmount,
+                  });
+                  
+                  orderNetTotal += netAmount;
+                  orderVatTotal += vatAmount;
+                  orderGrossTotal += grossAmount;
+              }
           }
       });
       
@@ -191,7 +203,8 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const shippingCost = parseFloatSafe(getColumn(shippingRow, ['shipping', 'versand', 'shipping costs']));
 
       if (shippingCost > 0) {
-          const { vatRate: shippingVatRate } = getTaxInfo(country, true); // Shipping is always physical
+          // Shipping is always treated as a physical product delivery for tax purposes
+          const { vatRate: shippingVatRate } = getTaxInfo(countryClassification, true);
 
           const shippingNet = shippingVatRate > 0 ? shippingCost / (1 + (shippingVatRate / 100)) : shippingCost;
           const shippingVat = shippingCost - shippingNet;
@@ -209,7 +222,8 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           orderGrossTotal += shippingCost;
       }
       
-      if (items.length === 0) {
+      // Create an invoice only if there are items with a total value greater than 0
+      if (orderGrossTotal <= 0) {
         continue;
       }
 
@@ -249,6 +263,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
         grossTotal: orderGrossTotal,
         taxNote,
         country: getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || 'Unbekannt',
+        countryClassification,
       };
       
       invoices.push(invoice);
@@ -257,7 +272,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     }
 
     if (invoices.length === 0) {
-        return { data: null, error: "Keine gültigen Bestellungen zur Rechnungsstellung in der CSV-Datei gefunden. Bitte prüfen Sie das Dateiformat." };
+        return { data: null, error: "Keine gültigen Bestellungen zur Rechnungsstellung in der CSV-Datei gefunden. Bitte prüfen Sie das Dateiformat und die Spaltennamen." };
     }
 
     const result: ProcessCsvOutput = {

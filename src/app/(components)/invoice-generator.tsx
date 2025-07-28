@@ -13,7 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Globe } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const formSchema = z.object({
   csvFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
@@ -70,6 +71,20 @@ export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps)
   const handleDownloadPdf = (invoice: Invoice) => {
     generatePdf(invoice);
   };
+
+  const getClassificationBadge = (classification: Invoice['countryClassification']) => {
+    switch (classification) {
+        case 'Deutschland':
+            return <Badge variant="default">DE</Badge>;
+        case 'EU-Ausland':
+            return <Badge variant="secondary">EU</Badge>;
+        case 'Drittland':
+            return <Badge variant="outline">Welt</Badge>;
+        default:
+            return null;
+    }
+  };
+
 
   return (
     <div className="space-y-6">
@@ -165,6 +180,7 @@ export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps)
                                     <TableHead>Datum</TableHead>
                                     <TableHead>Käufer</TableHead>
                                     <TableHead>Land</TableHead>
+                                    <TableHead>Klassifizierung</TableHead>
                                     <TableHead className="text-right">Betrag</TableHead>
                                     <TableHead className="text-center">Aktion</TableHead>
                                 </TableRow>
@@ -176,6 +192,7 @@ export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps)
                                         <TableCell>{invoice.orderDate}</TableCell>
                                         <TableCell>{invoice.buyerName}</TableCell>
                                         <TableCell>{invoice.country}</TableCell>
+                                        <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
                                         <TableCell className="text-right">{formatCurrency(invoice.grossTotal)}</TableCell>
                                         <TableCell className="text-center">
                                             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
@@ -195,3 +212,5 @@ export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps)
     </div>
   );
 }
+
+    
