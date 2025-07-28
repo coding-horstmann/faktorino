@@ -39,6 +39,14 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+  
+  const openEditDialog = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+  };
+
+  const closeEditDialog = () => {
+    setEditingInvoice(null);
+  };
 
   const recalculateSummary = (invoices: Invoice[]) => {
     const totalNetSales = invoices.reduce((sum, inv) => sum + inv.netTotal, 0);
@@ -66,7 +74,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
         invoices: updatedInvoices,
         summary: updatedSummary,
     });
-    setEditingInvoice(null);
+    closeEditDialog();
   };
   
   const handleEditInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -271,7 +279,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                                 <Download className="mr-2 h-4 w-4"/>
                                                 PDF
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => setEditingInvoice(invoice)}>
+                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)}>
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}>
@@ -289,7 +297,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
       )}
 
       {editingInvoice && (
-        <Dialog open={!!editingInvoice} onOpenChange={() => setEditingInvoice(null)}>
+        <Dialog open={!!editingInvoice} onOpenChange={closeEditDialog}>
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                     <DialogTitle>Rechnung bearbeiten: {editingInvoice.invoiceNumber}</DialogTitle>
@@ -313,9 +321,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                     */}
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild>
-                         <Button variant="outline">Abbrechen</Button>
-                    </DialogClose>
+                    <Button variant="outline" onClick={closeEditDialog}>Abbrechen</Button>
                     <Button onClick={handleUpdateInvoice}>Speichern</Button>
                 </DialogFooter>
             </DialogContent>
