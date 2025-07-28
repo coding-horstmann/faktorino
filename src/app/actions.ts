@@ -282,8 +282,9 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
           }
       });
       
-      const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, ['shipping', 'versand', 'shipping costs', 'versandkosten'], normalizedHeaderMap)) > 0) || rows[0];
-      const shippingCost = parseFloatSafe(getColumn(shippingRow, ['shipping', 'versand', 'shipping costs', 'versandkosten'], normalizedHeaderMap));
+      const potentialShippingCols = ['Order Shipping', 'shipping', 'versand', 'shipping costs', 'versandkosten'];
+      const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, potentialShippingCols, normalizedHeaderMap)) > 0) || rows[0];
+      const shippingCost = parseFloatSafe(getColumn(shippingRow, potentialShippingCols, normalizedHeaderMap));
 
       if (shippingCost > 0) {
           const { vatRate: shippingVatRate } = getTaxInfo(countryClassification, true, taxStatus); // Shipping is always physical
@@ -479,5 +480,3 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
-
-    
