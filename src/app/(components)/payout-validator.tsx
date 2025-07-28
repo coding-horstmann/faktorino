@@ -58,9 +58,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
   useEffect(() => {
     // This effect ensures that if invoices or fees are loaded *after* the payout,
     // the validation is re-triggered.
-    if (bankStatementTotal !== null) {
-      validatePayout(bankStatementTotal, transactions);
-    }
+    validatePayout(bankStatementTotal, transactions);
   }, [grossInvoices, totalFees, bankStatementTotal, transactions, validatePayout]);
 
 
@@ -114,6 +112,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
             if (result.totalAmount === 0 && !result.foundEtsyTransaction) {
                  setError("Keine Transaktionen mit dem Stichwort 'Etsy' in den CSV-Dateien gefunden.");
                  setBankStatementTotal(0); // Set to 0 to show in summary
+                 setTransactions([]);
                  validatePayout(0, []);
             } else {
                 setBankStatementTotal(result.totalAmount);
@@ -198,6 +197,32 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                     <div className="text-3xl font-bold text-center p-4">
                         {formatCurrency(bankStatementTotal)}
                     </div>
+                     {transactions.length > 0 && (
+                        <div className="mt-6">
+                            <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
+                                <List className="text-primary"/>
+                                Erkannte Etsy-Transaktionen aus Kontoauszug
+                            </h4>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Datum</TableHead>
+                                        <TableHead>Beschreibung</TableHead>
+                                        <TableHead className="text-right">Betrag</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {transactions.map((t, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell>{t.date}</TableCell>
+                                            <TableCell>{t.description}</TableCell>
+                                            <TableCell className={`text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
                 </CardContent>
              </Card>
         )}
@@ -206,7 +231,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
 }
 
 
-export function ValidationResultDisplay({ result, transactions }: { result: any, transactions: BankTransaction[] }) {
+export function ValidationResultDisplay({ result }: { result: any }) {
 
     const formatCurrency = (value: number | null) => {
         if(value === null || value === undefined) return '-';
@@ -257,33 +282,6 @@ export function ValidationResultDisplay({ result, transactions }: { result: any,
                          )}
                     </TableBody>
                 </Table>
-
-                {transactions.length > 0 && (
-                    <div className="mt-6">
-                        <h4 className="font-semibold text-lg mb-2 flex items-center gap-2">
-                            <List className="text-primary"/>
-                            Erkannte Etsy-Transaktionen aus Kontoauszug
-                        </h4>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Datum</TableHead>
-                                    <TableHead>Beschreibung</TableHead>
-                                    <TableHead className="text-right">Betrag</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {transactions.map((t, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell>{t.date}</TableCell>
-                                        <TableCell>{t.description}</TableCell>
-                                        <TableCell className={`text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                )}
             </CardContent>
         </Card>
     )

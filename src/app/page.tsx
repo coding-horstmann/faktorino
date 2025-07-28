@@ -83,7 +83,7 @@ export default function Home() {
          if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
          return result;
      });
-     setBankTransactions(transactions);
+     // We no longer need to manage bankTransactions here as they are displayed inside PayoutValidator
   }, []);
 
   const isStep1Complete = validationResult.grossInvoices !== null;
@@ -181,7 +181,7 @@ export default function Home() {
           </TabsContent>
         </Tabs>
         
-        <ValidationResultDisplay result={validationResult} transactions={bankTransactions} />
+        <ValidationResultDisplay result={validationResult} />
 
 
         <footer className="text-center mt-8 text-sm text-muted-foreground">
