@@ -68,7 +68,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
     setBankStatementTotal(null);
     setTransactions([]);
 
-    const files = values.csvFiles;
+    const files = Array.from(values.csvFiles as FileList);
     if (!files || files.length === 0) {
         setError("Keine Dateien ausgewählt.");
         setIsLoading(false);
@@ -76,30 +76,19 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
     }
     
     let combinedCsvData = '';
-    const fileReadPromises = [];
-
-     for (const file of files) {
-        fileReadPromises.push(
-            new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const content = e.target?.result as string;
-                    // Try to remove header from subsequent files
-                    const lines = content.split('\n');
-                    const headerKeywords = ['betrag', 'verwendungszweck', 'auftraggeber', 'empfänger', 'buchungstext'];
-                    const isHeader = (line: string) => headerKeywords.some(kw => line.toLowerCase().includes(kw));
-
-                    if (combinedCsvData !== '' && lines.length > 0 && isHeader(lines[0])) {
-                         resolve(lines.slice(1).join('\n'));
-                    } else {
-                        resolve(content);
-                    }
-                };
-                reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
-                reader.readAsText(file, 'UTF-8');
-            })
-        );
-    }
+    const fileReadPromises = files.map((file, index) => {
+        return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                 const content = e.target?.result as string;
+                // For all files, we let the backend parser figure out the headers.
+                // The backend parser is smart enough to handle multiple headers in a single string.
+                resolve(content);
+            };
+            reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
+            reader.readAsText(file, 'UTF-8');
+        });
+    });
 
     try {
         const allCsvContents = await Promise.all(fileReadPromises);

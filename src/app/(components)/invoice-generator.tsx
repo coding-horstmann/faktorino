@@ -165,28 +165,26 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     setError(null);
     setInvoices([]);
 
-    const files = values.csvFiles;
+    const files = Array.from(values.csvFiles as FileList);
     let combinedCsvData = '';
-    const fileReadPromises = [];
-
-    for (const file of files) {
-        fileReadPromises.push(
-            new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const content = e.target?.result as string;
+    const fileReadPromises = files.map((file, index) => {
+        return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target?.result as string;
+                if (index === 0) {
+                    resolve(content); // Keep header for the first file
+                } else {
+                    // For subsequent files, remove header
                     const lines = content.split('\n');
-                    if (combinedCsvData !== '') {
-                        resolve(lines.slice(1).join('\n'));
-                    } else {
-                        resolve(content);
-                    }
-                };
-                reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
-                reader.readAsText(file, 'UTF-8');
-            })
-        );
-    }
+                    resolve(lines.slice(1).join('\n'));
+                }
+            };
+            reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
+            reader.readAsText(file, 'UTF-8');
+        });
+    });
+
 
     try {
         const allCsvContents = await Promise.all(fileReadPromises);
