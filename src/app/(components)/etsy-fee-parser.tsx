@@ -33,12 +33,20 @@ const parseFloatSafe = (value: string | number | null | undefined): number => {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        const cleanedValue = value.trim()
-            .replace(/\s/g, '',)
-            // Handle German (1.234,56) and US (1,234.56) formats
-            .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
-            .replace(/,/g, '.');
-        const parsed = parseFloat(cleanedValue);
+        const cleanedValue = value.trim().replace(/€/g, '').trim();
+        const lastDot = cleanedValue.lastIndexOf('.');
+        const lastComma = cleanedValue.lastIndexOf(',');
+
+        let formattedValue;
+        if (lastDot > lastComma) {
+            // US-Format: 1,234.56 -> 1234.56
+            formattedValue = cleanedValue.replace(/,/g, '');
+        } else {
+            // Deutsches Format: 1.234,56 -> 1234.56
+            formattedValue = cleanedValue.replace(/\./g, '').replace(',', '.');
+        }
+        
+        const parsed = parseFloat(formattedValue);
         return isNaN(parsed) ? 0 : parsed;
     }
     return 0;
@@ -86,13 +94,13 @@ export function EtsyFeeParser() {
         let total = 0;
         let date = 'N/A';
         
-        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*(?:\(EUR\))?\s*€?\s*(-?[\s\d.,]+)/i;
+        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*€?\s*(-?[\s\d.,]+€?)/i;
         const totalMatch = text.match(totalRegex);
         
         if (totalMatch && totalMatch[1]) {
             total = parseFloatSafe(totalMatch[1]);
         } else {
-            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*(-?[\s\d.,]+)/i;
+            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*(-?[\s\d.,]+€?)/i;
             const subtotalMatch = text.match(subtotalRegex);
             if (subtotalMatch && subtotalMatch[1]) {
                 total = parseFloatSafe(subtotalMatch[1]);
