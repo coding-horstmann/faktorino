@@ -26,6 +26,7 @@ export function generatePdf(invoice: Invoice) {
   doc.text(senderAddress, 20, 40);
   doc.text(senderCity, 20, 45);
 
+  // Dynamischer Rechnungsempfänger
   doc.text(invoice.buyerName, 120, 35);
   invoice.buyerAddress.split('\n').forEach((line, index) => {
       doc.text(line, 120, 40 + (index * 5));
@@ -38,18 +39,19 @@ export function generatePdf(invoice: Invoice) {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`Rechnungsnummer: ${invoice.invoiceNumber}`, 120, 70);
-  doc.text(`Rechnungsdatum: ${invoice.orderDate}`, 120, 75);
+  doc.text(`Bestelldatum: ${invoice.orderDate}`, 120, 75);
 
   const tableColumn = ["Pos.", "Bezeichnung", "Menge", "Einzelpreis (Netto)", "Gesamt (Netto)"];
   const tableRows: any[][] = [];
 
   invoice.items.forEach((item, index) => {
+    const netAmountPerItem = item.grossAmount / (1 + item.vatRate / 100);
     const itemData = [
       index + 1,
       item.name,
       item.quantity,
+      `${(item.netAmount / item.quantity).toFixed(2)} €`,
       `${item.netAmount.toFixed(2)} €`,
-      `${(item.netAmount * item.quantity).toFixed(2)} €`,
     ];
     tableRows.push(itemData);
   });
@@ -72,7 +74,7 @@ export function generatePdf(invoice: Invoice) {
   doc.text(`${invoice.netTotal.toFixed(2)} €`, 190, summaryY, { align: 'right' });
   
   summaryY += 7;
-  doc.text(`zzgl. ${invoice.items[0]?.vatRate || 0}% USt:`, summaryX, summaryY);
+  doc.text(`zzgl. USt:`, summaryX, summaryY);
   doc.text(`${invoice.vatTotal.toFixed(2)} €`, 190, summaryY, { align: 'right' });
 
   summaryY += 7;
@@ -93,3 +95,5 @@ export function generatePdf(invoice: Invoice) {
 
   doc.save(`Rechnung-${invoice.invoiceNumber}.pdf`);
 }
+
+    
