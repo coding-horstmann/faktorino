@@ -10,13 +10,17 @@ declare module 'jspdf' {
   }
 }
 
-export function generatePdf(invoice: Invoice) {
+export type UserInfo = {
+    name: string;
+    address: string;
+    city: string;
+    taxInfo: string;
+}
+
+export function generatePdf(invoice: Invoice, userInfo: UserInfo) {
   const doc = new jsPDF();
 
-  const senderName = "Ihr Name / Firmenname";
-  const senderAddress = "Ihre Straße 123";
-  const senderCity = "12345 Ihre Stadt";
-  const senderTaxInfo = "Steuernummer: 12/345/67890 oder USt-IdNr.: DE123456789";
+  const { name: senderName, address: senderAddress, city: senderCity, taxInfo: senderTaxInfo } = userInfo;
 
   doc.setFontSize(10);
   doc.text(`${senderName} • ${senderAddress} • ${senderCity}`, 20, 20);
@@ -45,7 +49,6 @@ export function generatePdf(invoice: Invoice) {
   const tableRows: any[][] = [];
 
   invoice.items.forEach((item, index) => {
-    const netAmountPerItem = item.grossAmount / (1 + item.vatRate / 100);
     const itemData = [
       index + 1,
       item.name,
@@ -95,5 +98,3 @@ export function generatePdf(invoice: Invoice) {
 
   doc.save(`Rechnung-${invoice.invoiceNumber}.pdf`);
 }
-
-    

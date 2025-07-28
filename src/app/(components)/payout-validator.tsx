@@ -23,14 +23,14 @@ type FormValues = z.infer<typeof formSchema>;
 interface PayoutValidatorProps {
   grossInvoices: number | null;
   totalFees: number | null;
+  onPayoutValidated: (payout: number, result: any) => void;
 }
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
 
-export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorProps) {
-  const [validationResult, setValidationResult] = useState<any | null>(null);
+export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }: PayoutValidatorProps) {
   const [bankStatementTotal, setBankStatementTotal] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,7 +51,6 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
     setIsLoading(true);
     setError(null);
     setBankStatementTotal(null);
-    setValidationResult(null);
     setTransactions([]);
 
     const file = values.csvFile[0];
@@ -93,14 +92,14 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
   function validatePayout(gross: number, fees: number, payout: number) {
     const expectedPayout = gross - fees;
     const difference = payout - expectedPayout;
-
-    setValidationResult({
+    const result = {
         payoutAmount: payout,
         grossInvoices: gross,
         totalFees: -fees, // Show fees as a negative number
         expectedPayout,
         difference,
-    });
+    };
+    onPayoutValidated(payout, result);
   }
 
   return (
@@ -109,7 +108,7 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
                 <Upload className="text-primary"/>
-                Schritt 3: Kontoauszug hochladen & prüfen
+                3. Kontoauszug hochladen
             </CardTitle>
             <CardDescription>
                 Laden Sie einen CSV-Export Ihres Kontoauszugs hoch. Das Tool summiert automatisch alle Gutschriften von Etsy und Zahlungen an Etsy.
@@ -205,46 +204,55 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
                 </CardContent>
             </Card>
         )}
-
-        {validationResult && (
-            <Card className="animate-in fade-in-50">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                         <Scale className="text-primary"/>
-                        Validierungs-Ergebnis
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell>Rechnungen Brutto (aus Schritt 1)</TableCell>
-                                <TableCell className="text-right">{formatCurrency(validationResult.grossInvoices)}</TableCell>
-                            </TableRow>
-                             <TableRow>
-                                <TableCell>Etsy-Gebühren (aus Schritt 2)</TableCell>
-                                <TableCell className="text-right text-red-600">{formatCurrency(validationResult.totalFees)}</TableCell>
-                            </TableRow>
-                             <TableRow className="font-bold border-t-2">
-                                <TableCell>Erwartete Auszahlung</TableCell>
-                                <TableCell className="text-right">{formatCurrency(validationResult.expectedPayout)}</TableCell>
-                            </TableRow>
-                             <TableRow>
-                                <TableCell>Tatsächliche Auszahlung (aus Kontoauszug)</TableCell>
-                                <TableCell className="text-right">{formatCurrency(validationResult.payoutAmount)}</TableCell>
-                            </TableRow>
-                            <TableRow className={`font-extrabold ${Math.abs(validationResult.difference) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
-                                <TableCell className="flex items-center gap-2">
-                                     {Math.abs(validationResult.difference) > 0.01 ? <AlertCircle/> : <CheckCircle2/>}
-                                    Differenz
-                                </TableCell>
-                                <TableCell className="text-right">{formatCurrency(validationResult.difference)}</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        )}
     </div>
   );
+}
+
+
+export function ValidationResultDisplay({ result }: { result: any }) {
+    if (!result) return null;
+
+    return (
+        <Card className="animate-in fade-in-50 mt-8 border-primary border-2 shadow-2xl">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-2xl">
+                     <Scale className="text-primary"/>
+                    Finale Prüfung & Übersicht
+                </CardTitle>
+                <CardDescription>
+                    Dies ist die finale Gegenüberstellung Ihrer Einnahmen, Gebühren und der tatsächlichen Auszahlung.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell className="text-base">Rechnungen Brutto (aus Etsy-Rechnungen)</TableCell>
+                            <TableCell className="text-right text-base">{formatCurrency(result.grossInvoices)}</TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell className="text-base">Etsy-Gebühren (aus Etsy-Abrechnung)</TableCell>
+                            <TableCell className="text-right text-base text-red-600">{formatCurrency(result.totalFees)}</TableCell>
+                        </TableRow>
+                         <TableRow className="font-bold border-t-2">
+                            <TableCell className="text-base">Erwartete Auszahlung</TableCell>
+                            <TableCell className="text-right text-base">{formatCurrency(result.expectedPayout)}</TableCell>
+                        </TableRow>
+                         <TableRow>
+                            <TableCell className="text-base">Tatsächliche Auszahlung (aus Kontoauszug)</TableCell>
+                            <TableCell className="text-right text-base">{formatCurrency(result.payoutAmount)}</TableCell>
+                        </TableRow>
+                        <TableRow className={`font-extrabold ${Math.abs(result.difference) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                            <TableCell className="flex items-center gap-2 text-lg">
+                                 {Math.abs(result.difference) > 0.01 ? <AlertCircle/> : <CheckCircle2/>}
+                                Differenz
+                            </TableCell>
+                            <TableCell className="text-right text-lg">{formatCurrency(result.difference)}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+
 }

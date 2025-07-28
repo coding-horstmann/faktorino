@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { generateInvoicesAction, type ProcessCsvOutput, type Invoice } from '@/app/actions';
-import { generatePdf } from '@/lib/pdf-generator';
+import { generatePdf, type UserInfo } from '@/lib/pdf-generator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -24,9 +24,10 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface InvoiceGeneratorProps {
   onInvoicesGenerated: (grossTotal: number) => void;
+  userInfo: UserInfo;
 }
 
-export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps) {
+export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGeneratorProps) {
   const [result, setResult] = useState<ProcessCsvOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +70,11 @@ export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps)
   };
   
   const handleDownloadPdf = (invoice: Invoice) => {
-    generatePdf(invoice);
+    if (!userInfo || !userInfo.name) {
+        alert("Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus.");
+        return;
+    }
+    generatePdf(invoice, userInfo);
   };
 
   const getClassificationBadge = (classification: Invoice['countryClassification']) => {
@@ -91,8 +96,8 @@ export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps)
       <Card className="w-full shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="text-primary"/>
-            Schritt 1: Rechnungen generieren
+            <Upload className="text-primary"/>
+            1. Etsy-Bestellungen hochladen
           </CardTitle>
           <CardDescription>
             Laden Sie Ihre Etsy-Bestell-CSV-Datei hoch, um automatisch Rechnungen zu erstellen und eine Umsatzübersicht zu erhalten.

@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, FileSignature, Wallet } from 'lucide-react';
+import { Loader2, AlertTriangle, FileSignature, Wallet, Upload } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 
 // Configure the worker for pdfjs
@@ -125,8 +125,8 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
       <Card className="w-full shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileSignature className="text-primary"/>
-            Schritt 2: Gebühren aus Etsy-Abrechnung
+            <Upload className="text-primary"/>
+            2. Etsy-Abrechnung hochladen
           </CardTitle>
           <CardDescription>
             Laden Sie Ihre monatliche Etsy-Abrechnungs-PDF hoch, um die Gesamtgebühren automatisch zu extrahieren.
