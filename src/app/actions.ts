@@ -47,9 +47,12 @@ export type BankTransaction = {
     amount: number;
 }
 
-const EU_COUNTRIES = [
-  'AT', 'BE', 'BG', 'CY', 'CZ', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 
-  'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'
+const EU_COUNTRY_NAMES = [
+  'belgien', 'bulgarien', 'dänemark', 'estland', 'finnland', 'frankreich', 
+  'griechenland', 'irland', 'italien', 'kroatien', 'lettland', 'litauen', 
+  'luxemburg', 'malta', 'niederlande', 'österreich', 'polen', 'portugal', 
+  'rumänien', 'schweden', 'slowakei', 'slowenien', 'spanien', 'tschechien', 
+  'ungarn', 'zypern'
 ];
 
 const ETSY_ADDRESS_INFO = {
@@ -58,13 +61,13 @@ const ETSY_ADDRESS_INFO = {
     fullAddress: 'Etsy Ireland UC\nOne Le Pole Square\nShip Street Great\nDublin 8\nIreland\nUSt-IdNr. IE9777587C'
 };
 
-function getCountryClassification(countryCode: string): Invoice['countryClassification'] {
-    if (!countryCode) return 'Drittland';
-    const code = countryCode.toUpperCase();
-    if (code === 'DE') {
+function getCountryClassification(countryName: string): Invoice['countryClassification'] {
+    if (!countryName) return 'Drittland';
+    const name = countryName.toLowerCase().trim();
+    if (name === 'deutschland') {
         return 'Deutschland';
     }
-    if (EU_COUNTRIES.includes(code)) {
+    if (EU_COUNTRY_NAMES.includes(name)) {
         return 'EU-Ausland';
     }
     return 'Drittland';
@@ -75,14 +78,16 @@ function getTaxInfo(classification: Invoice['countryClassification'], hasSKU: bo
     const isEU = classification === 'Deutschland' || classification === 'EU-Ausland';
 
     if (hasSKU) { // Physisches Produkt
-        if (isEU) { // EU-Inland / Fernverkauf
+        if (classification === 'Deutschland') {
             return { vatRate: 19, taxNote: "Enthält 19% deutsche USt.", recipient: 'buyer' };
+        } else if (classification === 'EU-Ausland') {
+             return { vatRate: 19, taxNote: "Enthält 19% deutsche USt.", recipient: 'buyer' };
         } else { // Drittland (Export)
             return { vatRate: 0, taxNote: "Steuerfreie Ausfuhrlieferung in ein Drittland (§ 4 Nr. 1a UStG).", recipient: 'buyer' };
         }
     } else { // Digitales Produkt
         if (isEU) {
-            return { vatRate: 0, taxNote: "Umsatzsteuer wird von Etsy gemäß den geltenden Vorschriften abgeführt (One-Stop-Shop-Verfahren).", recipient: 'etsy' };
+            return { vatRate: 0, taxNote: "Steuerschuldnerschaft des Leistungsempfängers/Reverse Charge", recipient: 'etsy' };
         } else { // Drittland
             return { vatRate: 0, taxNote: "Leistung außerhalb EU, keine USt.", recipient: 'etsy' };
         }
@@ -150,8 +155,8 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
 
     for (const [orderId, rows] of rowsByOrderId.entries()) {
       const firstRow = rows[0];
-      const countryCode = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || '';
-      const countryClassification = getCountryClassification(countryCode);
+      const countryName = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || '';
+      const countryClassification = getCountryClassification(countryName);
       const hasAnySKU = rows.some(r => !!getColumn(r, ['sku']) && (getColumn(r, ['sku']) || '').trim() !== '');
 
       const { taxNote, recipient } = getTaxInfo(countryClassification, hasAnySKU);
