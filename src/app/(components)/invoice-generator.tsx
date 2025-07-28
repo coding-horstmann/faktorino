@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil } from 'lucide-react';
@@ -324,5 +325,3 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     </div>
   );
 }
-
-    
