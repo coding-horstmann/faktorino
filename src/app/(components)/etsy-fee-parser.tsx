@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, AlertTriangle, Upload, FileSignature, Wallet } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 
+// Configure the workerSrc to point to the correct path
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 
@@ -89,13 +90,13 @@ export function EtsyFeeParser() {
         let total = 0;
         let date = 'N/A';
         
-        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*(?:\(EUR\))?\s*€?(-?[\s\d.,]+)/i;
+        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*(?:\(EUR\))?\s*€?\s*(-?[\s\d.,]+)/i;
         const totalMatch = text.match(totalRegex);
         
         if (totalMatch && totalMatch[1]) {
             total = parseFloatSafe(totalMatch[1]);
         } else {
-            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?(-?[\s\d.,]+)/i;
+            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*(-?[\s\d.,]+)/i;
             const subtotalMatch = text.match(subtotalRegex);
             if (subtotalMatch && subtotalMatch[1]) {
                 total = parseFloatSafe(subtotalMatch[1]);
