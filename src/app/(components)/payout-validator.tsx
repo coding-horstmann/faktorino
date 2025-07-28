@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -51,7 +51,12 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
     resolver: zodResolver(formSchema),
   });
 
-  const isReadyForValidation = grossInvoices !== null && totalFees !== null && bankStatementTotal !== null;
+  useEffect(() => {
+    if (grossInvoices !== null && totalFees !== null && bankStatementTotal !== null) {
+      validatePayout(grossInvoices, totalFees, bankStatementTotal);
+    }
+  }, [grossInvoices, totalFees, bankStatementTotal]);
+
 
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
@@ -77,7 +82,6 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
             text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
         }
         
-        // Regex to find lines containing "Etsy" (case-insensitive) and then extract a monetary amount from that line.
         const etsyTransactionRegex = /.*Etsy.*?[^\d\n,.-]*([+-]?\s?[\d.,]+(?:,\d{2})?)/gi;
         let match;
         let totalAmount = 0;
@@ -96,9 +100,6 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
             setError("Keine Transaktionen mit dem Stichwort 'Etsy' in der PDF gefunden.");
         } else {
             setBankStatementTotal(totalAmount);
-            if (grossInvoices !== null && totalFees !== null) {
-                validatePayout(grossInvoices, totalFees, totalAmount);
-            }
         }
     } catch (err: any) {
         console.error("Error processing PDF:", err);
@@ -151,7 +152,7 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
                 />
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                <Button type="submit" className="w-full" disabled={isLoading || bankStatementTotal !== null}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -231,15 +232,6 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
                     </Table>
                 </CardContent>
             </Card>
-        )}
-
-        {!validationResult && isReadyForValidation && (
-            <div className="text-center p-4">
-                 <Button onClick={() => validatePayout(grossInvoices!, totalFees!, bankStatementTotal!)}>
-                    <Scale className="mr-2"/>
-                    Jetzt mit Schritt 1 & 2 abgleichen
-                </Button>
-            </div>
         )}
     </div>
   );
