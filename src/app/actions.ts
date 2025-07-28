@@ -47,12 +47,12 @@ export type BankTransaction = {
     amount: number;
 }
 
-const EU_COUNTRIES = new Set([
-  'belgien', 'bulgarien', 'daenemark', 'estland', 'finnland', 'frankreich',
-  'griechenland', 'irland', 'italien', 'kroatien', 'lettland', 'litauen',
-  'luxemburg', 'malta', 'niederlande', 'oesterreich', 'polen', 'portugal',
-  'rumaenien', 'schweden', 'slowakei', 'slowenien', 'spanien', 'tschechien',
-  'ungarn', 'zypern'
+const EU_COUNTRIES_EN = new Set([
+  'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic', 
+  'denmark', 'estonia', 'finland', 'france', 'germany', 'greece', 'hungary', 
+  'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta', 
+  'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 
+  'spain', 'sweden'
 ]);
 
 const ETSY_ADDRESS_INFO = {
@@ -62,8 +62,7 @@ const ETSY_ADDRESS_INFO = {
 
 function normalizeString(str: string | null | undefined): string {
     if (!str) return '';
-    return str.toLowerCase().trim()
-        .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
+    return str.toLowerCase().trim();
 }
 
 
@@ -71,10 +70,10 @@ function getCountryClassification(countryName: string): Invoice['countryClassifi
     const normalizedName = normalizeString(countryName);
     if (!normalizedName) return 'Drittland';
 
-    if (normalizedName === 'deutschland') {
+    if (normalizedName === 'germany') {
         return 'Deutschland';
     }
-    if (EU_COUNTRIES.has(normalizedName)) {
+    if (EU_COUNTRIES_EN.has(normalizedName)) {
         return 'EU-Ausland';
     }
     return 'Drittland';
@@ -338,6 +337,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
     try {
         const parseResult = Papa.parse(csvData, {
             skipEmptyLines: true,
+            dynamicTyping: true,
         });
 
         if (parseResult.errors.length > 0) {
@@ -413,3 +413,5 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
+
+    
