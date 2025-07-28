@@ -2,6 +2,8 @@
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { EtsyFeeParser } from '@/app/(components)/etsy-fee-parser';
 import { PayoutValidator } from '@/app/(components)/payout-validator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { FileText, FileSignature, Scale } from 'lucide-react';
 
 
 export default function Home() {
@@ -14,15 +16,33 @@ export default function Home() {
             Ihr smartes Tool für die automatisierte Etsy-Buchhaltung.
           </p>
         </header>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-8">
-                <InvoiceGenerator />
-            </div>
-            <div className="space-y-8">
-                <EtsyFeeParser />
-                <PayoutValidator />
-            </div>
-        </div>
+        
+        <Tabs defaultValue="step1" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="step1">
+                <FileText className="mr-2"/>
+                Schritt 1: Rechnungen
+            </TabsTrigger>
+            <TabsTrigger value="step2">
+                <FileSignature className="mr-2"/>
+                Schritt 2: Gebühren
+            </TabsTrigger>
+            <TabsTrigger value="step3">
+                <Scale className="mr-2"/>
+                Schritt 3: Prüfung
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent value="step1" className="mt-6">
+            <InvoiceGenerator />
+          </TabsContent>
+          <TabsContent value="step2" className="mt-6">
+            <EtsyFeeParser />
+          </TabsContent>
+          <TabsContent value="step3" className="mt-6">
+            <PayoutValidator />
+          </TabsContent>
+        </Tabs>
+
         <footer className="text-center mt-8 text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} EtsyBuchhalter. Alle Rechte vorbehalten.</p>
         </footer>
