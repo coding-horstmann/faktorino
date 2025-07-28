@@ -34,8 +34,24 @@ interface EtsyFeeParserProps {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
-    // Remove thousand separators (dots), then replace comma with dot for decimal
-    const parsableValue = value.replace(/\./g, '').replace(',', '.');
+    // Normalize the string by removing thousands separators (dots or commas)
+    // and replacing the decimal comma with a dot.
+    const cleanedValue = value.trim().replace(/\s/g, '');
+    const lastComma = cleanedValue.lastIndexOf(',');
+    const lastDot = cleanedValue.lastIndexOf('.');
+
+    let parsableValue: string;
+
+    if (lastComma > lastDot) {
+        // Format is like 1.234,56 -> remove dots, replace comma with dot
+        parsableValue = cleanedValue.replace(/\./g, '').replace(',', '.');
+    } else if (lastDot > lastComma) {
+         // Format is like 1,234.56 -> remove commas
+        parsableValue = cleanedValue.replace(/,/g, '');
+    } else {
+        parsableValue = cleanedValue;
+    }
+    
     const parsed = parseFloat(parsableValue);
     return isNaN(parsed) ? 0 : parsed;
 };
