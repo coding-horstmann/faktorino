@@ -108,7 +108,7 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        const cleanedValue = value.trim().replace(/\s/g, '');
+        const cleanedValue = value.trim().replace(/\s/g, '').replace(/"/g, '');
         const lastComma = cleanedValue.lastIndexOf(',');
         const lastDot = cleanedValue.lastIndexOf('.');
 
@@ -346,7 +346,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
     try {
         const parseResult = Papa.parse(csvData, {
             skipEmptyLines: true,
-            dynamicTyping: true,
+            header: false, // We will find the header ourselves
         });
 
         if (parseResult.errors.length > 0) {
@@ -354,62 +354,89 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
             return { error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
         }
 
-        const data = parseResult.data as (string | number)[][];
+        const data = parseResult.data as string[][];
 
-        const headerKeywords = ['betrag', 'verwendungszweck', 'auftraggeber', 'empfänger', 'buchungstext', 'beschreibung', 'name', 'beguenstigter/zahlungspflichtiger'];
+        const headerKeywords = {
+            amount: ['betrag', 'amount', 'summe'],
+            description: ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber', 'empfänger', 'beguenstigter/zahlungspflichtiger', 'name'],
+            date: ['datum', 'date', 'buchungstag', 'valuta']
+        };
+
         let headerRowIndex = -1;
         let headers: string[] = [];
 
+        // Find the header row by scoring each row
+        let maxScore = 0;
         for (let i = 0; i < data.length; i++) {
-            if (Array.isArray(data[i]) && data[i].length > 0) {
-                const row = data[i].map(h => String(h).toLowerCase().trim());
-                if (row.some(cell => headerKeywords.some(kw => cell.includes(kw)))) {
-                    headerRowIndex = i;
-                    headers = data[i].map(h => String(h).toLowerCase().trim());
-                    break;
+            const row = data[i];
+            if (!Array.isArray(row) || row.length < 2) continue;
+            
+            let score = 0;
+            const lowerCaseRow = row.map(cell => String(cell || '').toLowerCase().trim());
+            
+            for (const key in headerKeywords) {
+                if (lowerCaseRow.some(cell => headerKeywords[key as keyof typeof headerKeywords].some(kw => cell.includes(kw)))) {
+                    score++;
                 }
+            }
+
+            if (score > maxScore && score > 1) { // A good header should have at least amount and description/date
+                maxScore = score;
+                headerRowIndex = i;
+                headers = lowerCaseRow;
             }
         }
 
+
         if (headerRowIndex === -1) {
-            return { error: "Konnte keine gültige Header-Zeile mit Spalten wie 'Betrag' oder 'Verwendungszweck' in der CSV-Datei finden." };
+            return { error: "Konnte keine gültige Header-Zeile mit Spalten wie 'Betrag', 'Datum' oder 'Verwendungszweck' in der CSV-Datei finden. Bitte prüfen Sie die Datei." };
         }
 
-        const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber/empfänger', 'empfänger/auftraggeber', 'beguenstigter/zahlungspflichtiger', 'name', 'auftraggeber / empfänger'];
-        const amountKeys = ['betrag', 'betrag (eur)', 'amount', 'gutschrift', 'lastschrift'];
-        const dateKeys = ['datum', 'buchungsdatum', 'valuta', 'buchungstag'];
+        const findIndex = (keywords: string[]): number => {
+            for (const kw of keywords) {
+                const index = headers.findIndex(h => h.includes(kw));
+                if (index !== -1) return index;
+            }
+            return -1;
+        };
         
-        let amountIndex = -1;
-        let dateIndex = -1;
-        const descriptionIndices: number[] = [];
+        const amountIndex = findIndex(headerKeywords.amount);
+        const dateIndex = findIndex(headerKeywords.date);
+        const descriptionIndices = headerKeywords.description
+            .map(kw => headers.findIndex(h => h.includes(kw)))
+            .filter(index => index !== -1);
+        const uniqueDescriptionIndices = [...new Set(descriptionIndices)];
 
-        headers.forEach((header, index) => {
-            if (amountKeys.some(key => header.includes(key))) amountIndex = index;
-            if (dateKeys.some(key => header.includes(key))) dateIndex = index;
-            if (descriptionKeys.some(key => header.includes(key))) descriptionIndices.push(index);
-        });
 
         if (amountIndex === -1) return { error: "Konnte die 'Betrag'-Spalte in der CSV nicht finden." };
-        if (descriptionIndices.length === 0) return { error: "Konnte keine Spalte für den Verwendungszweck oder die Beschreibung in der CSV finden." };
+        if (uniqueDescriptionIndices.length === 0) return { error: "Konnte keine Spalte für den Verwendungszweck oder die Beschreibung in der CSV finden." };
         if (dateIndex === -1) return { error: "Konnte die 'Datum'-Spalte in der CSV nicht finden."};
 
         let totalAmount = 0;
         let foundEtsyTransaction = false;
         const transactions: BankTransaction[] = [];
+        const dataStartIndex = headerRowIndex + 1;
 
-        for (let i = headerRowIndex + 1; i < data.length; i++) {
+        for (let i = dataStartIndex; i < data.length; i++) {
             const row = data[i];
-            if(row.length <= Math.max(amountIndex, dateIndex, ...descriptionIndices)) continue;
+            if (!Array.isArray(row) || row.length <= Math.max(amountIndex, dateIndex, ...uniqueDescriptionIndices)) continue;
 
-            const fullDescription = descriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
+            const amountStr = row[amountIndex];
+            const dateStr = row[dateIndex];
+            const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
+
+            // Skip rows that are clearly not transactions
+            if (!amountStr || !dateStr || parseFloatSafe(amountStr) === 0) {
+                continue;
+            }
 
             if (fullDescription.includes('etsy')) {
                 foundEtsyTransaction = true;
-                const amount = parseFloatSafe(String(row[amountIndex]).replace(/"/g, ''));
+                const amount = parseFloatSafe(amountStr);
                 totalAmount += amount;
                 transactions.push({
-                    date: String(row[dateIndex] || 'N/A'),
-                    description: descriptionIndices.map(idx => row[idx] || '').join(' '),
+                    date: dateStr || 'N/A',
+                    description: uniqueDescriptionIndices.map(idx => row[idx] || '').join(' '),
                     amount: amount
                 });
             }
