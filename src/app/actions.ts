@@ -455,7 +455,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
             const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
             const amountStr = row[amountIndex];
             
-            if (!amountStr || !dateStr || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
+            if (!amountStr || !(row[dateIndex]) || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
                 continue; // Skip invalid or empty lines
             }
 
