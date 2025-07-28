@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, AlertTriangle, FileSignature, Wallet } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 
-// Konfiguriere den Worker für pdfjs
+// Configure the worker for pdfjs
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 
@@ -29,36 +29,12 @@ type FeeResult = {
   date: string;
 };
 
-const parseFloatSafe = (value: string | number | null | undefined): number => {
-    if (value === null || value === undefined) return 0;
-    if (typeof value === 'number') return value;
-    if (typeof value === 'string') {
-        const cleanedValue = value
-            .trim()
-            .replace(/€/g, '')
-            .replace(/US\$/g, '')
-            .trim();
-
-        // Prüfen, ob Komma als Dezimaltrennzeichen verwendet wird (z.B. deutsches Format)
-        const hasCommaDecimal = cleanedValue.includes(',');
-        const hasPointDecimal = cleanedValue.includes('.');
-        
-        let formattedValue = cleanedValue;
-
-        if (hasCommaDecimal && hasPointDecimal) { // 1.234,56
-             formattedValue = cleanedValue.replace(/\./g, '').replace(',', '.');
-        } else if (hasCommaDecimal && !hasPointDecimal) { // 1234,56
-             formattedValue = cleanedValue.replace(',', '.');
-        } else if (hasPointDecimal && !hasCommaDecimal) { // 1234.56 - nichts zu tun
-            // bleibt wie es ist
-        } else if (hasPointDecimal && cleanedValue.lastIndexOf('.') < cleanedValue.lastIndexOf(',')){ // 1,234.56
-            formattedValue = cleanedValue.replace(/,/g, '');
-        }
-
-        const parsed = parseFloat(formattedValue);
-        return isNaN(parsed) ? 0 : parsed;
-    }
-    return 0;
+const parseFloatSafe = (value: string | null | undefined): number => {
+    if (!value) return 0;
+    // Replace dots used as thousand separators, then replace comma with a dot for float parsing
+    const cleanedValue = value.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+    const parsed = parseFloat(cleanedValue);
+    return isNaN(parsed) ? 0 : parsed;
 }
 
 const formatCurrency = (value: number) => {
@@ -91,7 +67,7 @@ export function EtsyFeeParser() {
 
     try {
         const arrayBuffer = await file.arrayBuffer();
-        const data = new Uint8Array(arrayBuffer);
+        const data = new Uint8_Array(arrayBuffer);
         const doc = await pdfjs.getDocument(data).promise;
         let text = '';
         for (let i = 1; i <= doc.numPages; i++) {
@@ -103,20 +79,26 @@ export function EtsyFeeParser() {
         let total = 0;
         let date = 'N/A';
         
-        // Verbesserte Regex, die gezielter nach "Total" oder "Gesamtbetrag" sucht und den Betrag in der Nähe erfasst.
-        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*€?\s*([-\d.,]+€?)/i;
+        // Regex to find "Total" or "Subtotal" followed by a euro amount.
+        const totalRegex = /(?:Total|Subtotal)\s*€?([\d,]+\.\d{2})|([\d\.]+,\d{2})\s*€/i;
         const totalMatch = text.match(totalRegex);
         
-        if (totalMatch && totalMatch[1]) {
-            total = parseFloatSafe(totalMatch[1]);
-        } else {
-            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*([-\d.,]+€?)/i;
-            const subtotalMatch = text.match(subtotalRegex);
-            if (subtotalMatch && subtotalMatch[1]) {
-                total = parseFloatSafe(subtotalMatch[1]);
-            }
+        if (totalMatch) {
+            // totalMatch[1] is for format like €69.16, totalMatch[2] is for 15,36 €
+             const foundValue = totalMatch[1] ? totalMatch[1].replace('.', ',') : totalMatch[2];
+             if (foundValue) {
+                total = parseFloatSafe(foundValue);
+             }
         }
         
+        if (total === 0) {
+             const fallbackRegex = /Total\s*([0-9.,]+)/i;
+             const fallbackMatch = text.match(fallbackRegex);
+             if(fallbackMatch && fallbackMatch[1]) {
+                total = parseFloatSafe(fallbackMatch[1])
+             }
+        }
+
         if (total === 0) {
              setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
         } else {
