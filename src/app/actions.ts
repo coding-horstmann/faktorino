@@ -375,8 +375,8 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
             return { error: "Konnte keine gültige Header-Zeile mit Spalten wie 'Betrag' oder 'Verwendungszweck' in der CSV-Datei finden." };
         }
 
-        const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber/empfänger', 'empfänger/auftraggeber', 'beguenstigter/zahlungspflichtiger', 'name'];
-        const amountKeys = ['betrag', 'amount', 'gutschrift', 'lastschrift'];
+        const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber/empfänger', 'empfänger/auftraggeber', 'beguenstigter/zahlungspflichtiger', 'name', 'auftraggeber / empfänger'];
+        const amountKeys = ['betrag', 'betrag (eur)', 'amount', 'gutschrift', 'lastschrift'];
         const dateKeys = ['datum', 'buchungsdatum', 'valuta', 'buchungstag'];
         
         let amountIndex = -1;
@@ -405,7 +405,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
 
             if (fullDescription.includes('etsy')) {
                 foundEtsyTransaction = true;
-                const amount = parseFloatSafe(row[amountIndex]);
+                const amount = parseFloatSafe(String(row[amountIndex]).replace(/"/g, ''));
                 totalAmount += amount;
                 transactions.push({
                     date: String(row[dateIndex] || 'N/A'),
