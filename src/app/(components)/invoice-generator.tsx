@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -64,9 +64,12 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     const totalNetSales = invoices.reduce((sum, inv) => sum + inv.netTotal, 0);
     const totalVat = invoices.reduce((sum, inv) => sum + inv.vatTotal, 0);
     const totalGross = invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
-    onInvoicesGenerated(totalGross);
-    return { totalNetSales, totalVat };
-  }, [invoices, onInvoicesGenerated]);
+    return { totalNetSales, totalVat, totalGross };
+  }, [invoices]);
+
+  useEffect(() => {
+    onInvoicesGenerated(summary.totalGross);
+  }, [summary.totalGross, onInvoicesGenerated]);
   
   const openEditDialog = useCallback((invoice: Invoice) => {
     setEditingInvoice(invoice);
