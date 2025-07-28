@@ -35,6 +35,7 @@ const formatCurrency = (value: number) => {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
+    // Replace comma with dot for float conversion, remove currency symbols and thousands separators.
     const cleanedValue = value.replace(/[€$A-Z\s]/g, '').replace(/\./g, '').replace(',', '.').trim();
     const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
@@ -76,7 +77,8 @@ export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorPro
             text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
         }
         
-        const etsyTransactionRegex = /(?:Etsy Ireland Unlimited Company|ETSY PAYMENTS)[^\d\n,.-]*([+-]?\s?[\d.,]+)/g;
+        // Regex to find lines containing "Etsy" (case-insensitive) and then extract a monetary amount from that line.
+        const etsyTransactionRegex = /.*Etsy.*?[^\d\n,.-]*([+-]?\s?[\d.,]+(?:,\d{2})?)/gi;
         let match;
         let totalAmount = 0;
         let foundEtsyTransaction = false;
