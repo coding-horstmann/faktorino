@@ -15,7 +15,10 @@ import { Loader2, AlertTriangle, Upload, FileSignature, Wallet } from 'lucide-re
 
 // This is a browser-only import
 import * as pdfjsLib from 'pdfjs-dist/build/pdf';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+if (typeof window !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+}
 
 
 const formSchema = z.object({
@@ -84,7 +87,7 @@ export function EtsyFeeParser() {
     }
     
     if (total === 0) {
-        throw new Error("Gesamtgebühr (Total) konnte in der PDF nicht gefunden werden.");
+        throw new Error("Gesamtgebühr (Total) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
     }
     
     const dateRegex = /Invoice Date:\s*(\d{1,2}\s+\w+,\s+\d{4})/i;
@@ -182,7 +185,7 @@ export function EtsyFeeParser() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Fehler</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
-        </Aler>
+        </Alert>
       )}
 
       {result && (
