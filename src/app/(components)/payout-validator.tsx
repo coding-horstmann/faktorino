@@ -40,7 +40,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
     resolver: zodResolver(formSchema),
   });
   
-  const validatePayout = useCallback((payout: number | null, transactions: BankTransaction[] = []) => {
+  const validatePayout = useCallback((payout: number | null, allTransactions: BankTransaction[]) => {
     const gross = grossInvoices ?? 0;
     const fees = totalFees ?? 0;
     const expectedPayout = gross + fees;
@@ -52,13 +52,14 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
         expectedPayout: (grossInvoices !== null && totalFees !== null) ? expectedPayout : null,
         difference,
     };
-    onPayoutValidated(payout, result, transactions);
+    onPayoutValidated(payout, result, allTransactions);
   }, [grossInvoices, totalFees, onPayoutValidated]);
 
   useEffect(() => {
-    // This effect ensures that if invoices or fees are loaded *after* the payout,
-    // the validation is re-triggered.
-    validatePayout(bankStatementTotal, transactions);
+    // Re-validate if invoices or fees change after payout is known
+    if (bankStatementTotal !== null) {
+      validatePayout(bankStatementTotal, transactions);
+    }
   }, [grossInvoices, totalFees, bankStatementTotal, transactions, validatePayout]);
 
 
@@ -75,40 +76,49 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
         return;
     }
     
-    let combinedCsvData = '';
-    const fileReadPromises = files.map((file, index) => {
-        return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                 const content = e.target?.result as string;
-                // For all files, we let the backend parser figure out the headers.
-                // The backend parser is smart enough to handle multiple headers in a single string.
-                resolve(content);
-            };
-            reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
-            reader.readAsText(file, 'UTF-8');
-        });
-    });
+    let cumulativeAmount = 0;
+    let cumulativeTransactions: BankTransaction[] = [];
+    let cumulativeFoundEtsy = false;
+    let processingError: string | null = null;
 
     try {
-        const allCsvContents = await Promise.all(fileReadPromises);
-        combinedCsvData = allCsvContents.join('\n');
-        
-        const result = await processBankStatementAction(combinedCsvData);
-        if (result.error) {
-            setError(result.error);
-        } else if (result.totalAmount !== undefined && result.transactions) {
-            if (result.totalAmount === 0 && !result.foundEtsyTransaction) {
-                 setError("Keine Transaktionen mit dem Stichwort 'Etsy' in den CSV-Dateien gefunden.");
-                 setBankStatementTotal(0); // Set to 0 to show in summary
-                 setTransactions([]);
-                 validatePayout(0, []);
-            } else {
-                setBankStatementTotal(result.totalAmount);
-                setTransactions(result.transactions);
-                validatePayout(result.totalAmount, result.transactions);
-            }
-        }
+      for (const file of files) {
+          const fileContent = await file.text();
+          const result = await processBankStatementAction(fileContent);
+
+          if (result.error) {
+              // Store first error and stop processing
+              processingError = `Fehler in Datei '${file.name}': ${result.error}`;
+              break; 
+          }
+          
+          if (result.totalAmount !== undefined && result.transactions) {
+              cumulativeAmount += result.totalAmount;
+              cumulativeTransactions.push(...result.transactions);
+              if(result.foundEtsyTransaction) {
+                cumulativeFoundEtsy = true;
+              }
+          }
+      }
+
+      if (processingError) {
+          setError(processingError);
+          // Reset previous results if any
+          setBankStatementTotal(null);
+          setTransactions([]);
+          validatePayout(null, []);
+      } else {
+          if (!cumulativeFoundEtsy) {
+              setError("Keine Transaktionen mit dem Stichwort 'Etsy' in den hochgeladenen CSV-Dateien gefunden.");
+              setBankStatementTotal(0);
+              setTransactions([]);
+              validatePayout(0, []);
+          } else {
+              setBankStatementTotal(cumulativeAmount);
+              setTransactions(cumulativeTransactions);
+              validatePayout(cumulativeAmount, cumulativeTransactions);
+          }
+      }
 
     } catch(err: any) {
         console.error("Error processing CSVs:", err);
@@ -127,7 +137,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                 3. Kontoauszüge hochladen
             </CardTitle>
             <CardDescription>
-                Laden Sie CSV-Exporte Ihrer Kontoauszüge hoch. Das Tool summiert automatisch alle Gutschriften von Etsy. Sie können mehrere Dateien auswählen.
+                Laden Sie CSV-Exporte Ihrer Kontoauszüge hoch. Das Tool summiert automatisch alle Gutschriften von Etsy. Sie können mehrere Dateien von verschiedenen Banken auswählen.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
@@ -192,24 +202,26 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                                 <List className="text-primary"/>
                                 Erkannte Etsy-Transaktionen aus Kontoauszug
                             </h4>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Datum</TableHead>
-                                        <TableHead>Beschreibung</TableHead>
-                                        <TableHead className="text-right">Betrag</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {transactions.map((t, i) => (
-                                        <TableRow key={i}>
-                                            <TableCell>{t.date}</TableCell>
-                                            <TableCell>{t.description}</TableCell>
-                                            <TableCell className={`text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</TableCell>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Datum</TableHead>
+                                            <TableHead>Beschreibung</TableHead>
+                                            <TableHead className="text-right">Betrag</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {transactions.map((t, i) => (
+                                            <TableRow key={i}>
+                                                <TableCell>{t.date}</TableCell>
+                                                <TableCell>{t.description}</TableCell>
+                                                <TableCell className={`text-right font-medium ${t.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(t.amount)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
                     )}
                 </CardContent>
@@ -276,3 +288,5 @@ export function ValidationResultDisplay({ result }: { result: any }) {
     )
 
 }
+
+    
