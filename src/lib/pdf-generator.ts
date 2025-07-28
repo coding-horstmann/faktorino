@@ -22,28 +22,26 @@ export function generatePdf(invoice: Invoice, userInfo: UserInfo) {
 
   const { name: senderName, address: senderAddress, city: senderCity, taxInfo: senderTaxInfo } = userInfo;
 
+  // Absenderzeile (klein, oben)
   doc.setFontSize(8);
   doc.text(`${senderName} • ${senderAddress} • ${senderCity}`, 20, 20);
   
+  // Empfängeradresse (Haupt-Adressfeld rechts)
   doc.setFontSize(10);
-  doc.text(senderName, 20, 35);
-  doc.text(senderAddress, 20, 40);
-  doc.text(senderCity, 20, 45);
-
-  // Dynamischer Rechnungsempfänger
-  const recipientYStart = 35;
+  const recipientYStart = 50;
   let currentY = recipientYStart;
-  const recipientLines = invoice.buyerAddress.split('\n');
-  
   doc.text(invoice.buyerName, 120, currentY);
   currentY += 5;
-
+  const recipientLines = invoice.buyerAddress.split('\n');
   recipientLines.forEach((line) => {
-      doc.text(line, 120, currentY);
-      currentY += 5;
+      if(line.trim() !== '') {
+        doc.text(line, 120, currentY);
+        currentY += 5;
+      }
   });
 
-  const headerY = 70;
+
+  const headerY = 80;
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text(`Rechnung`, 20, headerY);
