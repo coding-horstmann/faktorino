@@ -273,18 +273,20 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         const parseResult = Papa.parse(csvData, {
             header: true,
             skipEmptyLines: true,
+            dynamicTyping: true,
             transformHeader: header => header.trim().toLowerCase(),
         });
 
         if (parseResult.errors.length > 0) {
+            console.error("CSV Parsing Errors in Bank Statement:", parseResult.errors);
             return { error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
         }
 
         let totalAmount = 0;
         let foundEtsyTransaction = false;
 
-        const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text'];
-        const amountKeys = ['betrag', 'amount'];
+        const descriptionKeys = ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber/empfänger', 'empfänger/auftraggeber', 'beguenstigter/zahlungspflichtiger', 'name'];
+        const amountKeys = ['betrag', 'amount', 'gutschrift', 'lastschrift'];
 
         for (const row of parseResult.data as any[]) {
             const description = getColumn(row, descriptionKeys) || '';
