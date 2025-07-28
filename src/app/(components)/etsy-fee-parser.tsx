@@ -18,14 +18,14 @@ import * as pdfjs from 'pdfjs-dist';
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const formSchema = z.object({
-  pdfFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
+  pdfFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine PDF-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 type FeeResult = {
   total: number;
-  date: string;
+  sources: { fileName: string; total: number; date: string }[];
 };
 
 interface EtsyFeeParserProps {
@@ -34,9 +34,6 @@ interface EtsyFeeParserProps {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
-    // Cleans the string by removing thousand separators (commas) and keeping the dot as a decimal separator.
-    // This handles formats like "1,234.56" -> "1234.56"
-    // And also european formats by replacing the comma decimal separator with a dot
     const cleanedValue = value.trim().replace(/\s/g, '');
     
     const lastComma = cleanedValue.lastIndexOf(',');
@@ -45,13 +42,10 @@ const parseFloatSafe = (value: string | null | undefined): number => {
     let parsableValue: string;
 
     if (lastComma > lastDot) {
-        // Format is like 1.234,56 -> remove dots, replace comma with dot
         parsableValue = cleanedValue.replace(/\./g, '').replace(',', '.');
     } else if (lastDot > lastComma) {
-         // Format is like 1,234.56 -> remove commas
         parsableValue = cleanedValue.replace(/,/g, '');
     } else {
-        // Handles cases like 69.19 or 69,19
         parsableValue = cleanedValue.replace(',', '.');
     }
     
@@ -78,58 +72,63 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
     setError(null);
     setResult(null);
 
-    const file = values.pdfFile[0];
-    if (!file) {
-        setError("Keine Datei ausgewählt.");
+    const files = values.pdfFiles;
+    if (!files || files.length === 0) {
+        setError("Keine Dateien ausgewählt.");
         setIsLoading(false);
         return;
     }
 
+    let grandTotal = 0;
+    const sources: FeeResult['sources'] = [];
+
     try {
-        const arrayBuffer = await file.arrayBuffer();
-        const data = new Uint8Array(arrayBuffer);
-        const doc = await pdfjs.getDocument(data).promise;
-        let fullText = '';
-        let total = 0;
-        let date = 'N/A';
+      for (const file of files) {
+          const arrayBuffer = await file.arrayBuffer();
+          const data = new Uint8Array(arrayBuffer);
+          const doc = await pdfjs.getDocument(data).promise;
+          let fullText = '';
+          
+          for (let i = 1; i <= doc.numPages; i++) {
+              const page = await doc.getPage(i);
+              const content = await page.getTextContent();
+              const pageText = content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+              fullText += pageText + '\n';
+          }
 
-        for (let i = 1; i <= doc.numPages; i++) {
-            const page = await doc.getPage(i);
-            const content = await page.getTextContent();
-            
-            // Join items with spaces to preserve some structure
-            const pageText = content.items.map(item => ('str' in item ? item.str : '')).join(' ');
-            fullText += pageText + '\n';
-        }
+          const totalRegex = /(?:Total|Subtotal)\s*€?\s*([\d,]+\.?\d*)/gi;
+          let lastMatch: string | null = null;
+          let match;
+          
+          while ((match = totalRegex.exec(fullText)) !== null) {
+              lastMatch = match[1];
+          }
+          
+          let fileTotal = 0;
+          if (lastMatch) {
+              fileTotal = parseFloatSafe(lastMatch);
+          }
 
-        // Regex to find "Total" or "Subtotal", followed by currency symbols and the amount.
-        // It looks for the last match in the whole text, which is usually the final total.
-        const totalRegex = /(?:Total|Subtotal)\s*€?\s*([\d,]+\.?\d*)/gi;
-        let lastMatch: string | null = null;
-        let match;
+          const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\w+\s\d{1,2},\s\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
+          const dateMatch = fullText.match(dateRegex);
+          const date = dateMatch && dateMatch[1] ? dateMatch[1].trim() : 'N/A';
+          
+          if(fileTotal > 0) {
+            grandTotal += fileTotal;
+            sources.push({ fileName: file.name, total: fileTotal, date });
+          }
+      }
         
-        while ((match = totalRegex.exec(fullText)) !== null) {
-            lastMatch = match[1];
-        }
+      if (grandTotal === 0) {
+           setError("Gesamtgebühr (Total/Subtotal) konnte in den PDFs nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um gültige Etsy-Abrechnungen handelt.");
+      } else {
+          setResult({ total: grandTotal, sources });
+          onFeesParsed(grandTotal);
+      }
 
-        if (lastMatch) {
-            total = parseFloatSafe(lastMatch);
-        }
-        
-        if (total === 0) {
-             setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
-        } else {
-            const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\w+\s\d{1,2},\s\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
-            const dateMatch = fullText.match(dateRegex);
-            if (dateMatch && dateMatch[1]) {
-                date = dateMatch[1].trim();
-            }
-            setResult({ total, date });
-            onFeesParsed(total);
-        }
     } catch(err: any) {
         console.error("Error processing PDF in browser:", err);
-        setError(err.message || "Fehler beim Verarbeiten der PDF-Datei im Browser.");
+        setError(err.message || "Fehler beim Verarbeiten der PDF-Datei(en) im Browser.");
     } finally {
         setIsLoading(false);
     }
@@ -141,10 +140,10 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-primary"/>
-            2. Etsy-Abrechnung hochladen
+            2. Etsy-Abrechnungen hochladen
           </CardTitle>
           <CardDescription>
-            Laden Sie Ihre monatliche Etsy-Abrechnungs-PDF hoch, um die Gesamtgebühren automatisch zu extrahieren.
+            Laden Sie Ihre monatlichen Etsy-Abrechnungs-PDFs hoch, um die Gesamtgebühren automatisch zu extrahieren. Sie können mehrere Dateien auswählen.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -152,14 +151,15 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
             <CardContent>
               <FormField
                 control={form.control}
-                name="pdfFile"
+                name="pdfFiles"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Etsy-Abrechnungs-PDF</FormLabel>
+                    <FormLabel>Etsy-Abrechnungs-PDF(s)</FormLabel>
                     <FormControl>
                         <Input
                           type="file"
                           accept=".pdf"
+                          multiple
                           onChange={(e) => field.onChange(e.target.files)}
                         />
                     </FormControl>
@@ -200,21 +200,29 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
               Extrahierte Gebühren
             </CardTitle>
              <CardDescription>
-                Abrechnungsdatum: {result.date}
+                Gesamtsumme aus {result.sources.length} Datei(en).
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Kategorie</TableHead>
+                  <TableHead>Datei</TableHead>
+                  <TableHead>Abrechnungsdatum</TableHead>
                   <TableHead className="text-right">Betrag</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell className="font-medium">Gesamtgebühren (Total)</TableCell>
-                  <TableCell className="text-right font-bold text-red-600">{formatCurrency(result.total)}</TableCell>
+                {result.sources.map((source, index) => (
+                    <TableRow key={index}>
+                        <TableCell className="font-medium">{source.fileName}</TableCell>
+                        <TableCell>{source.date}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(source.total)}</TableCell>
+                    </TableRow>
+                ))}
+                <TableRow className="font-bold bg-secondary">
+                  <TableCell colSpan={2}>Gesamtgebühren (Total)</TableCell>
+                  <TableCell className="text-right text-red-600">{formatCurrency(result.total)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>

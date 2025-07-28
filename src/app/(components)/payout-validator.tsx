@@ -15,7 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { processBankStatementAction, type BankTransaction } from '@/app/actions';
 
 const formSchema = z.object({
-  csvFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
+  csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -53,46 +53,67 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
     setBankStatementTotal(null);
     setTransactions([]);
 
-    const file = values.csvFile[0];
-    if (!file) {
-        setError("Keine Datei ausgewählt.");
+    const files = values.csvFiles;
+    if (!files || files.length === 0) {
+        setError("Keine Dateien ausgewählt.");
         setIsLoading(false);
         return;
     }
+    
+    let combinedCsvData = '';
+    const fileReadPromises = [];
 
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        const csvData = e.target?.result as string;
-        try {
-            const result = await processBankStatementAction(csvData);
-            if (result.error) {
-                setError(result.error);
-            } else if (result.totalAmount !== undefined && result.transactions) {
-                if (result.totalAmount === 0 && !result.foundEtsyTransaction) {
-                     setError("Keine Transaktionen mit dem Stichwort 'Etsy' in der CSV-Datei gefunden.");
-                } else {
-                    setBankStatementTotal(result.totalAmount);
-                    setTransactions(result.transactions);
-                     if (grossInvoices !== null && totalFees !== null) {
-                        validatePayout(grossInvoices, totalFees, result.totalAmount, result.transactions);
+     for (const file of files) {
+        fileReadPromises.push(
+            new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target?.result as string;
+                    // Try to remove header from subsequent files
+                    const lines = content.split('\n');
+                    const headerKeywords = ['betrag', 'verwendungszweck', 'auftraggeber', 'empfänger', 'buchungstext'];
+                    const isHeader = (line: string) => headerKeywords.some(kw => line.toLowerCase().includes(kw));
+
+                    if (combinedCsvData !== '' && lines.length > 0 && isHeader(lines[0])) {
+                         resolve(lines.slice(1).join('\n'));
+                    } else {
+                        resolve(content);
                     }
+                };
+                reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
+                reader.readAsText(file, 'UTF-8');
+            })
+        );
+    }
+
+    try {
+        const allCsvContents = await Promise.all(fileReadPromises);
+        combinedCsvData = allCsvContents.join('\n');
+        
+        const result = await processBankStatementAction(combinedCsvData);
+        if (result.error) {
+            setError(result.error);
+        } else if (result.totalAmount !== undefined && result.transactions) {
+            if (result.totalAmount === 0 && !result.foundEtsyTransaction) {
+                 setError("Keine Transaktionen mit dem Stichwort 'Etsy' in den CSV-Dateien gefunden.");
+            } else {
+                setBankStatementTotal(result.totalAmount);
+                setTransactions(result.transactions);
+                 if (grossInvoices !== null && totalFees !== null) {
+                    validatePayout(grossInvoices, totalFees, result.totalAmount, result.transactions);
                 }
             }
-        } catch (err: any) {
-             console.error("Error processing CSV:", err);
-             setError(err.message || "Fehler beim Verarbeiten der CSV-Datei.");
-        } finally {
-            setIsLoading(false);
         }
-    };
-    reader.onerror = () => {
-        setError("Fehler beim Lesen der Datei.");
+
+    } catch(err: any) {
+        console.error("Error processing CSVs:", err);
+        setError(err.message || "Fehler beim Verarbeiten der CSV-Dateien.");
+    } finally {
         setIsLoading(false);
-    };
-    reader.readAsText(file, 'UTF-8');
+    }
   }
 
-  function validatePayout(gross: number, fees: number, payout: number, transactions: BankTransaction[]) {
+  function validatePayout(gross: number, fees: number, payout: number, transactions: BankTransaction[] = []) {
     const expectedPayout = gross - fees;
     const difference = payout - expectedPayout;
     const result = {
@@ -111,10 +132,10 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
                 <Upload className="text-primary"/>
-                3. Kontoauszug hochladen
+                3. Kontoauszüge hochladen
             </CardTitle>
             <CardDescription>
-                Laden Sie einen CSV-Export Ihres Kontoauszugs hoch. Das Tool summiert automatisch alle Gutschriften von Etsy und Zahlungen an Etsy.
+                Laden Sie CSV-Exporte Ihrer Kontoauszüge hoch. Das Tool summiert automatisch alle Gutschriften von Etsy. Sie können mehrere Dateien auswählen.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
@@ -122,12 +143,12 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
               <CardContent>
                 <FormField
                     control={form.control}
-                    name="csvFile"
+                    name="csvFiles"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Kontoauszug (CSV-Datei)</FormLabel>
+                        <FormLabel>Kontoauszug (CSV-Datei(en))</FormLabel>
                         <FormControl>
-                            <Input type="file" accept=".csv" onChange={(e) => field.onChange(e.target.files)} />
+                            <Input type="file" accept=".csv" multiple onChange={(e) => field.onChange(e.target.files)} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -142,7 +163,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                         Verarbeite...
                       </>
                     ) : (
-                      'Kontoauszug verarbeiten'
+                      'Kontoauszüge verarbeiten'
                     )}
                 </Button>
               </CardFooter>
@@ -166,7 +187,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                         Summe der Etsy-Transaktionen
                     </CardTitle>
                      <CardDescription>
-                        Dieser Betrag wurde aus Ihrem Kontoauszug berechnet.
+                        Dieser Betrag wurde aus Ihren Kontoauszügen berechnet.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -214,7 +235,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
 
 export function ValidationResultDisplay({ result }: { result: any }) {
 
-    const formatCurrency = (value: number) => {
+    const formatCurrency = (value: number | null) => {
         if(value === null || value === undefined) return '-';
         return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
     };

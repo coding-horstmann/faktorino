@@ -17,7 +17,7 @@ import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Glo
 import { Badge } from '@/components/ui/badge';
 
 const formSchema = z.object({
-  csvFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
+  csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -41,28 +41,53 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     setError(null);
     setResult(null);
 
-    const file = values.csvFile[0];
-    const reader = new FileReader();
+    const files = values.csvFiles;
+    let combinedCsvData = '';
+    const fileReadPromises = [];
 
-    reader.onload = async (e) => {
-      const csvData = e.target?.result as string;
-      const response = await generateInvoicesAction(csvData);
-      if (response.error) {
-        setError(response.error);
-      } else if (response.data) {
-        setResult(response.data);
-        const totalGross = response.data.invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
-        onInvoicesGenerated(totalGross);
-      }
-      setIsLoading(false);
-    };
-
-    reader.onerror = () => {
-        setError("Fehler beim Lesen der Datei.");
-        setIsLoading(false);
+    for (const file of files) {
+        fileReadPromises.push(
+            new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const content = e.target?.result as string;
+                    // Remove header from all but the first file
+                    const lines = content.split('\n');
+                    if (combinedCsvData !== '') {
+                        resolve(lines.slice(1).join('\n'));
+                    } else {
+                        resolve(content);
+                    }
+                };
+                reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
+                reader.readAsText(file, 'UTF-8');
+            })
+        );
     }
 
-    reader.readAsText(file, 'UTF-8');
+    try {
+        const allCsvContents = await Promise.all(fileReadPromises);
+        combinedCsvData = allCsvContents.join('\n');
+        
+        if (!combinedCsvData.trim()) {
+            setError("Die ausgewählten Dateien sind leer oder ungültig.");
+            setIsLoading(false);
+            return;
+        }
+
+        const response = await generateInvoicesAction(combinedCsvData);
+        if (response.error) {
+            setError(response.error);
+        } else if (response.data) {
+            setResult(response.data);
+            const totalGross = response.data.invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
+            onInvoicesGenerated(totalGross);
+        }
+    } catch (err: any) {
+         setError(err.message || "Fehler beim Lesen der Dateien.");
+    } finally {
+        setIsLoading(false);
+    }
   }
   
   const formatCurrency = (value: number) => {
@@ -100,7 +125,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
             1. Etsy-Bestellungen hochladen
           </CardTitle>
           <CardDescription>
-            Laden Sie Ihre Etsy-Bestell-CSV-Datei hoch, um automatisch Rechnungen zu erstellen und eine Umsatzübersicht zu erhalten.
+            Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -108,14 +133,15 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
             <CardContent>
               <FormField
                 control={form.control}
-                name="csvFile"
+                name="csvFiles"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Etsy-Bestell-CSV</FormLabel>
+                    <FormLabel>Etsy-Bestell-CSV(s)</FormLabel>
                     <FormControl>
                       <Input 
                           type="file" 
                           accept=".csv"
+                          multiple
                           onChange={(e) => field.onChange(e.target.files)}
                       />
                     </FormControl>
