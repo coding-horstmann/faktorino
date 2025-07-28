@@ -97,15 +97,15 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
             text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
         }
         
-        // Normalize text to handle various spacing issues
-        const normalizedText = text.replace(/\s+/g, ' ').trim();
+        // Normalize text to handle various spacing issues, especially in numbers
+        const normalizedText = text.replace(/\s+/g, ' ').trim()
+                                   .replace(/€\s+([\d,.]+)/g, '€$1')
+                                   .replace(/([\d,])\s+(\.)\s+([\d])/g, '$1$2$3');
         
         let total = 0;
         let date = 'N/A';
         
-        // Regex to find "Total" or "Subtotal" followed by an optional currency symbol and the amount.
-        // This is more robust against spacing issues.
-        const totalRegex = /(?:Total|Subtotal)\s*€?\s*([\d,.-]+)/i;
+        const totalRegex = /(?:Total|Subtotal)\s*€?([\d,.-]+)/i;
         const totalMatch = normalizedText.match(totalRegex);
         
         if (totalMatch && totalMatch[1]) {
