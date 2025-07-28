@@ -14,10 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import JSZip from 'jszip';
 
 const formSchema = z.object({
   csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
@@ -51,6 +52,7 @@ const getClassificationBadge = (classification: Invoice['countryClassification']
 export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGeneratorProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
@@ -99,8 +101,40 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
         alert("Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus.");
         return;
     }
-    generatePdf(invoice, userInfo);
+    generatePdf(invoice, userInfo, 'save');
   }, [userInfo]);
+
+  const handleDownloadAllPdfs = useCallback(async () => {
+    if (!userInfo || !userInfo.name) {
+        alert("Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus.");
+        return;
+    }
+    if (invoices.length === 0) {
+        alert("Keine Rechnungen zum Herunterladen vorhanden.");
+        return;
+    }
+
+    setIsZipping(true);
+    const zip = new JSZip();
+
+    for (const invoice of invoices) {
+        const pdfBlob = await generatePdf(invoice, userInfo, 'blob');
+        if (pdfBlob) {
+            zip.file(`Rechnung-${invoice.invoiceNumber}.pdf`, pdfBlob);
+        }
+    }
+
+    zip.generateAsync({ type: "blob" }).then(content => {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = "rechnungen.zip";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setIsZipping(false);
+    });
+
+  }, [invoices, userInfo]);
 
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
@@ -232,6 +266,22 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                 </CardContent>
             </Card>
 
+            <div className="flex justify-center">
+                <Button onClick={handleDownloadAllPdfs} disabled={isZipping || invoices.length === 0} size="lg">
+                    {isZipping ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <span>Erstelle ZIP...</span>
+                        </>
+                    ) : (
+                        <>
+                            <FileArchive className="mr-2 h-5 w-5"/>
+                            <span>Alle {invoices.length} Rechnungen als ZIP herunterladen</span>
+                        </>
+                    )}
+                </Button>
+            </div>
+
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -321,5 +371,3 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     </div>
   );
 }
-
-    
