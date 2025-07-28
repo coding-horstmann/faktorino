@@ -36,13 +36,25 @@ const parseFloatSafe = (value: string | number | null | undefined): number => {
         const cleanedValue = value
             .trim()
             .replace(/€/g, '')
+            .replace(/US\$/g, '')
             .trim();
+
+        // Prüfen, ob Komma als Dezimaltrennzeichen verwendet wird (z.B. deutsches Format)
+        const hasCommaDecimal = cleanedValue.includes(',');
+        const hasPointDecimal = cleanedValue.includes('.');
         
-        // Zuerst alle Punkte (als Tausendertrenner) entfernen
-        const withoutDots = cleanedValue.replace(/\./g, '');
-        // Dann das Komma durch einen Punkt für parseFloat ersetzen
-        const formattedValue = withoutDots.replace(',', '.');
-        
+        let formattedValue = cleanedValue;
+
+        if (hasCommaDecimal && hasPointDecimal) { // 1.234,56
+             formattedValue = cleanedValue.replace(/\./g, '').replace(',', '.');
+        } else if (hasCommaDecimal && !hasPointDecimal) { // 1234,56
+             formattedValue = cleanedValue.replace(',', '.');
+        } else if (hasPointDecimal && !hasCommaDecimal) { // 1234.56 - nichts zu tun
+            // bleibt wie es ist
+        } else if (hasPointDecimal && cleanedValue.lastIndexOf('.') < cleanedValue.lastIndexOf(',')){ // 1,234.56
+            formattedValue = cleanedValue.replace(/,/g, '');
+        }
+
         const parsed = parseFloat(formattedValue);
         return isNaN(parsed) ? 0 : parsed;
     }
@@ -92,13 +104,13 @@ export function EtsyFeeParser() {
         let date = 'N/A';
         
         // Verbesserte Regex, die gezielter nach "Total" oder "Gesamtbetrag" sucht und den Betrag in der Nähe erfasst.
-        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*€?\s*(-?[\s\d.,]+€?)/i;
+        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*€?\s*([-\d.,]+€?)/i;
         const totalMatch = text.match(totalRegex);
         
         if (totalMatch && totalMatch[1]) {
             total = parseFloatSafe(totalMatch[1]);
         } else {
-            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*(-?[\s\d.,]+€?)/i;
+            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*([-\d.,]+€?)/i;
             const subtotalMatch = text.match(subtotalRegex);
             if (subtotalMatch && subtotalMatch[1]) {
                 total = parseFloatSafe(subtotalMatch[1]);
@@ -108,7 +120,7 @@ export function EtsyFeeParser() {
         if (total === 0) {
              setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
         } else {
-            const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
+            const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\w+\s\d{1,2},\s\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
             const dateMatch = text.match(dateRegex);
             if (dateMatch && dateMatch[1]) {
                 date = dateMatch[1].trim();
