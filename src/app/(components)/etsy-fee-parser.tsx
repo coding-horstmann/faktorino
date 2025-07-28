@@ -11,8 +11,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileSignature, Wallet } from 'lucide-react';
-import { extractFeesFromPdfAction } from '@/app/actions';
+import { Loader2, AlertTriangle, FileSignature, Wallet } from 'lucide-react';
+import * as pdfjs from 'pdfjs-dist';
+
+// Konfiguriere den Worker für pdfjs
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 
 const formSchema = z.object({
@@ -25,6 +28,21 @@ type FeeResult = {
   total: number;
   date: string;
 };
+
+const parseFloatSafe = (value: string | number | null | undefined): number => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        const cleanedValue = value.trim()
+            .replace(/\s/g, '',)
+            // Handle German (1.234,56) and US (1,234.56) formats
+            .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
+            .replace(/,/g, '.');
+        const parsed = parseFloat(cleanedValue);
+        return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+}
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -47,19 +65,53 @@ export function EtsyFeeParser() {
     setError(null);
     setResult(null);
 
-    const formData = new FormData();
-    formData.append('pdfFile', values.pdfFile[0]);
+    const file = values.pdfFile[0];
+    if (!file) {
+        setError("Keine Datei ausgewählt.");
+        setIsLoading(false);
+        return;
+    }
 
     try {
-        const response = await extractFeesFromPdfAction(formData);
-        if (response.error) {
-            setError(response.error);
-        } else if (response.data) {
-            setResult(response.data);
+        const arrayBuffer = await file.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        const doc = await pdfjs.getDocument(data).promise;
+        let text = '';
+        for (let i = 1; i <= doc.numPages; i++) {
+            const page = await doc.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+        }
+        
+        let total = 0;
+        let date = 'N/A';
+        
+        const totalRegex = /(?:Total|Gesamtbetrag|Amount due)\s*(?:\(EUR\))?\s*€?\s*(-?[\s\d.,]+)/i;
+        const totalMatch = text.match(totalRegex);
+        
+        if (totalMatch && totalMatch[1]) {
+            total = parseFloatSafe(totalMatch[1]);
+        } else {
+            const subtotalRegex = /(?:Subtotal|Zwischensumme)\s*€?\s*(-?[\s\d.,]+)/i;
+            const subtotalMatch = text.match(subtotalRegex);
+            if (subtotalMatch && subtotalMatch[1]) {
+                total = parseFloatSafe(subtotalMatch[1]);
+            }
+        }
+        
+        if (total === 0) {
+             setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
+        } else {
+            const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
+            const dateMatch = text.match(dateRegex);
+            if (dateMatch && dateMatch[1]) {
+                date = dateMatch[1].trim();
+            }
+            setResult({ total, date });
         }
     } catch(err: any) {
-        console.error("Error calling server action:", err);
-        setError(err.message || "Fehler bei der Kommunikation mit dem Server.");
+        console.error("Error processing PDF in browser:", err);
+        setError(err.message || "Fehler beim Verarbeiten der PDF-Datei im Browser.");
     } finally {
         setIsLoading(false);
     }
