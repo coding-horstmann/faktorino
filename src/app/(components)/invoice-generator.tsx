@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,8 +13,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Globe } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
@@ -31,10 +33,48 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
   const [result, setResult] = useState<ProcessCsvOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  const recalculateSummary = (invoices: Invoice[]) => {
+    const totalNetSales = invoices.reduce((sum, inv) => sum + inv.netTotal, 0);
+    const totalVat = invoices.reduce((sum, inv) => sum + inv.vatTotal, 0);
+    const totalGross = invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
+    onInvoicesGenerated(totalGross);
+    return { totalNetSales, totalVat };
+  };
+
+  const handleDeleteInvoice = (invoiceNumber: string) => {
+    if (!result) return;
+    const updatedInvoices = result.invoices.filter(inv => inv.invoiceNumber !== invoiceNumber);
+    const updatedSummary = recalculateSummary(updatedInvoices);
+    setResult({
+        invoices: updatedInvoices,
+        summary: updatedSummary,
+    });
+  };
+
+  const handleUpdateInvoice = () => {
+    if (!result || !editingInvoice) return;
+    const updatedInvoices = result.invoices.map(inv => inv.invoiceNumber === editingInvoice.invoiceNumber ? editingInvoice : inv);
+    const updatedSummary = recalculateSummary(updatedInvoices);
+    setResult({
+        invoices: updatedInvoices,
+        summary: updatedSummary,
+    });
+    setEditingInvoice(null);
+  };
+  
+  const handleEditInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if(!editingInvoice) return;
+    setEditingInvoice({
+        ...editingInvoice,
+        [e.target.name]: e.target.value
+    });
+  }
 
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
@@ -213,7 +253,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                     <TableHead>Land</TableHead>
                                     <TableHead>Klassifizierung</TableHead>
                                     <TableHead className="text-right">Betrag</TableHead>
-                                    <TableHead className="text-center">Aktion</TableHead>
+                                    <TableHead className="text-center">Aktionen</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -225,10 +265,16 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                         <TableCell>{invoice.country}</TableCell>
                                         <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
                                         <TableCell className="text-right">{formatCurrency(invoice.grossTotal)}</TableCell>
-                                        <TableCell className="text-center">
+                                        <TableCell className="text-center space-x-2">
                                             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
-                                                <Download className="mr-2"/>
+                                                <Download className="mr-2 h-4 w-4"/>
                                                 PDF
+                                            </Button>
+                                            <Button variant="ghost" size="icon" onClick={() => setEditingInvoice(invoice)}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}>
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -240,6 +286,43 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
             </Card>
         </div>
       )}
+
+      {editingInvoice && (
+        <Dialog open={!!editingInvoice} onOpenChange={() => setEditingInvoice(null)}>
+            <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                    <DialogTitle>Rechnung bearbeiten: {editingInvoice.invoiceNumber}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="buyerName" className="text-right">Käufer</Label>
+                        <Input id="buyerName" name="buyerName" value={editingInvoice.buyerName} onChange={handleEditInvoiceChange} className="col-span-3"/>
+                    </div>
+                    <div className="grid grid-cols-4 items-start gap-4">
+                        <Label htmlFor="buyerAddress" className="text-right mt-2">Adresse</Label>
+                        <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress} onChange={handleEditInvoiceChange} className="col-span-3" rows={4}/>
+                    </div>
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="orderDate" className="text-right">Datum</Label>
+                        <Input id="orderDate" name="orderDate" value={editingInvoice.orderDate} onChange={handleEditInvoiceChange} className="col-span-3"/>
+                    </div>
+                    {/* Note: Editing line items is complex and omitted for now. 
+                        A full implementation would require a dynamic form for the items array.
+                        For now, we allow editing of buyer and date info.
+                    */}
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                         <Button variant="outline">Abbrechen</Button>
+                    </DialogClose>
+                    <Button onClick={handleUpdateInvoice}>Speichern</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+      )}
+
     </div>
   );
 }
+
+    
