@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,7 +23,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface PayoutValidatorProps {
   grossInvoices: number | null;
   totalFees: number | null;
-  onPayoutValidated: (payout: number, result: any, transactions: BankTransaction[]) => void;
+  onPayoutValidated: (payout: number | null, result: any, transactions: BankTransaction[]) => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -39,13 +39,29 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+  
+  const validatePayout = useCallback((payout: number | null, transactions: BankTransaction[] = []) => {
+    const gross = grossInvoices ?? 0;
+    const fees = totalFees ?? 0;
+    const expectedPayout = gross + fees;
+    const difference = payout !== null ? payout - expectedPayout : null;
+    const result = {
+        payoutAmount: payout,
+        grossInvoices: grossInvoices,
+        totalFees: totalFees,
+        expectedPayout: (grossInvoices !== null && totalFees !== null) ? expectedPayout : null,
+        difference,
+    };
+    onPayoutValidated(payout, result, transactions);
+  }, [grossInvoices, totalFees, onPayoutValidated]);
 
   useEffect(() => {
-    if (grossInvoices !== null && totalFees !== null && bankStatementTotal !== null) {
-      validatePayout(grossInvoices, totalFees, bankStatementTotal);
+    // This effect ensures that if invoices or fees are loaded *after* the payout,
+    // the validation is re-triggered.
+    if (bankStatementTotal !== null) {
+      validatePayout(bankStatementTotal, transactions);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grossInvoices, totalFees, bankStatementTotal]);
+  }, [grossInvoices, totalFees, bankStatementTotal, transactions, validatePayout]);
 
 
   async function onSubmit(values: FormValues) {
@@ -97,12 +113,12 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
         } else if (result.totalAmount !== undefined && result.transactions) {
             if (result.totalAmount === 0 && !result.foundEtsyTransaction) {
                  setError("Keine Transaktionen mit dem Stichwort 'Etsy' in den CSV-Dateien gefunden.");
+                 setBankStatementTotal(0); // Set to 0 to show in summary
+                 validatePayout(0, []);
             } else {
                 setBankStatementTotal(result.totalAmount);
                 setTransactions(result.transactions);
-                 if (grossInvoices !== null && totalFees !== null) {
-                    validatePayout(grossInvoices, totalFees, result.totalAmount, result.transactions);
-                }
+                validatePayout(result.totalAmount, result.transactions);
             }
         }
 
@@ -112,19 +128,6 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
     } finally {
         setIsLoading(false);
     }
-  }
-
-  function validatePayout(gross: number, fees: number, payout: number, transactions: BankTransaction[] = []) {
-    const expectedPayout = gross - fees;
-    const difference = payout - expectedPayout;
-    const result = {
-        payoutAmount: payout,
-        grossInvoices: gross,
-        totalFees: -fees, // Show fees as a negative number
-        expectedPayout,
-        difference,
-    };
-    onPayoutValidated(payout, result, transactions);
   }
 
   return (
@@ -211,7 +214,7 @@ export function ValidationResultDisplay({ result, transactions }: { result: any,
     };
 
     const isComplete = result.grossInvoices !== null && result.totalFees !== null && result.payoutAmount !== null;
-    const difference = isComplete ? result.payoutAmount - (result.grossInvoices + result.totalFees) : null;
+    const difference = result.difference;
 
     return (
         <Card className="animate-in fade-in-50 mt-8 border-primary border-2 shadow-2xl">
@@ -237,7 +240,7 @@ export function ValidationResultDisplay({ result, transactions }: { result: any,
                         </TableRow>
                          <TableRow className="font-bold border-t-2">
                             <TableCell className="text-base">Erwartete Auszahlung</TableCell>
-                            <TableCell className="text-right text-base">{formatCurrency(isComplete ? result.grossInvoices + result.totalFees : null)}</TableCell>
+                            <TableCell className="text-right text-base">{formatCurrency(result.expectedPayout)}</TableCell>
                         </TableRow>
                          <TableRow>
                             <TableCell className="text-base">Tatsächliche Auszahlung (aus Kontoauszug)</TableCell>

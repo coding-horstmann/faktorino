@@ -20,7 +20,9 @@ export default function Home() {
   const [validationResult, setValidationResult] = useState({
     grossInvoices: null as number | null,
     totalFees: null as number | null,
-    payoutAmount: null as number | null
+    payoutAmount: null as number | null,
+    expectedPayout: null as number | null,
+    difference: null as number | null,
   });
 
   const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
@@ -48,21 +50,38 @@ export default function Home() {
   const handleInvoicesGenerated = useCallback((gross: number) => {
     setValidationResult(prev => {
         if (prev.grossInvoices === gross) return prev;
-        return {...prev, grossInvoices: gross};
+        const newGross = gross;
+        const newExpected = (newGross !== null && prev.totalFees !== null) ? newGross + prev.totalFees : null;
+        const newDifference = (prev.payoutAmount !== null && newExpected !== null) ? prev.payoutAmount - newExpected : null;
+        return {
+          ...prev, 
+          grossInvoices: newGross,
+          expectedPayout: newExpected,
+          difference: newDifference,
+        };
     });
   }, []);
   
   const handleFeesParsed = useCallback((fees: number) => {
     setValidationResult(prev => {
-        if (prev.totalFees === -fees) return prev;
-        return {...prev, totalFees: -fees};
+        const negativeFees = -fees;
+        if (prev.totalFees === negativeFees) return prev;
+        const newExpected = (prev.grossInvoices !== null && negativeFees !== null) ? prev.grossInvoices + negativeFees : null;
+        const newDifference = (prev.payoutAmount !== null && newExpected !== null) ? prev.payoutAmount - newExpected : null;
+        return {
+          ...prev, 
+          totalFees: negativeFees,
+          expectedPayout: newExpected,
+          difference: newDifference,
+        };
     });
   }, []);
   
-  const handlePayoutValidated = useCallback((payout: number, result: any, transactions: BankTransaction[]) => {
+  const handlePayoutValidated = useCallback((payout: number | null, result: any, transactions: BankTransaction[]) => {
      setValidationResult(prev => {
-         if (prev.payoutAmount === payout) return prev;
-         return {...prev, payoutAmount: payout};
+         // Deep comparison to prevent unnecessary re-renders
+         if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
+         return result;
      });
      setBankTransactions(transactions);
   }, []);
