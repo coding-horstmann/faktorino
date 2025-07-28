@@ -11,9 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { FileText, FileSignature, Upload, Building, CheckCircle, AlertCircle, Banknote, List, Scale } from 'lucide-react';
+import { FileText, FileSignature, Upload, Building, CheckCircle, AlertCircle } from 'lucide-react';
 import type { UserInfo } from '@/lib/pdf-generator';
-import type { BankTransaction } from './actions';
 
 export default function Home() {
   
@@ -115,20 +114,20 @@ export default function Home() {
         </Accordion>
 
         <Tabs defaultValue="step1" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="step1" disabled={!isUserInfoComplete}>
+          <TabsList>
+            <TabsTrigger value="step1">
                 <div className="flex items-center gap-2">
                     {isStep1Complete ? <CheckCircle className="text-green-500"/> : <FileText />}
                     Etsy-Rechnungen erstellen
                 </div>
             </TabsTrigger>
-            <TabsTrigger value="step2" disabled={!isStep1Complete}>
+            <TabsTrigger value="step2">
                 <div className="flex items-center gap-2">
                     {isStep2Complete ? <CheckCircle className="text-green-500"/> : <FileSignature />}
                     Etsy-Gebühren
                 </div>
             </TabsTrigger>
-            <TabsTrigger value="step3" disabled={!isStep1Complete}>
+            <TabsTrigger value="step3">
                 <div className="flex items-center gap-2">
                      {isStep3Complete ? <CheckCircle className="text-green-500"/> : <Upload/>}
                     Kontoauszug hochladen
