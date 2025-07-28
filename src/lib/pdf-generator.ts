@@ -48,7 +48,8 @@ export function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 's
         const headerY = 80;
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(`Rechnung`, 20, headerY);
+        const title = invoice.isCancellation ? 'Stornorechnung' : 'Rechnung';
+        doc.text(title, 20, headerY);
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
@@ -104,15 +105,20 @@ export function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 's
         const taxNoteLines = doc.splitTextToSize(invoice.taxNote, 100);
         doc.text(taxNoteLines, 20, infoY);
         infoY += (taxNoteLines.length * 5) + 5;
+        
+        if (!invoice.isCancellation) {
+            doc.text("Zahlung dankend erhalten.", 20, infoY);
+        }
 
-        doc.text("Zahlung dankend erhalten.", 20, infoY);
 
         doc.setFontSize(8);
         const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
         doc.text(`${senderName}, ${senderAddress}, ${senderCity} | ${senderTaxInfo}`, 20, pageHeight - 10);
+        
+        const fileName = invoice.isCancellation ? `Stornorechnung-${invoice.invoiceNumber}.pdf` : `Rechnung-${invoice.invoiceNumber}.pdf`;
 
         if (outputType === 'save') {
-            doc.save(`Rechnung-${invoice.invoiceNumber}.pdf`);
+            doc.save(fileName);
             resolve(null);
         } else if (outputType === 'blob') {
             resolve(doc.output('blob'));

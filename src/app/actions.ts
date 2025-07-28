@@ -25,6 +25,7 @@ const invoiceSchema = z.object({
   taxNote: z.string(),
   country: z.string(),
   countryClassification: z.enum(['Deutschland', 'EU-Ausland', 'Drittland']),
+  isCancellation: z.boolean().optional(),
 });
 
 const summarySchema = z.object({

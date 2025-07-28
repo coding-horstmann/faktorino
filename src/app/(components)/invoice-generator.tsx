@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,7 +42,7 @@ const getClassificationBadge = (classification: Invoice['countryClassification']
       case 'EU-Ausland':
           return <Badge variant="secondary">EU</Badge>;
       case 'Drittland':
-          return <Badge variant="outline">Welt</Badge>;
+          return <Badge variant="outline">Drittland</Badge>;
       default:
           return null;
   }
@@ -81,6 +81,25 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
 
   const handleDeleteInvoice = useCallback((invoiceNumber: string) => {
     setInvoices(prevInvoices => prevInvoices.filter(inv => inv.invoiceNumber !== invoiceNumber));
+  }, []);
+
+  const handleCreateCancellation = useCallback((invoiceToCancel: Invoice) => {
+    const cancellationInvoice: Invoice = {
+      ...invoiceToCancel,
+      invoiceNumber: `${invoiceToCancel.invoiceNumber}-STORNO`,
+      netTotal: -invoiceToCancel.netTotal,
+      vatTotal: -invoiceToCancel.vatTotal,
+      grossTotal: -invoiceToCancel.grossTotal,
+      items: invoiceToCancel.items.map(item => ({
+        ...item,
+        netAmount: -item.netAmount,
+        vatAmount: -item.vatAmount,
+        grossAmount: -item.grossAmount,
+      })),
+      taxNote: `Stornierung der Rechnung ${invoiceToCancel.invoiceNumber}.\n${invoiceToCancel.taxNote}`,
+      isCancellation: true,
+    };
+    setInvoices(prev => [...prev, cancellationInvoice]);
   }, []);
 
   const handleUpdateInvoice = useCallback(() => {
@@ -123,7 +142,8 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     for (const invoice of invoices) {
         const pdfBlob = await generatePdf(invoice, userInfo, 'blob');
         if (pdfBlob) {
-            zip.file(`Rechnung-${invoice.invoiceNumber}.pdf`, pdfBlob);
+            const fileName = invoice.isCancellation ? `Stornorechnung-${invoice.invoiceNumber}.pdf` : `Rechnung-${invoice.invoiceNumber}.pdf`;
+            zip.file(fileName, pdfBlob);
         }
     }
 
@@ -308,20 +328,23 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                             </TableHeader>
                             <TableBody>
                                 {invoices.map((invoice) => (
-                                    <TableRow key={invoice.invoiceNumber}>
+                                    <TableRow key={invoice.invoiceNumber} className={invoice.isCancellation ? 'bg-red-100 dark:bg-red-900/30' : ''}>
                                         <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                                         <TableCell>{invoice.orderDate}</TableCell>
                                         <TableCell>{invoice.buyerName}</TableCell>
                                         <TableCell>{invoice.country}</TableCell>
                                         <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(invoice.grossTotal)}</TableCell>
-                                        <TableCell className="text-center space-x-2">
+                                        <TableCell className={`text-right ${invoice.isCancellation ? 'text-destructive' : ''}`}>{formatCurrency(invoice.grossTotal)}</TableCell>
+                                        <TableCell className="text-center space-x-1">
                                             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
                                                 <Download className="mr-2 h-4 w-4"/>
                                                 PDF
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)}>
+                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)} disabled={invoice.isCancellation}>
                                                 <Pencil className="h-4 w-4" />
+                                            </Button>
+                                             <Button variant="ghost" size="icon" onClick={() => handleCreateCancellation(invoice)} disabled={invoice.isCancellation}>
+                                                <RotateCcw className="h-4 w-4" />
                                             </Button>
                                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeleteInvoice(invoice.invoiceNumber)}>
                                                 <Trash2 className="h-4 w-4" />
