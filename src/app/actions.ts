@@ -479,3 +479,5 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
+
+    
