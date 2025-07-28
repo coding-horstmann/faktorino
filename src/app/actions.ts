@@ -107,11 +107,19 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
     if (typeof value === 'number') return value;
     if (typeof value === 'string') {
-        const cleanedValue = value.trim()
-            .replace(/\s/g, '')
-            .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
-            .replace(/,/g, '.');
-        const parsed = parseFloat(cleanedValue);
+        const cleanedValue = value.trim().replace(/\s/g, '');
+        const lastComma = cleanedValue.lastIndexOf(',');
+        const lastDot = cleanedValue.lastIndexOf('.');
+
+        // Treat comma as decimal separator
+        if (lastComma > lastDot) {
+            const parsableValue = cleanedValue.replace(/\./g, '').replace(',', '.');
+            const parsed = parseFloat(parsableValue);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+        // Treat dot as decimal separator, remove commas
+        const parsableValue = cleanedValue.replace(/,/g, '');
+        const parsed = parseFloat(parsableValue);
         return isNaN(parsed) ? 0 : parsed;
     }
     return 0;
@@ -413,5 +421,3 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
-
-    
