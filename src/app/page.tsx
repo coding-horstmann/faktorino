@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { FileText, FileSignature, Upload, Building, CheckCircle, AlertCircle } from 'lucide-react';
 import type { UserInfo } from '@/lib/pdf-generator';
+import type { BankTransaction } from '@/app/actions';
 
 export default function Home() {
   
@@ -50,7 +51,7 @@ export default function Home() {
     setValidationResult(prev => ({...prev, totalFees: -fees}));
   };
   
-  const handlePayoutValidated = (payout: number) => {
+  const handlePayoutValidated = (payout: number, result: any, transactions: BankTransaction[]) => {
      setValidationResult(prev => ({...prev, payoutAmount: payout}));
   }
 
@@ -114,7 +115,7 @@ export default function Home() {
         </Accordion>
 
         <Tabs defaultValue="step1" className="w-full">
-          <TabsList>
+            <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="step1">
                 <div className="flex items-center gap-2">
                     {isStep1Complete ? <CheckCircle className="text-green-500"/> : <FileText />}
@@ -144,9 +145,7 @@ export default function Home() {
             <PayoutValidator 
               grossInvoices={validationResult.grossInvoices} 
               totalFees={validationResult.totalFees} 
-              onPayoutValidated={(payout, result, transactions) => {
-                 setValidationResult(prev => ({...prev, payoutAmount: payout}));
-              }}
+              onPayoutValidated={handlePayoutValidated}
             />
           </TabsContent>
         </Tabs>
