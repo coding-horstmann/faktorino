@@ -63,7 +63,6 @@ const ETSY_ADDRESS_INFO = {
 function normalizeString(str: string | null | undefined): string {
     if (!str) return '';
     return str.toLowerCase().trim()
-        .replace(/\s+/g, '')
         .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
 }
 
@@ -90,6 +89,13 @@ function getTaxInfo(classification: Invoice['countryClassification'], isPhysical
             return { vatRate: 0, taxNote: "Steuerfreie Ausfuhrlieferung gemäß § 4 Nr. 1 a UStG.", recipient };
         }
     } else { // Digital Product
+        if (classification === 'Drittland') {
+             return {
+                recipient: 'etsy',
+                vatRate: 0,
+                taxNote: "Leistung außerhalb EU, keine Ust."
+            };
+        }
         return {
             recipient: 'etsy',
             vatRate: 0,
@@ -130,8 +136,18 @@ function getColumn(row: any, potentialNames: string[], normalizedKeys: { [key: s
 
 function formatDate(dateStr: string): string {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    // Handle cases like "dd.MM.yy" or "MM/dd/yy"
+    const parts = dateStr.match(/(\d+)/g);
+    let date: Date;
+    if (parts && parts.length === 3) {
+      // Assuming MM/DD/YY format from Etsy CSV
+      date = new Date(parseInt(parts[2], 10) > 50 ? `19${parts[2]}` : `20${parts[2]}`, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+    } else {
+      date = new Date(dateStr);
+    }
+    
     if (isNaN(date.getTime())) return dateStr;
+    
     return date.toLocaleDateString('de-DE', {
         day: '2-digit',
         month: '2-digit',
@@ -189,9 +205,10 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
       const items: Invoice['items'] = [];
 
       rows.forEach(row => {
-          const itemName = getColumn(row, ['titel', 'title', 'item name'], normalizedHeaderMap);
+          const itemName = getColumn(row, ['artikelname', 'titel', 'title', 'item name'], normalizedHeaderMap);
           const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
 
+          // We check item name because some rows are just shipping/discounts without an item
           if (itemName && itemTotalStr) {
               const itemTotal = parseFloatSafe(itemTotalStr);
               const discountAmount = parseFloatSafe(getColumn(row, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
@@ -223,11 +240,12 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           }
       });
       
+      // Handle shipping costs for the entire order
       const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, ['shipping', 'versand', 'shipping costs', 'versandkosten'], normalizedHeaderMap)) > 0) || rows[0];
       const shippingCost = parseFloatSafe(getColumn(shippingRow, ['shipping', 'versand', 'shipping costs', 'versandkosten'], normalizedHeaderMap));
 
       if (shippingCost > 0) {
-          const { vatRate: shippingVatRate } = getTaxInfo(countryClassification, true);
+          const { vatRate: shippingVatRate } = getTaxInfo(countryClassification, true); // Shipping is always physical
           const shippingNet = shippingVatRate > 0 ? shippingCost / (1 + shippingVatRate / 100) : shippingCost;
           const shippingVat = shippingCost - shippingNet;
           
@@ -244,6 +262,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           orderGrossTotal += shippingCost;
       }
       
+      // Only create an invoice if there's a positive total amount
       if (orderGrossTotal <= 0) {
         continue;
       }
@@ -255,7 +274,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           buyerName = ETSY_ADDRESS_INFO.name;
           buyerAddress = ETSY_ADDRESS_INFO.address;
       } else {
-          buyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername'], normalizedHeaderMap);
+          buyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer'], normalizedHeaderMap);
           const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
           const address2 = getColumn(firstRow, ['ship address2', 'ship to street 2', 'empfaenger adresse 2', 'street 2'], normalizedHeaderMap);
           const city = getColumn(firstRow, ['ship city', 'ship to city', 'empfaenger stadt', 'city'], normalizedHeaderMap);
@@ -269,10 +288,10 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
           }
           addressParts.push(countryDisplay);
           
-          buyerAddress = addressParts.filter(part => part && part.trim() !== '').join('\n');
+          buyerAddress = addressParts.filter(part => part && part.trim() !== '' && part.trim() !== city).join('\n');
       }
       
-      const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date'], normalizedHeaderMap);
+      const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date', 'datum des kaufs'], normalizedHeaderMap);
       const orderDate = formatDate(orderDateRaw);
       
       const invoice: Invoice = {
