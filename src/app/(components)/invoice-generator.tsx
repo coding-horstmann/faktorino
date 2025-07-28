@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,8 +30,26 @@ interface InvoiceGeneratorProps {
   userInfo: UserInfo;
 }
 
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+};
+
+const getClassificationBadge = (classification: Invoice['countryClassification']) => {
+  switch (classification) {
+      case 'Deutschland':
+          return <Badge variant="default">DE</Badge>;
+      case 'EU-Ausland':
+          return <Badge variant="secondary">EU</Badge>;
+      case 'Drittland':
+          return <Badge variant="outline">Welt</Badge>;
+      default:
+          return null;
+  }
+};
+
+
 export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGeneratorProps) {
-  const [result, setResult] = useState<ProcessCsvOutput | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -40,42 +58,33 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     resolver: zodResolver(formSchema),
   });
   
-  const openEditDialog = (invoice: Invoice) => {
-    setEditingInvoice(invoice);
-  };
-
-  const closeEditDialog = () => {
-    setEditingInvoice(null);
-  };
-
-  const recalculateSummary = (invoices: Invoice[]) => {
+  const summary = useMemo(() => {
     const totalNetSales = invoices.reduce((sum, inv) => sum + inv.netTotal, 0);
     const totalVat = invoices.reduce((sum, inv) => sum + inv.vatTotal, 0);
     const totalGross = invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
     onInvoicesGenerated(totalGross);
     return { totalNetSales, totalVat };
-  };
+  }, [invoices, onInvoicesGenerated]);
+  
+  const openEditDialog = useCallback((invoice: Invoice) => {
+    setEditingInvoice(invoice);
+  }, []);
 
-  const handleDeleteInvoice = (invoiceNumber: string) => {
-    if (!result) return;
-    const updatedInvoices = result.invoices.filter(inv => inv.invoiceNumber !== invoiceNumber);
-    const updatedSummary = recalculateSummary(updatedInvoices);
-    setResult({
-        invoices: updatedInvoices,
-        summary: updatedSummary,
-    });
-  };
+  const closeEditDialog = useCallback(() => {
+    setEditingInvoice(null);
+  }, []);
 
-  const handleUpdateInvoice = () => {
-    if (!result || !editingInvoice) return;
-    const updatedInvoices = result.invoices.map(inv => inv.invoiceNumber === editingInvoice.invoiceNumber ? editingInvoice : inv);
-    const updatedSummary = recalculateSummary(updatedInvoices);
-    setResult({
-        invoices: updatedInvoices,
-        summary: updatedSummary,
-    });
+  const handleDeleteInvoice = useCallback((invoiceNumber: string) => {
+    setInvoices(prevInvoices => prevInvoices.filter(inv => inv.invoiceNumber !== invoiceNumber));
+  }, []);
+
+  const handleUpdateInvoice = useCallback(() => {
+    if (!editingInvoice) return;
+    setInvoices(prevInvoices => 
+        prevInvoices.map(inv => inv.invoiceNumber === editingInvoice.invoiceNumber ? editingInvoice : inv)
+    );
     closeEditDialog();
-  };
+  }, [editingInvoice, closeEditDialog]);
   
   const handleEditInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if(!editingInvoice) return;
@@ -85,10 +94,18 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     });
   }
 
+  const handleDownloadPdf = useCallback((invoice: Invoice) => {
+    if (!userInfo || !userInfo.name) {
+        alert("Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus.");
+        return;
+    }
+    generatePdf(invoice, userInfo);
+  }, [userInfo]);
+
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
     setError(null);
-    setResult(null);
+    setInvoices([]);
 
     const files = values.csvFiles;
     let combinedCsvData = '';
@@ -100,7 +117,6 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const content = e.target?.result as string;
-                    // Remove header from all but the first file
                     const lines = content.split('\n');
                     if (combinedCsvData !== '') {
                         resolve(lines.slice(1).join('\n'));
@@ -128,9 +144,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
         if (response.error) {
             setError(response.error);
         } else if (response.data) {
-            setResult(response.data);
-            const totalGross = response.data.invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
-            onInvoicesGenerated(totalGross);
+            setInvoices(response.data.invoices);
         }
     } catch (err: any) {
          setError(err.message || "Fehler beim Lesen der Dateien.");
@@ -138,32 +152,6 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
         setIsLoading(false);
     }
   }
-  
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
-  };
-  
-  const handleDownloadPdf = (invoice: Invoice) => {
-    if (!userInfo || !userInfo.name) {
-        alert("Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus.");
-        return;
-    }
-    generatePdf(invoice, userInfo);
-  };
-
-  const getClassificationBadge = (classification: Invoice['countryClassification']) => {
-    switch (classification) {
-        case 'Deutschland':
-            return <Badge variant="default">DE</Badge>;
-        case 'EU-Ausland':
-            return <Badge variant="secondary">EU</Badge>;
-        case 'Drittland':
-            return <Badge variant="outline">Welt</Badge>;
-        default:
-            return null;
-    }
-  };
-
 
   return (
     <div className="space-y-6">
@@ -223,7 +211,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
         </Alert>
       )}
 
-      {result && (
+      {invoices.length > 0 && (
         <div className="space-y-6 animate-in fade-in-50">
             <Card>
                 <CardHeader>
@@ -235,11 +223,11 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4 text-lg">
                     <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
                         <span className="font-medium">Netto-Umsätze Gesamt:</span>
-                        <span className="font-bold text-accent-foreground">{formatCurrency(result.summary.totalNetSales)}</span>
+                        <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalNetSales)}</span>
                     </div>
                      <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
                         <span className="font-medium">Umsatzsteuer Gesamt (19%):</span>
-                        <span className="font-bold text-accent-foreground">{formatCurrency(result.summary.totalVat)}</span>
+                        <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalVat)}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -248,7 +236,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Euro className="text-primary"/>
-                        Generierte Rechnungen ({result.invoices.length})
+                        Generierte Rechnungen ({invoices.length})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -266,7 +254,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {result.invoices.map((invoice) => (
+                                {invoices.map((invoice) => (
                                     <TableRow key={invoice.invoiceNumber}>
                                         <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                                         <TableCell>{invoice.orderDate}</TableCell>
@@ -321,7 +309,9 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                     */}
                 </div>
                 <DialogFooter>
-                    <Button variant="outline" onClick={closeEditDialog}>Abbrechen</Button>
+                    <DialogClose asChild>
+                        <Button variant="outline">Abbrechen</Button>
+                    </DialogClose>
                     <Button onClick={handleUpdateInvoice}>Speichern</Button>
                 </DialogFooter>
             </DialogContent>
@@ -331,3 +321,5 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     </div>
   );
 }
+
+    
