@@ -26,16 +26,16 @@ export function generatePdf(invoice: Invoice, userInfo: UserInfo) {
   doc.setFontSize(8);
   doc.text(`${senderName} • ${senderAddress} • ${senderCity}`, 20, 20);
   
-  // Empfängeradresse (Haupt-Adressfeld rechts)
+  // Empfängeradresse (links unter dem Absender)
   doc.setFontSize(10);
-  const recipientYStart = 50;
+  const recipientYStart = 40;
   let currentY = recipientYStart;
-  doc.text(invoice.buyerName, 120, currentY);
+  doc.text(invoice.buyerName, 20, currentY);
   currentY += 5;
   const recipientLines = invoice.buyerAddress.split('\n');
   recipientLines.forEach((line) => {
       if(line.trim() !== '') {
-        doc.text(line, 120, currentY);
+        doc.text(line, 20, currentY);
         currentY += 5;
       }
   });
