@@ -34,9 +34,8 @@ interface EtsyFeeParserProps {
 
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
-    // Normalize the string by removing thousands separators (dots or commas)
-    // and replacing the decimal comma with a dot.
     const cleanedValue = value.trim().replace(/\s/g, '');
+    
     const lastComma = cleanedValue.lastIndexOf(',');
     const lastDot = cleanedValue.lastIndexOf('.');
 
@@ -49,13 +48,12 @@ const parseFloatSafe = (value: string | null | undefined): number => {
          // Format is like 1,234.56 -> remove commas
         parsableValue = cleanedValue.replace(/,/g, '');
     } else {
-        parsableValue = cleanedValue;
+        parsableValue = cleanedValue.replace(',', '.');
     }
     
     const parsed = parseFloat(parsableValue);
     return isNaN(parsed) ? 0 : parsed;
 };
-
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -70,8 +68,6 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
-
-  const fileRef = form.register("pdfFile");
 
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
@@ -89,35 +85,47 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
         const arrayBuffer = await file.arrayBuffer();
         const data = new Uint8Array(arrayBuffer);
         const doc = await pdfjs.getDocument(data).promise;
-        let text = '';
+        let fullText = '';
+        let total = 0;
+        let date = 'N/A';
+
         for (let i = 1; i <= doc.numPages; i++) {
             const page = await doc.getPage(i);
             const content = await page.getTextContent();
-            // Join items with spaces to preserve structure for regex
-            text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+            
+            // Join items with spaces to preserve some structure
+            const pageText = content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+            fullText += pageText + '\n';
         }
-        
-        // Normalize text to handle various spacing issues, especially in numbers
-        const normalizedText = text.replace(/\s+/g, ' ').trim()
-                                   .replace(/€\s+([\d,.]+)/g, '€$1')
-                                   .replace(/([\d,])\s+(\.)\s+([\d])/g, '$1$2$3');
-        
-        let total = 0;
-        let date = 'N/A';
-        
-        const totalRegex = /(?:Total|Subtotal)\s*€?([\d,.-]+)/i;
-        const totalMatch = normalizedText.match(totalRegex);
-        
-        if (totalMatch && totalMatch[1]) {
-            total = parseFloatSafe(totalMatch[1]);
-        }
-        
 
+        const totalRegex = /(?:Total|Subtotal)\s*€?([\d.,]+)/i;
+        let lastMatch: string | null = null;
+        let match;
+        
+        // Find the last match for Total or Subtotal in the document
+        while ((match = totalRegex.exec(fullText)) !== null) {
+            lastMatch = match[1];
+        }
+
+        if (lastMatch) {
+            total = parseFloatSafe(lastMatch);
+        } else {
+            // Fallback for cases where numbers are split, e.g. "3 . 04"
+            const fallbackRegex = /(?:Total|Subtotal)\s*€?\s*([\d\s.,]+)/i;
+            while((match = fallbackRegex.exec(fullText)) !== null) {
+                const cleanedMatch = match[1].replace(/\s/g, ''); // Remove spaces from number
+                lastMatch = cleanedMatch;
+            }
+            if(lastMatch) {
+                total = parseFloatSafe(lastMatch);
+            }
+        }
+        
         if (total === 0) {
              setError("Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt.");
         } else {
             const dateRegex = /(?:Invoice Date|Rechnungsdatum):\s*(\d{1,2}[\s.]\w+[\s.]\d{4}|\w+\s\d{1,2},\s\d{4}|\d{1,2}\.\d{1,2}\.\d{4})/i;
-            const dateMatch = normalizedText.match(dateRegex);
+            const dateMatch = fullText.match(dateRegex);
             if (dateMatch && dateMatch[1]) {
                 date = dateMatch[1].trim();
             }
