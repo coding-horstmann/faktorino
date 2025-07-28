@@ -126,20 +126,20 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
     let totalNetSales = 0;
     let totalVat = 0;
     
-    const rowsBySaleId = new Map<string, any[]>();
+    const rowsByOrderId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
-      const saleId = getColumn(row, ['order id', 'bestellnummer', 'sale id']);
-      if (!saleId) continue;
-      if (!rowsBySaleId.has(saleId)) {
-        rowsBySaleId.set(saleId, []);
+      const orderId = getColumn(row, ['order id', 'bestellnummer', 'sale id']);
+      if (!orderId) continue;
+      if (!rowsByOrderId.has(orderId)) {
+        rowsByOrderId.set(orderId, []);
       }
-      rowsBySaleId.get(saleId)!.push(row);
+      rowsByOrderId.get(orderId)!.push(row);
     }
 
     const invoices: Invoice[] = [];
     let invoiceCounter = 1;
 
-    for (const [saleId, rows] of rowsBySaleId.entries()) {
+    for (const [orderId, rows] of rowsByOrderId.entries()) {
       const firstRow = rows[0];
       const country = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country']) || '';
       const hasAnySKU = rows.some(r => !!getColumn(r, ['sku']) && (getColumn(r, ['sku']) || '').trim() !== '');
