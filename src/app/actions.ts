@@ -163,7 +163,7 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
               
               const grossAmount = itemTotal - discountAmount - shippingDiscount;
 
-              if (grossAmount <= 0) return;
+              if (grossAmount <= 0) return; // Skip only this item, not the whole order
 
               const hasSKU = !!sku && sku.trim() !== '';
               const { vatRate: itemVatRate } = getTaxInfo(country, hasSKU);
