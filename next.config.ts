@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
     if (isServer) {
         config.externals.push('canvas');
     }
+    config.resolve.alias['pdfjs-dist'] = 'pdfjs-dist/build/pdf';
     return config;
   },
 };

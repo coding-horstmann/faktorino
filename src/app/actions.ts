@@ -3,8 +3,7 @@
 
 import Papa from 'papaparse';
 import { z } from 'zod';
-import pdf from 'pdf-parse';
-
+import * as pdfjs from 'pdfjs-dist';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -77,6 +76,7 @@ function parseFloatSafe(value: string | number | null | undefined): number {
     if (typeof value === 'string') {
         const cleanedValue = value.trim()
             .replace(/\s/g, '',)
+            // Handle German (1.234,56) and US (1,234.56) formats
             .replace(/\./g, (match, offset, full) => full.lastIndexOf(',') > offset ? '' : '.')
             .replace(/,/g, '.');
         const parsed = parseFloat(cleanedValue);
@@ -266,6 +266,18 @@ export async function generateInvoicesAction(csvData: string): Promise<{ data: P
   }
 }
 
+async function extractTextFromPdf(buffer: Buffer): Promise<string> {
+    const data = new Uint8Array(buffer);
+    const doc = await pdfjs.getDocument(data).promise;
+    let text = '';
+    for (let i = 1; i <= doc.numPages; i++) {
+        const page = await doc.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => ('str' in item ? item.str : '')).join(' ');
+    }
+    return text;
+}
+
 
 export async function extractFeesFromPdfAction(formData: FormData): Promise<{ data: { total: number; date: string; } | null; error: string | null; }> {
     const file = formData.get('pdfFile') as File | null;
@@ -275,18 +287,19 @@ export async function extractFeesFromPdfAction(formData: FormData): Promise<{ da
 
     try {
         const buffer = Buffer.from(await file.arrayBuffer());
-        const data = await pdf(buffer);
-        const text = data.text;
+        const text = await extractTextFromPdf(buffer);
 
         let total = 0;
         let date = 'N/A';
         
-        const totalRegex = /Total\s+€?([\d,]+\.\d{2}|[\d\.]+,\d{2})/i;
+        // Regex to find "Total" followed by an amount. Handles different spacings and currency symbols.
+        const totalRegex = /Total\s+€?(-?[\s\d.,]+)/i;
         const totalMatch = text.match(totalRegex);
         if (totalMatch && totalMatch[1]) {
             total = parseFloatSafe(totalMatch[1]);
         } else {
-            const subtotalRegex = /Subtotal\s+€?([\d,]+\.\d{2}|[\d\.]+,\d{2})/i;
+             // Fallback for "Subtotal" if "Total" isn't found
+            const subtotalRegex = /Subtotal\s+€?(-?[\s\d.,]+)/i;
             const subtotalMatch = text.match(subtotalRegex);
             if (subtotalMatch && subtotalMatch[1]) {
                 total = parseFloatSafe(subtotalMatch[1]);
@@ -294,9 +307,10 @@ export async function extractFeesFromPdfAction(formData: FormData): Promise<{ da
         }
         
         if (total === 0) {
-             return { data: null, error: "Gesamtgebühr (Total) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt." };
+             return { data: null, error: "Gesamtgebühr (Total/Subtotal) konnte in der PDF nicht gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Etsy-Abrechnung handelt." };
         }
         
+        // Regex for date like "Month Day, Year" or "Day Month, Year"
         const dateRegex = /Invoice Date:\s*(\d{1,2}\s+\w+,\s+\d{4})/i;
         const dateMatch = text.match(dateRegex);
         if (dateMatch && dateMatch[1]) {
