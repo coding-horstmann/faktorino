@@ -17,9 +17,8 @@ import * as pdfjs from 'pdfjs-dist';
 // Configure the worker for pdfjs
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-
 const formSchema = z.object({
-  pdfFile: z.instanceof(FileList).refine(files => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
+  pdfFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine PDF-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -29,10 +28,15 @@ type FeeResult = {
   date: string;
 };
 
+interface EtsyFeeParserProps {
+  onFeesParsed: (totalFees: number) => void;
+}
+
 const parseFloatSafe = (value: string | null | undefined): number => {
     if (!value) return 0;
-    // Replace dots used as thousand separators, then replace comma with a dot for float parsing
-    const cleanedValue = value.replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+    // Cleans the string from currency symbols, thousand separators, and trims it.
+    // It specifically replaces a comma with a dot for float conversion.
+    const cleanedValue = value.replace(/[€$A-Z\s]/g, '').replace(/\./g, '').replace(',', '.').trim();
     const parsed = parseFloat(cleanedValue);
     return isNaN(parsed) ? 0 : parsed;
 }
@@ -42,7 +46,7 @@ const formatCurrency = (value: number) => {
 };
 
 
-export function EtsyFeeParser() {
+export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
   const [result, setResult] = useState<FeeResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,23 +83,21 @@ export function EtsyFeeParser() {
         let total = 0;
         let date = 'N/A';
         
-        // Regex to find "Total" or "Subtotal" followed by a euro amount.
         const totalRegex = /(?:Total|Subtotal)\s*€?([\d,]+\.\d{2})|([\d\.]+,\d{2})\s*€/i;
         const totalMatch = text.match(totalRegex);
         
         if (totalMatch) {
-            // totalMatch[1] is for format like €69.16, totalMatch[2] is for 15,36 €
              const foundValue = totalMatch[1] ? totalMatch[1].replace('.', ',') : totalMatch[2];
              if (foundValue) {
-                total = parseFloatSafe(foundValue);
+                total = parseFloatSafe(foundValue.replace(',', '.')); // Force dot as decimal separator
              }
         }
         
         if (total === 0) {
-             const fallbackRegex = /Total\s*([0-9.,]+)/i;
+             const fallbackRegex = /Total\s+€?([0-9.,]+)/i;
              const fallbackMatch = text.match(fallbackRegex);
              if(fallbackMatch && fallbackMatch[1]) {
-                total = parseFloatSafe(fallbackMatch[1])
+                 total = parseFloatSafe(fallbackMatch[1].replace('.','').replace(',','.'));
              }
         }
 
@@ -108,6 +110,7 @@ export function EtsyFeeParser() {
                 date = dateMatch[1].trim();
             }
             setResult({ total, date });
+            onFeesParsed(total);
         }
     } catch(err: any) {
         console.error("Error processing PDF in browser:", err);
@@ -142,7 +145,7 @@ export function EtsyFeeParser() {
                         <Input
                           type="file"
                           accept=".pdf"
-                          {...fileRef}
+                          onChange={(e) => field.onChange(e.target.files)}
                         />
                     </FormControl>
                     <FormMessage />

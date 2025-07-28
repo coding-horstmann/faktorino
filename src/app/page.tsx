@@ -1,12 +1,21 @@
 
+'use client';
+
+import { useState } from 'react';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { EtsyFeeParser } from '@/app/(components)/etsy-fee-parser';
 import { PayoutValidator } from '@/app/(components)/payout-validator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileText, FileSignature, Scale } from 'lucide-react';
+import { FileText, FileSignature, Scale, CheckCircle, Circle } from 'lucide-react';
 
 
 export default function Home() {
+  const [grossInvoices, setGrossInvoices] = useState<number | null>(null);
+  const [totalFees, setTotalFees] = useState<number | null>(null);
+
+  const isStep1Complete = grossInvoices !== null;
+  const isStep2Complete = totalFees !== null;
+
   return (
     <main className="flex min-h-screen flex-col items-center p-4 sm:p-8 md:p-12 bg-background">
       <div className="w-full max-w-4xl space-y-8">
@@ -20,26 +29,32 @@ export default function Home() {
         <Tabs defaultValue="step1" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="step1">
-                <FileText className="mr-2"/>
-                Schritt 1: Rechnungen
+                <div className="flex items-center gap-2">
+                    {isStep1Complete ? <CheckCircle className="text-green-500"/> : <FileText />}
+                    Schritt 1: Rechnungen
+                </div>
             </TabsTrigger>
             <TabsTrigger value="step2">
-                <FileSignature className="mr-2"/>
-                Schritt 2: Gebühren
+                <div className="flex items-center gap-2">
+                    {isStep2Complete ? <CheckCircle className="text-green-500"/> : <FileSignature />}
+                    Schritt 2: Gebühren
+                </div>
             </TabsTrigger>
-            <TabsTrigger value="step3">
-                <Scale className="mr-2"/>
-                Schritt 3: Prüfung
+            <TabsTrigger value="step3" disabled={!isStep1Complete || !isStep2Complete}>
+                <div className="flex items-center gap-2">
+                     <Scale/>
+                    Schritt 3: Prüfung
+                </div>
             </TabsTrigger>
           </TabsList>
           <TabsContent value="step1" className="mt-6">
-            <InvoiceGenerator />
+            <InvoiceGenerator onInvoicesGenerated={(gross) => setGrossInvoices(gross)} />
           </TabsContent>
           <TabsContent value="step2" className="mt-6">
-            <EtsyFeeParser />
+            <EtsyFeeParser onFeesParsed={(fees) => setTotalFees(fees)} />
           </TabsContent>
           <TabsContent value="step3" className="mt-6">
-            <PayoutValidator />
+            <PayoutValidator grossInvoices={grossInvoices} totalFees={totalFees} />
           </TabsContent>
         </Tabs>
 

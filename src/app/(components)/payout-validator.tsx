@@ -18,15 +18,20 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface PayoutValidatorProps {
+  grossInvoices: number | null;
+  totalFees: number | null;
+}
+
 const parseFloatFromString = (value: string) => {
-    return parseFloat(value.replace('.', '').replace(',', '.'));
+    return parseFloat(value.replace(/\./g, '').replace(',', '.'));
 }
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
 
-export function PayoutValidator() {
+export function PayoutValidator({ grossInvoices, totalFees }: PayoutValidatorProps) {
   const [result, setResult] = useState<any | null>(null);
   
   const form = useForm<FormValues>({
@@ -36,19 +41,21 @@ export function PayoutValidator() {
     }
   });
 
-  // Dummy data for now
-  const grossInvoices = 1500.50; 
-  const totalFees = -150.20;
+  const isReady = grossInvoices !== null && totalFees !== null;
 
   function onSubmit(values: FormValues) {
+    if (!isReady) return;
+
     const payoutAmount = parseFloatFromString(values.payoutAmount);
-    const expectedPayout = grossInvoices + totalFees;
+    // Etsy fees are usually positive values in the statement, representing a deduction.
+    // So we subtract them.
+    const expectedPayout = (grossInvoices || 0) - (totalFees || 0);
     const difference = payoutAmount - expectedPayout;
 
     setResult({
         payoutAmount,
         grossInvoices,
-        totalFees,
+        totalFees: -(totalFees || 0), // Show fees as a negative number
         expectedPayout,
         difference,
     });
@@ -63,7 +70,7 @@ export function PayoutValidator() {
                 Schritt 3: Auszahlungs-Prüfung
             </CardTitle>
             <CardDescription>
-                Geben Sie den Betrag ein, der von Etsy auf Ihr Konto ausgezahlt wurde, um ihn mit den erwarteten Einnahmen abzugleichen.
+                Geben Sie den Betrag ein, der von Etsy auf Ihr Konto ausgezahlt wurde, um ihn mit den erwarteten Einnahmen abzugleichen. Bitte füllen Sie zuerst Schritt 1 & 2 aus.
             </CardDescription>
           </CardHeader>
           <Form {...form}>
@@ -76,7 +83,7 @@ export function PayoutValidator() {
                     <FormItem>
                         <FormLabel>Tatsächliche Auszahlung von Etsy (€)</FormLabel>
                         <FormControl>
-                            <Input type="text" placeholder="z.B. 1.350,30" {...field} />
+                            <Input type="text" placeholder="z.B. 1.350,30" {...field} disabled={!isReady}/>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -84,7 +91,7 @@ export function PayoutValidator() {
                 />
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={!isReady}>
                     Auszahlung prüfen
                 </Button>
               </CardFooter>
@@ -109,7 +116,7 @@ export function PayoutValidator() {
                             </TableRow>
                              <TableRow>
                                 <TableCell>Etsy-Gebühren (aus Schritt 2)</TableCell>
-                                <TableCell className="text-right">{formatCurrency(result.totalFees)}</TableCell>
+                                <TableCell className="text-right text-red-600">{formatCurrency(result.totalFees)}</TableCell>
                             </TableRow>
                              <TableRow className="font-bold border-t-2">
                                 <TableCell>Erwartete Auszahlung</TableCell>

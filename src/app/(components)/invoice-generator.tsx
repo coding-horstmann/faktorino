@@ -16,16 +16,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro } from 'lucide-react';
 
 const formSchema = z.object({
-  csvFile: z.any().refine(files => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
+  csvFile: z.any().refine((files) => files?.length === 1, 'Bitte wählen Sie eine CSV-Datei aus.'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function InvoiceGenerator() {
+interface InvoiceGeneratorProps {
+  onInvoicesGenerated: (grossTotal: number) => void;
+}
+
+export function InvoiceGenerator({ onInvoicesGenerated }: InvoiceGeneratorProps) {
   const [result, setResult] = useState<ProcessCsvOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -44,8 +47,10 @@ export function InvoiceGenerator() {
       const response = await generateInvoicesAction(csvData);
       if (response.error) {
         setError(response.error);
-      } else {
+      } else if (response.data) {
         setResult(response.data);
+        const totalGross = response.data.invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
+        onInvoicesGenerated(totalGross);
       }
       setIsLoading(false);
     };
@@ -88,25 +93,11 @@ export function InvoiceGenerator() {
                   <FormItem>
                     <FormLabel>Etsy-Bestell-CSV</FormLabel>
                     <FormControl>
-                        <div className="relative">
-                            <Input 
-                                type="file" 
-                                accept=".csv"
-                                className="pr-20"
-                                ref={fileInputRef}
-                                onChange={(e) => field.onChange(e.target.files)}
-                            />
-                            <Button 
-                                type="button"
-                                size="sm"
-                                className="absolute right-1 top-1/2 -translate-y-1/2"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isLoading}
-                            >
-                                <Upload className="mr-2"/>
-                                Datei wählen
-                            </Button>
-                        </div>
+                      <Input 
+                          type="file" 
+                          accept=".csv"
+                          onChange={(e) => field.onChange(e.target.files)}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
