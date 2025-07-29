@@ -401,3 +401,5 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     </div>
   );
 }
+
+    

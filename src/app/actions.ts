@@ -241,84 +241,100 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const countryClassification = getCountryClassification(countryName);
       
       const isOrderPhysical = rows.some(r => getColumn(r, ['sku'], normalizedHeaderMap).trim() !== '');
-      const { taxNote, recipient } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
-
-      let orderNetTotal = 0;
-      let orderVatTotal = 0;
-      let orderGrossTotal = 0;
+      
       const items: Invoice['items'] = [];
+      let orderGrossBeforeDiscount = 0;
 
+      // 1. Sum up all item totals and shipping costs
       rows.forEach(row => {
-          const itemName = getColumn(row, ['artikelname', 'titel', 'title', 'item name'], normalizedHeaderMap);
           const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
-
-          if (itemName && itemTotalStr) {
-              const itemTotal = parseFloatSafe(itemTotalStr);
-              const discountAmount = parseFloatSafe(getColumn(row, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
-              const shippingDiscount = parseFloatSafe(getColumn(row, ['shipping discount', 'versandrabatt'], normalizedHeaderMap));
-              
-              const grossAmount = itemTotal - discountAmount - shippingDiscount;
-
-              if (grossAmount > 0) {
-                  const isItemPhysical = getColumn(row, ['sku'], normalizedHeaderMap).trim() !== '';
-                  const { vatRate: itemVatRate } = getTaxInfo(countryClassification, isItemPhysical, taxStatus);
-                  
-                  const quantity = parseInt(getColumn(row, ['anzahl', 'items', 'quantity'], normalizedHeaderMap) || '1', 10) || 1;
-                  const netAmount = itemVatRate > 0 ? grossAmount / (1 + itemVatRate / 100) : grossAmount;
-                  const vatAmount = grossAmount - netAmount;
-
-                  items.push({
-                    quantity,
-                    name: itemName,
-                    netAmount,
-                    vatRate: itemVatRate,
-                    vatAmount,
-                    grossAmount,
-                  });
-                  
-                  orderNetTotal += netAmount;
-                  orderVatTotal += vatAmount;
-                  orderGrossTotal += grossAmount;
-              }
+          if (itemTotalStr) {
+              orderGrossBeforeDiscount += parseFloatSafe(itemTotalStr);
           }
       });
       
       const potentialShippingCols = ['Order Shipping', 'shipping', 'versand', 'shipping costs', 'versandkosten'];
       const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, potentialShippingCols, normalizedHeaderMap)) > 0) || rows[0];
       const shippingCost = parseFloatSafe(getColumn(shippingRow, potentialShippingCols, normalizedHeaderMap));
+      orderGrossBeforeDiscount += shippingCost;
+      
+      // 2. Subtract the single order discount
+      const discountAmount = parseFloatSafe(getColumn(firstRow, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
+      const shippingDiscount = parseFloatSafe(getColumn(firstRow, ['shipping discount', 'versandrabatt'], normalizedHeaderMap));
+      const orderGrossTotal = orderGrossBeforeDiscount - discountAmount - shippingDiscount;
 
+      if (orderGrossTotal <= 0) {
+        continue;
+      }
+      
+      // 3. Determine tax info for the entire order
+      const { taxNote, recipient } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
+      const { vatRate: orderWideVatRate } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
+
+      // 4. Calculate Net and VAT for the entire order
+      const orderNetTotal = orderWideVatRate > 0 ? orderGrossTotal / (1 + orderWideVatRate / 100) : orderGrossTotal;
+      const orderVatTotal = orderGrossTotal - orderNetTotal;
+
+      // 5. Create line items for the invoice (for display purposes)
+      rows.forEach(row => {
+          const itemName = getColumn(row, ['artikelname', 'titel', 'title', 'item name'], normalizedHeaderMap);
+          const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
+          if (itemName && itemTotalStr) {
+              const itemGross = parseFloatSafe(itemTotalStr);
+              if (itemGross > 0) {
+                  const itemNet = orderWideVatRate > 0 ? itemGross / (1 + orderWideVatRate / 100) : itemGross;
+                  const itemVat = itemGross - itemNet;
+                   items.push({
+                      quantity: parseInt(getColumn(row, ['anzahl', 'items', 'quantity'], normalizedHeaderMap) || '1', 10) || 1,
+                      name: itemName,
+                      netAmount: itemNet,
+                      vatRate: orderWideVatRate,
+                      vatAmount: itemVat,
+                      grossAmount: itemGross,
+                  });
+              }
+          }
+      });
+      
       if (shippingCost > 0) {
-          const { vatRate: shippingVatRate } = getTaxInfo(countryClassification, true, taxStatus); // Shipping is always physical
-          const shippingNet = shippingVatRate > 0 ? shippingCost / (1 + shippingVatRate / 100) : shippingCost;
+          const shippingNet = orderWideVatRate > 0 ? shippingCost / (1 + orderWideVatRate / 100) : shippingCost;
           const shippingVat = shippingCost - shippingNet;
-          
           items.push({
               quantity: 1,
               name: 'Versandkosten',
               netAmount: shippingNet,
-              vatRate: shippingVatRate,
+              vatRate: orderWideVatRate,
               vatAmount: shippingVat,
               grossAmount: shippingCost,
           });
-          orderNetTotal += shippingNet;
-          orderVatTotal += shippingVat;
-          orderGrossTotal += shippingCost;
-      }
-      
-      if (orderGrossTotal <= 0) {
-        continue;
       }
 
+      // Add a line item for the discount if it exists
+      if (discountAmount + shippingDiscount > 0) {
+          const totalDiscount = discountAmount + shippingDiscount;
+          const discountNet = orderWideVatRate > 0 ? totalDiscount / (1 + orderWideVatRate / 100) : totalDiscount;
+          const discountVat = totalDiscount - discountNet;
+          items.push({
+              quantity: 1,
+              name: 'Rabatt',
+              netAmount: -discountNet,
+              vatRate: orderWideVatRate,
+              vatAmount: -discountVat,
+              grossAmount: -totalDiscount,
+          });
+      }
+      
       let buyerName: string;
       let buyerAddress: string;
       let etsyCustomerName: string | undefined;
 
-      const actualBuyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer'], normalizedHeaderMap);
+      const actualBuyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer', 'buyer'], normalizedHeaderMap);
+      const etsyCustomerId = getColumn(firstRow, ['buyer user id'], normalizedHeaderMap)
 
       if (recipient === 'etsy') {
           buyerName = ETSY_ADDRESS_INFO.name;
           buyerAddress = ETSY_ADDRESS_INFO.address;
-          etsyCustomerName = actualBuyerName;
+          etsyCustomerName = actualBuyerName || etsyCustomerId;
       } else {
           buyerName = actualBuyerName;
           const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
@@ -457,12 +473,13 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
 
         for (let i = dataStartIndex; i < data.length; i++) {
             const row = data[i];
-            if (!Array.isArray(row) || row.length <= Math.max(amountIndex, dateIndex, ...uniqueDescriptionIndices)) continue;
+            const maxIndex = Math.max(amountIndex, dateIndex, ...uniqueDescriptionIndices);
+            if (!Array.isArray(row) || row.length <= maxIndex) continue;
             
             const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
             const amountStr = row[amountIndex];
             
-            if (!amountStr || !(row[dateIndex]) || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
+            if (!amountStr || !row[dateIndex] || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
                 continue; // Skip invalid or empty lines
             }
 
@@ -486,3 +503,5 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
+
+    
