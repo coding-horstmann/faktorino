@@ -50,13 +50,21 @@ export type BankTransaction = {
     amount: number;
 }
 
-const EU_COUNTRIES_EN = new Set([
+const EU_COUNTRIES = new Set([
+  // English
   'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic', 
   'denmark', 'estonia', 'finland', 'france', 'germany', 'greece', 'hungary', 
   'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta', 
   'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 
-  'spain', 'sweden'
+  'spain', 'sweden',
+  // German
+  'österreich', 'belgien', 'bulgarien', 'kroatien', 'zypern', 'tschechische republik',
+  'dänemark', 'estland', 'finnland', 'frankreich', 'deutschland', 'griechenland', 'ungarn',
+  'irland', 'italien', 'lettland', 'litauen', 'luxemburg', 'malta',
+  'niederlande', 'polen', 'portugal', 'rumänien', 'slowakei', 'slowenien',
+  'spanien', 'schweden'
 ]);
+
 
 const ETSY_ADDRESS_INFO = {
     name: 'Etsy Ireland UC',
@@ -73,10 +81,10 @@ function getCountryClassification(countryName: string): Invoice['countryClassifi
     const normalizedName = normalizeString(countryName);
     if (!normalizedName) return 'Drittland';
 
-    if (normalizedName === 'germany') {
+    if (normalizedName === 'germany' || normalizedName === 'deutschland') {
         return 'Deutschland';
     }
-    if (EU_COUNTRIES_EN.has(normalizedName)) {
+    if (EU_COUNTRIES.has(normalizedName)) {
         return 'EU-Ausland';
     }
     return 'Drittland';
@@ -243,7 +251,6 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const isOrderPhysical = rows.some(r => getColumn(r, ['sku'], normalizedHeaderMap).trim() !== '');
       
       const items: Invoice['items'] = [];
-      let orderGrossBeforeDiscount = 0;
       let orderItemTotal = 0;
       
       rows.forEach(row => {
@@ -252,14 +259,15 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
               orderItemTotal += parseFloatSafe(itemTotalStr);
           }
       });
-
+      
       const potentialShippingCols = ['Order Shipping', 'shipping', 'versand', 'shipping costs', 'versandkosten'];
       const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, potentialShippingCols, normalizedHeaderMap)) > 0) || rows[0];
       const shippingCost = parseFloatSafe(getColumn(shippingRow, potentialShippingCols, normalizedHeaderMap));
-
+      
       const discountAmount = parseFloatSafe(getColumn(firstRow, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
       const shippingDiscount = parseFloatSafe(getColumn(firstRow, ['shipping discount', 'versandrabatt'], normalizedHeaderMap));
       
+      // The actual gross total is the sum of items and shipping, minus discounts.
       const orderGrossTotal = orderItemTotal + shippingCost - discountAmount - shippingDiscount;
 
       if (orderGrossTotal <= 0) {
@@ -278,6 +286,8 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
           if (itemName && itemTotalStr) {
               const itemGross = parseFloatSafe(itemTotalStr);
               if (itemGross > 0) {
+                  // The discount is applied to the entire order, not item by item. 
+                  // So we calculate the item's net/vat based on its gross value and the order-wide VAT rate.
                   const itemNet = orderWideVatRate > 0 ? itemGross / (1 + orderWideVatRate / 100) : itemGross;
                   const itemVat = itemGross - itemNet;
                    items.push({
@@ -329,7 +339,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       if (recipient === 'etsy') {
           buyerName = ETSY_ADDRESS_INFO.name;
           buyerAddress = ETSY_ADDRESS_INFO.address;
-          etsyCustomerName = `${actualBuyerName} (${etsyCustomerId})`;
+          etsyCustomerName = actualBuyerName ? `${actualBuyerName} (${etsyCustomerId})` : etsyCustomerId;
       } else {
           buyerName = actualBuyerName;
           const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
@@ -351,10 +361,8 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date', 'datum des kaufs'], normalizedHeaderMap);
       const orderDate = formatDate(orderDateRaw);
       
-      const orderYear = new Date(orderDate.split('.').reverse().join('-')).getFullYear();
-      if (isNaN(orderYear)) {
-          return { data: null, error: `Konnte das Jahr für die Bestellung mit dem Datum '${orderDateRaw}' nicht ermitteln.` };
-      }
+      const dateObject = new Date(orderDate.split('.').reverse().join('-'));
+      const orderYear = !isNaN(dateObject.getTime()) ? dateObject.getFullYear() : new Date().getFullYear();
       
       if (!invoiceCounters[orderYear]) {
           invoiceCounters[orderYear] = 1;
@@ -384,6 +392,15 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
     if (invoices.length === 0) {
         return { data: null, error: "Keine gültigen Bestellungen zur Rechnungsstellung in der CSV-Datei gefunden. Bitte prüfen Sie das Dateiformat und die Spaltennamen." };
     }
+    
+    invoices.sort((a, b) => {
+        const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
+        const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
+        if (dateA !== dateB) {
+            return dateA - dateB;
+        }
+        return a.invoiceNumber.localeCompare(b.invoiceNumber);
+    });
 
     const result: ProcessCsvOutput = {
       invoices,
@@ -418,7 +435,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
 
         const headerKeywords = {
             amount: ['betrag', 'amount', 'summe'],
-            description: ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber', 'empfänger', 'beguenstigter/zahlungspflichtiger', 'name', 'auftraggeber / empfänger'],
+            description: ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber', 'empfänger', 'beguenstigter/zahlungspflichtiger', 'name', 'auftraggeber / empfänger', 'begünstiger/zahlungspflichtiger'],
             date: ['datum', 'date', 'buchungstag', 'valuta']
         };
 
