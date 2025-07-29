@@ -231,9 +231,9 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
     }
 
     const invoices: Invoice[] = [];
+    const invoiceCounters: { [year: number]: number } = {};
     let totalNetSales = 0;
     let totalVat = 0;
-    let invoiceCounter = 1;
 
     for (const [orderId, rows] of rowsByOrderId.entries()) {
       const firstRow = rows[0];
@@ -244,38 +244,34 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       
       const items: Invoice['items'] = [];
       let orderGrossBeforeDiscount = 0;
-
-      // 1. Sum up all item totals and shipping costs
+      let orderItemTotal = 0;
+      
       rows.forEach(row => {
           const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
           if (itemTotalStr) {
-              orderGrossBeforeDiscount += parseFloatSafe(itemTotalStr);
+              orderItemTotal += parseFloatSafe(itemTotalStr);
           }
       });
-      
+
       const potentialShippingCols = ['Order Shipping', 'shipping', 'versand', 'shipping costs', 'versandkosten'];
       const shippingRow = rows.find(r => parseFloatSafe(getColumn(r, potentialShippingCols, normalizedHeaderMap)) > 0) || rows[0];
       const shippingCost = parseFloatSafe(getColumn(shippingRow, potentialShippingCols, normalizedHeaderMap));
-      orderGrossBeforeDiscount += shippingCost;
-      
-      // 2. Subtract the single order discount
+
       const discountAmount = parseFloatSafe(getColumn(firstRow, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
       const shippingDiscount = parseFloatSafe(getColumn(firstRow, ['shipping discount', 'versandrabatt'], normalizedHeaderMap));
-      const orderGrossTotal = orderGrossBeforeDiscount - discountAmount - shippingDiscount;
+      
+      const orderGrossTotal = orderItemTotal + shippingCost - discountAmount - shippingDiscount;
 
       if (orderGrossTotal <= 0) {
         continue;
       }
       
-      // 3. Determine tax info for the entire order
       const { taxNote, recipient } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
       const { vatRate: orderWideVatRate } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
 
-      // 4. Calculate Net and VAT for the entire order
       const orderNetTotal = orderWideVatRate > 0 ? orderGrossTotal / (1 + orderWideVatRate / 100) : orderGrossTotal;
       const orderVatTotal = orderGrossTotal - orderNetTotal;
 
-      // 5. Create line items for the invoice (for display purposes)
       rows.forEach(row => {
           const itemName = getColumn(row, ['artikelname', 'titel', 'title', 'item name'], normalizedHeaderMap);
           const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
@@ -309,7 +305,6 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
           });
       }
 
-      // Add a line item for the discount if it exists
       if (discountAmount + shippingDiscount > 0) {
           const totalDiscount = discountAmount + shippingDiscount;
           const discountNet = orderWideVatRate > 0 ? totalDiscount / (1 + orderWideVatRate / 100) : totalDiscount;
@@ -334,7 +329,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       if (recipient === 'etsy') {
           buyerName = ETSY_ADDRESS_INFO.name;
           buyerAddress = ETSY_ADDRESS_INFO.address;
-          etsyCustomerName = actualBuyerName || etsyCustomerId;
+          etsyCustomerName = `${actualBuyerName} (${etsyCustomerId})`;
       } else {
           buyerName = actualBuyerName;
           const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
@@ -356,8 +351,18 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date', 'datum des kaufs'], normalizedHeaderMap);
       const orderDate = formatDate(orderDateRaw);
       
+      const orderYear = new Date(orderDate.split('.').reverse().join('-')).getFullYear();
+      if (isNaN(orderYear)) {
+          return { data: null, error: `Konnte das Jahr für die Bestellung mit dem Datum '${orderDateRaw}' nicht ermitteln.` };
+      }
+      
+      if (!invoiceCounters[orderYear]) {
+          invoiceCounters[orderYear] = 1;
+      }
+      const invoiceNumberForYear = invoiceCounters[orderYear]++;
+
       const invoice: Invoice = {
-        invoiceNumber: `RE-${new Date().getFullYear()}-${String(invoiceCounter++).padStart(4, '0')}`,
+        invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
         orderDate: orderDate || new Date().toLocaleDateString('de-DE'),
         buyerName,
         etsyCustomerName,
@@ -401,7 +406,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
     try {
         const parseResult = Papa.parse(csvData, {
             skipEmptyLines: true,
-            header: false, // We will find the header ourselves
+            header: false, 
         });
 
         if (parseResult.errors.length > 0) {
@@ -421,8 +426,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         let headers: string[] = [];
         let maxScore = 0;
 
-        // Find the most likely header row
-        for (let i = 0; i < data.length && i < 15; i++) { // Only scan first 15 lines
+        for (let i = 0; i < data.length && i < 15; i++) { 
             const row = data[i];
             if (!Array.isArray(row) || row.length < 2) continue;
             
@@ -473,14 +477,18 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
 
         for (let i = dataStartIndex; i < data.length; i++) {
             const row = data[i];
+            
             const maxIndex = Math.max(amountIndex, dateIndex, ...uniqueDescriptionIndices);
-            if (!Array.isArray(row) || row.length <= maxIndex) continue;
+            if (!Array.isArray(row) || row.length <= maxIndex) {
+                 continue;
+            }
             
             const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
             const amountStr = row[amountIndex];
+            const dateValue = row[dateIndex];
             
-            if (!amountStr || !row[dateIndex] || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
-                continue; // Skip invalid or empty lines
+            if (!amountStr || !dateValue || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
+                continue; 
             }
 
             if (fullDescription.includes('etsy')) {
@@ -489,7 +497,7 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
                 totalAmount += amount;
                 
                 transactions.push({
-                    date: row[dateIndex] || 'N/A',
+                    date: dateValue || 'N/A',
                     description: uniqueDescriptionIndices.map(idx => row[idx] || '').join(' '),
                     amount: amount
                 });
@@ -503,5 +511,3 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
-
-    
