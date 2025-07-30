@@ -321,7 +321,10 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                     <TableHead>Käufer</TableHead>
                                     <TableHead>Land</TableHead>
                                     <TableHead>Klassifizierung</TableHead>
-                                    <TableHead className="text-right">Betrag</TableHead>
+                                    {userInfo.taxStatus === 'regular' && (
+                                        <TableHead className="text-right">Umsatzsteuer</TableHead>
+                                    )}
+                                    <TableHead className="text-right">Betrag (Brutto)</TableHead>
                                     <TableHead className="text-center">Aktionen</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -338,6 +341,9 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                                         </TableCell>
                                         <TableCell>{invoice.country}</TableCell>
                                         <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
+                                        {userInfo.taxStatus === 'regular' && (
+                                            <TableCell className="text-right">{formatCurrency(invoice.vatTotal)}</TableCell>
+                                        )}
                                         <TableCell className={`text-right font-semibold ${invoice.isCancellation ? 'text-destructive' : ''}`}>{formatCurrency(invoice.grossTotal)}</TableCell>
                                         <TableCell className="text-center space-x-1">
                                             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
@@ -401,5 +407,7 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     </div>
   );
 }
+
+    
 
     
