@@ -85,21 +85,22 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
 
     const finalY = (doc as any).lastAutoTable.finalY;
 
-    const summaryX = 140;
+    const summaryX = 130;
     let summaryY = finalY + 10;
+    const valueX = 195;
 
     doc.setFontSize(10);
     doc.text('Zwischensumme (Netto):', summaryX, summaryY);
-    doc.text(`${invoice.netTotal.toFixed(2)} €`, 190, summaryY, { align: 'right' });
+    doc.text(`${invoice.netTotal.toFixed(2)} €`, valueX, summaryY, { align: 'right' });
 
     summaryY += 7;
     doc.text(`zzgl. USt:`, summaryX, summaryY);
-    doc.text(`${invoice.vatTotal.toFixed(2)} €`, 190, summaryY, { align: 'right' });
+    doc.text(`${invoice.vatTotal.toFixed(2)} €`, valueX, summaryY, { align: 'right' });
 
     summaryY += 7;
     doc.setFont('helvetica', 'bold');
     doc.text('Gesamtbetrag:', summaryX, summaryY);
-    doc.text(`${invoice.grossTotal.toFixed(2)} €`, 190, summaryY, { align: 'right' });
+    doc.text(`${invoice.grossTotal.toFixed(2)} €`, valueX, summaryY, { align: 'right' });
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
