@@ -93,16 +93,25 @@ function getTaxInfo(
     
     // Regular tax payer logic
     if (taxStatus === 'regular') {
-        // Fall 1: USt wird von Etsy abgeführt (Drittland oder digitaler Verkauf in EU)
-        if (classification === 'Drittland' || (classification === 'EU-Ausland' && vatPaidByBuyer)) {
-            return {
-                vatRate: 0,
-                taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
-            };
-        }
-        // Fall 2: Physischer Verkauf in DE oder EU, bei dem der Verkäufer USt abführen muss
-        if (classification === 'Deutschland' || (classification === 'EU-Ausland' && !vatPaidByBuyer)) {
-            return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
+        switch (classification) {
+            case 'Deutschland':
+                return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
+            
+            case 'EU-Ausland':
+                if (vatPaidByBuyer) {
+                    return {
+                        vatRate: 0,
+                        taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
+                    };
+                } else {
+                    return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
+                }
+            
+            case 'Drittland':
+                return {
+                    vatRate: 0,
+                    taxNote: "Steuerfreie Ausfuhrlieferung."
+                };
         }
     }
     
@@ -480,5 +489,3 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
-
-    
