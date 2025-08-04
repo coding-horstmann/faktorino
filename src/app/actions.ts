@@ -88,11 +88,10 @@ function getCountryClassification(countryName: string): Invoice['countryClassifi
 function getTaxInfo(
     classification: Invoice['countryClassification'], 
     vatPaidByBuyer: boolean,
-    taxStatus: UserInfo['taxStatus'],
-    isDigitalProduct: boolean
+    taxStatus: UserInfo['taxStatus']
 ): { vatRate: number; taxNote: string; } {
     
-    // Small business logic
+    // 1. Kleinunternehmer: Immer 0% USt.
     if (taxStatus === 'small_business') {
         return {
             vatRate: 0,
@@ -100,16 +99,8 @@ function getTaxInfo(
         };
     }
 
-    // Regular tax payer logic below
-    // Case 1: Digital product sold to DE or EU -> Etsy handles VAT
-    if (isDigitalProduct && (classification === 'Deutschland' || classification === 'EU-Ausland')) {
-        return {
-            vatRate: 0,
-            taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
-        };
-    }
-    
-    // Case 2: Delivery to a third country (non-EU)
+    // 2. Regelbesteuerung
+    // 2.1. Lieferung in ein Drittland -> Steuerfreie Ausfuhr
     if (classification === 'Drittland') {
         return {
             vatRate: 0,
@@ -117,27 +108,27 @@ function getTaxInfo(
         };
     }
 
-    // Case 3: Delivery to EU country
+    // 2.2. Lieferung ins EU-Ausland
     if (classification === 'EU-Ausland') {
-        // Subcase 3a: Etsy handles VAT via OSS
+        // Digitales Produkt (erkennbar an "VAT paid by Buyer") -> Etsy führt USt ab (OSS)
         if (vatPaidByBuyer) {
             return {
                 vatRate: 0,
                 taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
             };
         }
-        // Subcase 3b: Seller handles German VAT
+        // Physisches Produkt -> Verkäufer führt deutsche USt ab
         else {
              return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
         }
     }
 
-    // Case 4: Delivery to Germany (default case for physical/mixed goods)
+    // 2.3. Lieferung nach Deutschland -> Verkäufer führt immer deutsche USt ab
     if (classification === 'Deutschland') {
         return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
     }
 
-    // Fallback case (should not be reached)
+    // Fallback (sollte nicht erreicht werden)
     return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
 }
 
@@ -245,6 +236,8 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const vatPaidByBuyerStr = getColumn(firstRow, ['vat paid by buyer', 'vom käufer gezahlte ust'], normalizedHeaderMap);
       const vatPaidByBuyer = parseFloatSafe(vatPaidByBuyerStr) > 0;
       
+      const { taxNote, vatRate: orderWideVatRate } = getTaxInfo(countryClassification, vatPaidByBuyer, taxStatus);
+      
       const items: Invoice['items'] = [];
       let orderItemTotal = 0;
       
@@ -267,12 +260,6 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
         continue;
       }
       
-      // Heuristic to determine if an order is purely digital
-      const shippingAddress1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
-      const isDigital = shippingCost === 0 && shippingAddress1.trim() === '';
-
-      const { taxNote, vatRate: orderWideVatRate } = getTaxInfo(countryClassification, vatPaidByBuyer, taxStatus, isDigital);
-
       const orderNetTotal = orderWideVatRate > 0 ? orderGrossTotal / (1 + orderWideVatRate / 100) : orderGrossTotal;
       const orderVatTotal = orderGrossTotal - orderNetTotal;
 
