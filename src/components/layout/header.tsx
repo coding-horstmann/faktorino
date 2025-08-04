@@ -15,7 +15,8 @@ import {
 
 export function SiteHeader() {
   // Platzhalter für Authentifizierungsstatus
-  const isLoggedIn = false;
+  // Ändern Sie diesen Wert auf `true`, um das Menü für eingeloggte Benutzer zu sehen
+  const isLoggedIn = true;
 
   return (
     <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 w-full border-b">
@@ -40,7 +41,7 @@ export function SiteHeader() {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>Mein Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link href="/dashboard">Dashboard</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem>
