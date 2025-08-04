@@ -66,11 +66,6 @@ const EU_COUNTRIES = new Set([
 ]);
 
 
-const ETSY_ADDRESS_INFO = {
-    name: 'Etsy Ireland UC',
-    address: 'One Le Pole Square\nShip Street Great\nDublin 8\nIreland\nUSt-IdNr. IE9777587C',
-};
-
 function normalizeString(str: string | null | undefined): string {
     if (!str) return '';
     return str.toLowerCase().trim();
@@ -92,61 +87,33 @@ function getCountryClassification(countryName: string): Invoice['countryClassifi
 
 function getTaxInfo(
     classification: Invoice['countryClassification'], 
-    isPhysical: boolean,
+    vatPaidByBuyer: boolean,
     taxStatus: UserInfo['taxStatus']
-): { vatRate: number; taxNote: string; recipient: 'buyer' | 'etsy' } {
+): { vatRate: number; taxNote: string; } {
     
     // Regular tax payer logic
     if (taxStatus === 'regular') {
-        if (isPhysical) {
-            const recipient = 'buyer';
-            if (classification === 'Deutschland' || classification === 'EU-Ausland') {
-                return { vatRate: 19, taxNote: "Enthält 19% deutsche USt.", recipient };
-            } else { // Drittland
-                return { vatRate: 0, taxNote: "Steuerfreie Ausfuhrlieferung gemäß § 4 Nr. 1 a UStG.", recipient };
-            }
-        } else { // Digital Product
-            if (classification === 'Drittland') {
-                 return {
-                    recipient: 'etsy',
-                    vatRate: 0,
-                    taxNote: "Leistung außerhalb EU, keine Ust."
-                };
-            }
+        // Fall 1: USt wird von Etsy abgeführt (Drittland oder digitaler Verkauf in EU)
+        if (classification === 'Drittland' || (classification === 'EU-Ausland' && vatPaidByBuyer)) {
             return {
-                recipient: 'etsy',
                 vatRate: 0,
-                taxNote: "USt wird von Etsy abgeführt (One-Stop-Shop).\nSteuerschuldnerschaft des Leistungsempfängers/Reverse Charge."
+                taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
             };
+        }
+        // Fall 2: Physischer Verkauf in DE oder EU, bei dem der Verkäufer USt abführen muss
+        if (classification === 'Deutschland' || (classification === 'EU-Ausland' && !vatPaidByBuyer)) {
+            return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
         }
     }
     
     // Small business logic below
-    const smallBusinessNote = "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer.";
-    const smallBusinessVatRate = 0;
-
-    if (isPhysical) {
-        return {
-            vatRate: smallBusinessVatRate,
-            taxNote: smallBusinessNote,
-            recipient: 'buyer'
-        };
-    } else { // Digital Product
-        if (classification === 'Deutschland') {
-            return {
-                vatRate: smallBusinessVatRate,
-                taxNote: smallBusinessNote,
-                recipient: 'buyer'
-            };
-        } else { // EU-Ausland oder Drittland
-             return {
-                recipient: 'etsy',
-                vatRate: smallBusinessVatRate,
-                taxNote: smallBusinessNote
-            };
-        }
-    }
+    // Für Kleinunternehmer ist der Fall immer gleich: keine USt.
+    return {
+        vatRate: 0,
+        taxNote: "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer."
+    };
 }
+
 
 function parseFloatSafe(value: string | number | null | undefined): number {
     if (value === null || value === undefined) return 0;
@@ -248,7 +215,8 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const countryName = getColumn(firstRow, ['ship country', 'versandland', 'shiptocountry', 'shippingcountry', 'country'], normalizedHeaderMap);
       const countryClassification = getCountryClassification(countryName);
       
-      const isOrderPhysical = rows.some(r => getColumn(r, ['sku'], normalizedHeaderMap).trim() !== '');
+      const vatPaidByBuyerStr = getColumn(firstRow, ['vat paid by buyer', 'vom käufer gezahlte ust'], normalizedHeaderMap);
+      const vatPaidByBuyer = parseFloatSafe(vatPaidByBuyerStr) > 0;
       
       const items: Invoice['items'] = [];
       let orderItemTotal = 0;
@@ -267,15 +235,14 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const discountAmount = parseFloatSafe(getColumn(firstRow, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
       const shippingDiscount = parseFloatSafe(getColumn(firstRow, ['shipping discount', 'versandrabatt'], normalizedHeaderMap));
       
-      // The actual gross total is the sum of items and shipping, minus discounts.
-      const orderGrossTotal = orderItemTotal + shippingCost - discountAmount - shippingDiscount;
+      const orderGrossTotal = orderItemTotal + shippingCost - discountAmount;
+
 
       if (orderGrossTotal <= 0) {
         continue;
       }
       
-      const { taxNote, recipient } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
-      const { vatRate: orderWideVatRate } = getTaxInfo(countryClassification, isOrderPhysical, taxStatus);
+      const { taxNote, vatRate: orderWideVatRate } = getTaxInfo(countryClassification, vatPaidByBuyer, taxStatus);
 
       const orderNetTotal = orderWideVatRate > 0 ? orderGrossTotal / (1 + orderWideVatRate / 100) : orderGrossTotal;
       const orderVatTotal = orderGrossTotal - orderNetTotal;
@@ -286,8 +253,6 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
           if (itemName && itemTotalStr) {
               const itemGross = parseFloatSafe(itemTotalStr);
               if (itemGross > 0) {
-                  // The discount is applied to the entire order, not item by item. 
-                  // So we calculate the item's net/vat based on its gross value and the order-wide VAT rate.
                   const itemNet = orderWideVatRate > 0 ? itemGross / (1 + orderWideVatRate / 100) : itemGross;
                   const itemVat = itemGross - itemNet;
                    items.push({
@@ -315,48 +280,36 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
           });
       }
 
-      if (discountAmount + shippingDiscount > 0) {
-          const totalDiscount = discountAmount + shippingDiscount;
-          const discountNet = orderWideVatRate > 0 ? totalDiscount / (1 + orderWideVatRate / 100) : totalDiscount;
-          const discountVat = totalDiscount - discountNet;
+      if (discountAmount > 0) {
+          const discountNet = orderWideVatRate > 0 ? discountAmount / (1 + orderWideVatRate / 100) : discountAmount;
+          const discountVat = discountAmount - discountNet;
           items.push({
               quantity: 1,
               name: 'Rabatt',
               netAmount: -discountNet,
               vatRate: orderWideVatRate,
               vatAmount: -discountVat,
-              grossAmount: -totalDiscount,
+              grossAmount: -discountAmount,
           });
       }
       
-      let buyerName: string;
+      let buyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer', 'buyer'], normalizedHeaderMap);
       let buyerAddress: string;
-      let etsyCustomerName: string | undefined;
 
-      const actualBuyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer', 'buyer'], normalizedHeaderMap);
-      const etsyCustomerId = getColumn(firstRow, ['buyer user id'], normalizedHeaderMap)
-
-      if (recipient === 'etsy') {
-          buyerName = ETSY_ADDRESS_INFO.name;
-          buyerAddress = ETSY_ADDRESS_INFO.address;
-          etsyCustomerName = actualBuyerName ? `${actualBuyerName} (${etsyCustomerId})` : etsyCustomerId;
-      } else {
-          buyerName = actualBuyerName;
-          const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
-          const address2 = getColumn(firstRow, ['ship address2', 'ship to street 2', 'empfaenger adresse 2', 'street 2'], normalizedHeaderMap);
-          const city = getColumn(firstRow, ['ship city', 'ship to city', 'empfaenger stadt', 'city'], normalizedHeaderMap);
-          const state = getColumn(firstRow, ['ship state', 'ship to state', 'empfaenger bundesland', 'state'], normalizedHeaderMap);
-          const zipcode = getColumn(firstRow, ['ship zipcode', 'ship to zipcode', 'empfaenger plz', 'shipping zipcode', 'zipcode'], normalizedHeaderMap);
-          const countryDisplay = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country', 'country'], normalizedHeaderMap);
-          
-          let addressParts = [address1, address2, `${zipcode} ${city}`];
-          if(state && state !== city) {
-            addressParts[1] = address2 ? `${address2}, ${state}` : state;
-          }
-          addressParts.push(countryDisplay);
-          
-          buyerAddress = addressParts.filter(part => part && part.trim() !== '' && part.trim() !== city).join('\n');
+      const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
+      const address2 = getColumn(firstRow, ['ship address2', 'ship to street 2', 'empfaenger adresse 2', 'street 2'], normalizedHeaderMap);
+      const city = getColumn(firstRow, ['ship city', 'ship to city', 'empfaenger stadt', 'city'], normalizedHeaderMap);
+      const state = getColumn(firstRow, ['ship state', 'ship to state', 'empfaenger bundesland', 'state'], normalizedHeaderMap);
+      const zipcode = getColumn(firstRow, ['ship zipcode', 'ship to zipcode', 'empfaenger plz', 'shipping zipcode', 'zipcode'], normalizedHeaderMap);
+      const countryDisplay = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country', 'country'], normalizedHeaderMap);
+      
+      let addressParts = [address1, address2, `${zipcode} ${city}`];
+      if(state && state !== city) {
+        addressParts[1] = address2 ? `${address2}, ${state}` : state;
       }
+      addressParts.push(countryDisplay);
+      
+      buyerAddress = addressParts.filter(part => part && part.trim() !== '' && part.trim() !== city).join('\n');
       
       const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date', 'datum des kaufs'], normalizedHeaderMap);
       const orderDate = formatDate(orderDateRaw);
@@ -373,7 +326,6 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
         invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
         orderDate: orderDate || new Date().toLocaleDateString('de-DE'),
         buyerName,
-        etsyCustomerName,
         buyerAddress,
         items,
         netTotal: orderNetTotal,
@@ -528,3 +480,5 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
+
+    

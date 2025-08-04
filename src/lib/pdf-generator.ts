@@ -18,6 +18,9 @@ export type UserInfo = {
     taxStatus: 'regular' | 'small_business';
 }
 
+const ETSY_PLATFORM_INFO = 'Verkauf über die Plattform:\nEtsy Ireland UC\nOne Le Pole Square\nShip Street Great\nDublin 8, Ireland\nUSt-IdNr. IE9777587C';
+
+
 export function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'save'): void;
 export function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'blob'): Promise<Blob | null>;
 export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'save' | 'blob' = 'save'): Promise<Blob | null> | void {
@@ -104,14 +107,21 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     let infoY = finalY + 15;
     const taxNoteLines = doc.splitTextToSize(invoice.taxNote, 100);
     doc.text(taxNoteLines, 20, infoY);
-    infoY += (taxNoteLines.length * 5) + 5;
+    infoY += (taxNoteLines.length * 4) + 5;
     
     if (!invoice.isCancellation) {
         doc.text("Zahlung dankend erhalten.", 20, infoY);
+        infoY += 10;
     }
+
+    doc.setFontSize(8);
+    doc.setTextColor(100);
+    const etsyNoteLines = doc.splitTextToSize(ETSY_PLATFORM_INFO, 100);
+    doc.text(etsyNoteLines, 20, infoY);
 
 
     doc.setFontSize(8);
+    doc.setTextColor(0);
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
     doc.text(`${senderName}, ${senderAddress}, ${senderCity} | ${senderTaxInfo}`, 20, pageHeight - 10);
     
@@ -124,3 +134,5 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
         return Promise.resolve(doc.output('blob'));
     }
 }
+
+    
