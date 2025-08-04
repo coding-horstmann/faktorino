@@ -21,12 +21,10 @@ export function SiteHeader() {
   return (
     <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 w-full border-b">
       <div className="container flex h-16 items-center">
-        <div className="flex-1">
-            <Link href="/" className="flex items-center space-x-2">
-                <BookCopy className="h-6 w-6 text-primary" />
-                <span className="inline-block font-bold">EtsyBuchhalter</span>
-            </Link>
-        </div>
+        <Link href="/" className="flex items-center space-x-2 mr-auto">
+            <BookCopy className="h-6 w-6 text-primary" />
+            <span className="inline-block font-bold">EtsyBuchhalter</span>
+        </Link>
         
         <nav className="flex items-center space-x-2">
             {isLoggedIn ? (
