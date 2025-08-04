@@ -88,39 +88,57 @@ function getCountryClassification(countryName: string): Invoice['countryClassifi
 function getTaxInfo(
     classification: Invoice['countryClassification'], 
     vatPaidByBuyer: boolean,
-    taxStatus: UserInfo['taxStatus']
+    taxStatus: UserInfo['taxStatus'],
+    isDigitalProduct: boolean
 ): { vatRate: number; taxNote: string; } {
     
-    // Regular tax payer logic
-    if (taxStatus === 'regular') {
-        switch (classification) {
-            case 'Deutschland':
-                return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
-            
-            case 'EU-Ausland':
-                if (vatPaidByBuyer) {
-                    return {
-                        vatRate: 0,
-                        taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
-                    };
-                } else {
-                    return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
-                }
-            
-            case 'Drittland':
-                return {
-                    vatRate: 0,
-                    taxNote: "Steuerfreie Ausfuhrlieferung."
-                };
-        }
+    // Small business logic
+    if (taxStatus === 'small_business') {
+        return {
+            vatRate: 0,
+            taxNote: "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer."
+        };
+    }
+
+    // Regular tax payer logic below
+    // Case 1: Digital product sold to DE or EU -> Etsy handles VAT
+    if (isDigitalProduct && (classification === 'Deutschland' || classification === 'EU-Ausland')) {
+        return {
+            vatRate: 0,
+            taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
+        };
     }
     
-    // Small business logic below
-    // Für Kleinunternehmer ist der Fall immer gleich: keine USt.
-    return {
-        vatRate: 0,
-        taxNote: "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer."
-    };
+    // Case 2: Delivery to a third country (non-EU)
+    if (classification === 'Drittland') {
+        return {
+            vatRate: 0,
+            taxNote: "Steuerfreie Ausfuhrlieferung."
+        };
+    }
+
+    // Case 3: Delivery to EU country
+    if (classification === 'EU-Ausland') {
+        // Subcase 3a: Etsy handles VAT via OSS
+        if (vatPaidByBuyer) {
+            return {
+                vatRate: 0,
+                taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
+            };
+        }
+        // Subcase 3b: Seller handles German VAT
+        else {
+             return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
+        }
+    }
+
+    // Case 4: Delivery to Germany (default case for physical/mixed goods)
+    if (classification === 'Deutschland') {
+        return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
+    }
+
+    // Fallback case (should not be reached)
+    return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
 }
 
 
@@ -242,16 +260,18 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const shippingCost = parseFloatSafe(getColumn(shippingRow, potentialShippingCols, normalizedHeaderMap));
       
       const discountAmount = parseFloatSafe(getColumn(firstRow, ['discount amount', 'rabattbetrag'], normalizedHeaderMap));
-      const shippingDiscount = parseFloatSafe(getColumn(firstRow, ['shipping discount', 'versandrabatt'], normalizedHeaderMap));
       
       const orderGrossTotal = orderItemTotal + shippingCost - discountAmount;
-
 
       if (orderGrossTotal <= 0) {
         continue;
       }
       
-      const { taxNote, vatRate: orderWideVatRate } = getTaxInfo(countryClassification, vatPaidByBuyer, taxStatus);
+      // Heuristic to determine if an order is purely digital
+      const shippingAddress1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
+      const isDigital = shippingCost === 0 && shippingAddress1.trim() === '';
+
+      const { taxNote, vatRate: orderWideVatRate } = getTaxInfo(countryClassification, vatPaidByBuyer, taxStatus, isDigital);
 
       const orderNetTotal = orderWideVatRate > 0 ? orderGrossTotal / (1 + orderWideVatRate / 100) : orderGrossTotal;
       const orderVatTotal = orderGrossTotal - orderNetTotal;
