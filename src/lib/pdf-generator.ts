@@ -55,8 +55,9 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Rechnungsnummer: ${invoice.invoiceNumber}`, 120, headerY);
-    doc.text(`Bestelldatum: ${invoice.orderDate}`, 120, headerY + 5);
+    doc.text(`Rechnungs-Nr.: ${invoice.invoiceNumber}`, 120, headerY);
+    doc.text(`Rechnungsdatum: ${invoice.orderDate}`, 120, headerY + 5);
+    doc.text(`Leistungsdatum: ${invoice.serviceDate}`, 120, headerY + 10);
 
     const tableColumn = ["Pos.", "Bezeichnung", "Menge", "USt.", "Einzelpreis (Netto)", "Gesamt (Netto)"];
     const tableRows: any[][] = [];
@@ -77,7 +78,7 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     doc.autoTable({
         head: [tableColumn],
         body: tableRows,
-        startY: headerY + 15,
+        startY: headerY + 20,
         theme: 'striped',
         headStyles: { fillColor: [30, 30, 30] }
     });
@@ -134,5 +135,3 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
         return Promise.resolve(doc.output('blob'));
     }
 }
-
-    

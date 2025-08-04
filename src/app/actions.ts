@@ -17,6 +17,7 @@ const invoiceItemSchema = z.object({
 const invoiceSchema = z.object({
   invoiceNumber: z.string(),
   orderDate: z.string(),
+  serviceDate: z.string(),
   buyerName: z.string(),
   etsyCustomerName: z.string().optional(),
   buyerAddress: z.string(),
@@ -110,7 +111,7 @@ function getTaxInfo(
 
     // 2.2. Lieferung nach Deutschland oder ins EU-Ausland
     if (classification === 'Deutschland' || classification === 'EU-Ausland') {
-        // Digitales Produkt (erkennbar an "VAT paid by Buyer") -> Etsy führt USt ab (OSS)
+        // Etsy führt USt ab (OSS bei digitalen Produkten)
         if (vatPaidByBuyer) {
             return {
                 vatRate: 0,
@@ -332,10 +333,12 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
           invoiceCounters[orderYear] = 1;
       }
       const invoiceNumberForYear = invoiceCounters[orderYear]++;
+      const finalOrderDate = orderDate || new Date().toLocaleDateString('de-DE');
 
       const invoice: Invoice = {
         invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
-        orderDate: orderDate || new Date().toLocaleDateString('de-DE'),
+        orderDate: finalOrderDate,
+        serviceDate: finalOrderDate,
         buyerName: buyerName || 'Unbekannt',
         buyerAddress,
         items,
