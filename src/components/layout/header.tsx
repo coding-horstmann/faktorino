@@ -20,16 +20,15 @@ export function SiteHeader() {
 
   return (
     <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 w-full border-b">
-      <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
-        <div className="flex gap-6 md:gap-10">
-          <Link href="/" className="flex items-center space-x-2">
-            <BookCopy className="h-6 w-6 text-primary" />
-            <span className="inline-block font-bold">EtsyBuchhalter</span>
-          </Link>
+      <div className="container flex h-16 items-center">
+        <div className="flex-1">
+            <Link href="/" className="flex items-center space-x-2">
+                <BookCopy className="h-6 w-6 text-primary" />
+                <span className="inline-block font-bold">EtsyBuchhalter</span>
+            </Link>
         </div>
         
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          <nav className="flex items-center space-x-2">
+        <nav className="flex items-center space-x-2">
             {isLoggedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -65,7 +64,6 @@ export function SiteHeader() {
               </>
             )}
           </nav>
-        </div>
       </div>
     </header>
   );
