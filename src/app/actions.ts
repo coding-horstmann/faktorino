@@ -108,8 +108,8 @@ function getTaxInfo(
         };
     }
 
-    // 2.2. Lieferung ins EU-Ausland
-    if (classification === 'EU-Ausland') {
+    // 2.2. Lieferung nach Deutschland oder ins EU-Ausland
+    if (classification === 'Deutschland' || classification === 'EU-Ausland') {
         // Digitales Produkt (erkennbar an "VAT paid by Buyer") -> Etsy führt USt ab (OSS)
         if (vatPaidByBuyer) {
             return {
@@ -123,12 +123,7 @@ function getTaxInfo(
         }
     }
 
-    // 2.3. Lieferung nach Deutschland -> Verkäufer führt immer deutsche USt ab
-    if (classification === 'Deutschland') {
-        return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
-    }
-
-    // Fallback (sollte nicht erreicht werden)
+    // Fallback (sollte nicht erreicht werden, aber sichert den Standardfall ab)
     return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
 }
 
@@ -341,7 +336,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const invoice: Invoice = {
         invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
         orderDate: orderDate || new Date().toLocaleDateString('de-DE'),
-        buyerName,
+        buyerName: buyerName || 'Unbekannt',
         buyerAddress,
         items,
         netTotal: orderNetTotal,
