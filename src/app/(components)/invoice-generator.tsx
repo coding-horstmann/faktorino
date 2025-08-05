@@ -199,7 +199,10 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
   const handleDownloadAllPdfs = useCallback(async () => {
     if (!isUserInfoComplete) {
-        onMissingInfo();
+        if(onMissingInfo()){
+             // If onMissingInfo returns true, it means the user has been notified and we can proceed if they fix it.
+             // For now, we just stop. The user will have to click again.
+        }
         return;
     }
     if (invoices.length === 0) {
@@ -214,7 +217,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     setIsZipping(true);
     const zip = new JSZip();
 
+    // KORREKT: Eine simple for...of Schleife.
+    // Diese stellt sicher, dass immer nur ein PDF zur gleichen Zeit generiert wird.
     for (const invoice of invoices) {
+        // "await" innerhalb der Schleife ist hier der Schlüssel.
+        // Der nächste Schleifendurchlauf startet erst, wenn dieser abgeschlossen ist.
         const pdfBlob = await generatePdf(invoice, userInfo, 'blob');
         if (pdfBlob) {
             const fileName = `Rechnung-${invoice.invoiceNumber}.pdf`;
@@ -222,6 +229,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         }
     }
 
+    // Erst nachdem die Schleife komplett durchlaufen ist, wird die ZIP-Datei erstellt.
     zip.generateAsync({ type: "blob" }).then(content => {
         const link = document.createElement('a');
         link.href = URL.createObjectURL(content);
@@ -231,8 +239,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         document.body.removeChild(link);
         setIsZipping(false);
     });
-
-  }, [invoices, userInfo, isUserInfoComplete, toast, onMissingInfo]);
+  }, [invoices, userInfo, isUserInfoComplete, onMissingInfo, toast]);
 
   async function onSubmit(values: FormValues) {
     if (!onMissingInfo()) {
