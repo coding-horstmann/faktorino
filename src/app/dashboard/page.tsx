@@ -12,6 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Building, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import type { UserInfo } from '@/lib/pdf-generator';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 export default function DashboardPage() {
   
@@ -28,6 +30,7 @@ export default function DashboardPage() {
   });
 
   const [isUserInfoComplete, setIsUserInfoComplete] = useState(false);
+  const [showMissingInfoAlert, setShowMissingInfoAlert] = useState(false);
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
@@ -40,6 +43,14 @@ export default function DashboardPage() {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB Limit
+        toast({
+            variant: "destructive",
+            title: "Datei zu groß",
+            description: "Das Logo darf maximal 2MB groß sein.",
+        });
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setUserInfo({ ...userInfo, logo: reader.result as string });
@@ -56,17 +67,13 @@ export default function DashboardPage() {
           description: "Ihre Firmendaten wurden erfolgreich übernommen.",
       });
     } else {
-        toast({
-            variant: "destructive",
-            title: "Fehlende Angaben",
-            description: "Bitte füllen Sie alle mit * markierten Pflichtfelder aus.",
-        });
+        setShowMissingInfoAlert(true);
         setIsUserInfoComplete(false);
     }
   }, [userInfo, toast]);
 
   return (
-    <div className="w-full max-w-4xl space-y-8">
+    <div className="container mx-auto w-full max-w-6xl space-y-8">
         <header className="text-center">
           <h1 className="text-4xl font-bold font-headline text-primary">Etsy-Buchhaltung</h1>
           <p className="text-muted-foreground mt-2 text-lg">
@@ -129,7 +136,7 @@ export default function DashboardPage() {
                         </RadioGroup>
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="logo">Ihr Logo</Label>
+                        <Label htmlFor="logo">Ihr Logo (max. 2MB)</Label>
                         <div className="flex items-center gap-4">
                           {userInfo.logo && <img src={userInfo.logo} alt="Logo Preview" className="h-16 w-16 object-contain border p-1 rounded-md" />}
                           <Input id="logo" name="logo" type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="max-w-xs" />
@@ -145,7 +152,20 @@ export default function DashboardPage() {
         </Accordion>
 
         <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete}/>
+
+        <AlertDialog open={showMissingInfoAlert} onOpenChange={setShowMissingInfoAlert}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Fehlende Angaben</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Bitte füllen Sie alle mit * markierten Pflichtfelder im Bereich "Ihre Firmendaten" aus und speichern Sie diese, um Rechnungen erstellen zu können.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => setShowMissingInfoAlert(false)}>Verstanden</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       </div>
-    
   );
 }

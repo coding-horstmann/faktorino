@@ -15,6 +15,7 @@ const invoiceItemSchema = z.object({
 });
 
 const invoiceSchema = z.object({
+  id: z.string(), // Add a unique ID for each invoice for state management
   invoiceNumber: z.string(),
   orderDate: z.string(),
   serviceDate: z.string(),
@@ -52,13 +53,11 @@ export type BankTransaction = {
 }
 
 const EU_COUNTRIES = new Set([
-  // English
   'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic', 
   'denmark', 'estonia', 'finland', 'france', 'germany', 'greece', 'hungary', 
   'ireland', 'italy', 'latvia', 'lithuania', 'luxembourg', 'malta', 
   'netherlands', 'poland', 'portugal', 'romania', 'slovakia', 'slovenia', 
   'spain', 'sweden',
-  // German
   'österreich', 'belgien', 'bulgarien', 'kroatien', 'zypern', 'tschechische republik',
   'dänemark', 'estland', 'finnland', 'frankreich', 'deutschland', 'griechenland', 'ungarn',
   'irland', 'italien', 'lettland', 'litauen', 'luxemburg', 'malta',
@@ -92,39 +91,31 @@ function getTaxInfo(
     taxStatus: UserInfo['taxStatus']
 ): { vatRate: number; taxNote: string; } {
     
-    // 1. Kleinunternehmer: Immer 0% USt.
     if (taxStatus === 'small_business') {
         return {
             vatRate: 0,
-            taxNote: "Im Sinne der Kleinunternehmerregelung nach § 19 UStG enthält der ausgewiesene Betrag keine Umsatzsteuer."
+            taxNote: "Gemäß § 19 UStG wird keine Umsatzsteuer berechnet."
         };
     }
 
-    // 2. Regelbesteuerung
-    // 2.1. Lieferung in ein Drittland -> Steuerfreie Ausfuhr
     if (classification === 'Drittland') {
         return {
             vatRate: 0,
-            taxNote: "Steuerfreie Ausfuhrlieferung."
+            taxNote: "Steuerfreie Ausfuhrlieferung in ein Drittland."
         };
     }
 
-    // 2.2. Lieferung nach Deutschland oder ins EU-Ausland
-    if (classification === 'Deutschland' || classification === 'EU-Ausland') {
-        // Etsy führt USt ab (OSS bei digitalen Produkten)
+    if (classification === 'EU-Ausland') {
         if (vatPaidByBuyer) {
-            return {
+             return {
                 vatRate: 0,
-                taxNote: "Umsatzsteuer wird von Etsy abgeführt (One-Stop-Shop)."
+                taxNote: "Umsatzsteuer wird von Etsy im Rahmen des One-Stop-Shop-Verfahrens abgeführt."
             };
         }
-        // Physisches Produkt -> Verkäufer führt deutsche USt ab
-        else {
-             return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
-        }
+        return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
     }
 
-    // Fallback (sollte nicht erreicht werden, aber sichert den Standardfall ab)
+    // Default for Germany
     return { vatRate: 19, taxNote: "Enthält 19% deutsche USt." };
 }
 
@@ -137,13 +128,11 @@ function parseFloatSafe(value: string | number | null | undefined): number {
         const lastComma = cleanedValue.lastIndexOf(',');
         const lastDot = cleanedValue.lastIndexOf('.');
 
-        // Treat comma as decimal separator
         if (lastComma > lastDot) {
             const parsableValue = cleanedValue.replace(/\./g, '').replace(',', '.');
             const parsed = parseFloat(parsableValue);
             return isNaN(parsed) ? 0 : parsed;
         }
-        // Treat dot as decimal separator, remove commas
         const parsableValue = cleanedValue.replace(/,/g, '');
         const parsed = parseFloat(parsableValue);
         return isNaN(parsed) ? 0 : parsed;
@@ -169,11 +158,9 @@ function getColumn(row: any, potentialNames: string[], normalizedKeys: { [key: s
 
 function formatDate(dateStr: string): string {
     if (!dateStr) return '';
-    // Handle cases like "dd.MM.yy" or "MM/dd/yy"
     const parts = dateStr.match(/(\d+)/g);
     let date: Date;
     if (parts && parts.length === 3) {
-      // Assuming MM/DD/YY format from Etsy CSV
       date = new Date(parseInt(parts[2], 10) > 50 ? `19${parts[2]}` : `20${parts[2]}`, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
     } else {
       date = new Date(dateStr);
@@ -321,7 +308,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       }
       addressParts.push(countryDisplay);
       
-      buyerAddress = addressParts.filter(part => part && part.trim() !== '' && part.trim() !== city).join('\n');
+      buyerAddress = addressParts.filter(part => part && part.trim() !== '' && part.trim() !== city).join('\\n');
       
       const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date', 'datum des kaufs'], normalizedHeaderMap);
       const orderDate = formatDate(orderDateRaw);
@@ -336,6 +323,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
       const finalOrderDate = orderDate || new Date().toLocaleDateString('de-DE');
 
       const invoice: Invoice = {
+        id: orderId,
         invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
         orderDate: finalOrderDate,
         serviceDate: finalOrderDate,

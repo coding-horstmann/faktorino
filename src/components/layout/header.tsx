@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function SiteHeader() {
-  // Platzhalter für Authentifizierungsstatus
-  // Ändern Sie diesen Wert auf `true`, um das Menü für eingeloggte Benutzer zu sehen
   const isLoggedIn = true;
 
   return (
@@ -32,7 +30,7 @@ export function SiteHeader() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="icon" className="rounded-full">
                     <UserCircle className="h-5 w-5" />
-                    <span className="sr-only">Toggle user menu</span>
+                    <span className="sr-only">Nutzermenü öffnen</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -41,11 +39,12 @@ export function SiteHeader() {
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard">Dashboard</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Link href="/account">Einstellungen</Link>
+                   <DropdownMenuItem asChild>
+                     <Link href="/account-settings">Kontoeinstellungen</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                     <Link href="/billing">Abrechnung</Link>
+                  <DropdownMenuItem asChild>
+                     {/* Dieser Link würde später direkt zur Stripe Billing Seite führen */}
+                     <a href="#" target="_blank">Abo & Rechnungen</a>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem>Abmelden</DropdownMenuItem>
