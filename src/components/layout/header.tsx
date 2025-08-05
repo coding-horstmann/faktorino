@@ -37,7 +37,7 @@ export function SiteHeader() {
                   <DropdownMenuLabel>Mein Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard">Dashboard</Link>
+                    <Link href="/dashboard">Rechnungen erstellen</Link>
                   </DropdownMenuItem>
                    <DropdownMenuItem asChild>
                      <Link href="/account-settings">Kontoeinstellungen</Link>
