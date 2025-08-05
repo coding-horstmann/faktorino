@@ -313,7 +313,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             1. Etsy-CSV hochladen
           </CardTitle>
           <CardDescription>
-            Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen.
+            Laden Sie Ihre Etsy-Bestellungen hoch. Sie können mehrere Dateien auswählen.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -358,7 +358,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 )}
               </Button>
                <div className="w-full text-center text-sm text-muted-foreground">
-                    Rechnungen in diesem Monat: {invoicesThisMonth} / {maxInvoices}
+                    Erstellte Rechnungen in diesem Monat: {invoicesThisMonth} / {maxInvoices}
                </div>
             </CardFooter>
           </form>
