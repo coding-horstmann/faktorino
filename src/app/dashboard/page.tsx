@@ -114,7 +114,6 @@ export default function DashboardPage() {
     if(isComplete) {
         try {
             localStorage.setItem('userInfo', JSON.stringify(info));
-            setAccordionValue(""); // close accordion on successful save
         } catch (error) {
              console.error("Could not save user info to localStorage", error);
              toast({
