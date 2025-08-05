@@ -86,7 +86,7 @@ export default function DashboardPage() {
             localStorage.setItem('userInfo', JSON.stringify(info));
             if(showToast) {
                 toast({
-                    title: "Daten gespeichert",
+                    title: "Gespeichert",
                     description: "Ihre Firmendaten wurden erfolgreich übernommen.",
                 });
             }
@@ -106,8 +106,13 @@ export default function DashboardPage() {
             setShowMissingInfoAlert(true);
         }
     }
+    return isComplete;
   }, [toast]);
   
+  const handleMissingInfo = useCallback(() => {
+    setShowMissingInfoAlert(true);
+  }, []);
+
   const openAccordionAndFocus = () => {
     setAccordionValue("item-1");
     setTimeout(() => {
@@ -176,7 +181,7 @@ export default function DashboardPage() {
                       <div className="space-y-2">
                         <Label htmlFor="logo">Ihr Logo (max. 2MB)</Label>
                         <div className="flex items-center gap-4">
-                          {userInfo.logo && <img src={userInfo.logo} alt="Logo Preview" className="h-16 w-16 object-contain border p-1 rounded-md" />}
+                           {userInfo.logo && <img src={userInfo.logo} alt="Logo Preview" className="h-16 w-16 object-contain border p-1 rounded-md" />}
                           <Input id="logo" name="logo" type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="max-w-xs" />
                         </div>
                       </div>
@@ -189,7 +194,7 @@ export default function DashboardPage() {
           </AccordionItem>
         </Accordion>
 
-        <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete} onMissingInfo={openAccordionAndFocus} />
+        <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete} onMissingInfo={handleMissingInfo} />
 
         <AlertDialog open={showMissingInfoAlert} onOpenChange={setShowMissingInfoAlert}>
             <AlertDialogContent>
