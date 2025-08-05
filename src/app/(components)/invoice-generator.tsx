@@ -5,7 +5,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { generateInvoicesAction, type ProcessCsvOutput, type Invoice } from '@/app/actions';
+import { generateInvoicesAction, type Invoice } from '@/app/actions';
 import { generatePdf, type UserInfo } from '@/lib/pdf-generator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import JSZip from 'jszip';
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
@@ -27,8 +28,8 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface InvoiceGeneratorProps {
-  onInvoicesGenerated: (grossTotal: number) => void;
   userInfo: UserInfo;
+  isUserInfoComplete: boolean;
 }
 
 const formatCurrency = (value: number) => {
@@ -49,12 +50,13 @@ const getClassificationBadge = (classification: Invoice['countryClassification']
 };
 
 
-export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGeneratorProps) {
+export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGeneratorProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const { toast } = useToast();
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -66,10 +68,6 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     const totalGross = invoices.reduce((sum, inv) => sum + inv.grossTotal, 0);
     return { totalNetSales, totalVat, totalGross };
   }, [invoices]);
-
-  useEffect(() => {
-    onInvoicesGenerated(summary.totalGross);
-  }, [summary.totalGross, onInvoicesGenerated]);
   
   const openEditDialog = useCallback((invoice: Invoice) => {
     setEditingInvoice(invoice);
@@ -120,20 +118,31 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
   }
 
   const handleDownloadPdf = useCallback((invoice: Invoice) => {
-    if (!userInfo || !userInfo.name) {
-        alert("Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus.");
+    if (!isUserInfoComplete) {
+        toast({
+            variant: "destructive",
+            title: "Fehlende Angaben",
+            description: "Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus und speichern Sie diese.",
+        });
         return;
     }
     generatePdf(invoice, userInfo, 'save');
-  }, [userInfo]);
+  }, [userInfo, isUserInfoComplete, toast]);
 
   const handleDownloadAllPdfs = useCallback(async () => {
-    if (!userInfo || !userInfo.name) {
-        alert("Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus.");
+    if (!isUserInfoComplete) {
+        toast({
+            variant: "destructive",
+            title: "Fehlende Angaben",
+            description: "Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus und speichern Sie diese.",
+        });
         return;
     }
     if (invoices.length === 0) {
-        alert("Keine Rechnungen zum Herunterladen vorhanden.");
+        toast({
+            title: "Keine Rechnungen",
+            description: "Es sind keine Rechnungen zum Herunterladen vorhanden.",
+        });
         return;
     }
 
@@ -158,9 +167,18 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
         setIsZipping(false);
     });
 
-  }, [invoices, userInfo]);
+  }, [invoices, userInfo, isUserInfoComplete, toast]);
 
   async function onSubmit(values: FormValues) {
+    if (!isUserInfoComplete) {
+        toast({
+            variant: "destructive",
+            title: "Fehlende Angaben",
+            description: "Bitte füllen Sie zuerst Ihre Firmendaten aus, bevor Sie Rechnungen generieren.",
+        });
+        return;
+    }
+    
     setIsLoading(true);
     setError(null);
     setInvoices([]);
@@ -215,10 +233,10 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-primary"/>
-            1. Etsy-Bestellungen hochladen
+            1. Etsy-Bestellungen hochladen & Rechnungen generieren
           </CardTitle>
           <CardDescription>
-            Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen.
+            Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen. Das Tool generiert dann automatisch alle Rechnungen.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -243,8 +261,8 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                 )}
               />
             </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading || !userInfo.taxStatus} className="w-full">
+            <CardFooter className="flex-col items-start gap-4">
+               <Button type="submit" disabled={isLoading || !isUserInfoComplete} className="w-full">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -254,6 +272,15 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
                   'Rechnungen generieren'
                 )}
               </Button>
+               {!isUserInfoComplete && (
+                 <Alert variant="destructive">
+                   <AlertTriangle className="h-4 w-4" />
+                   <AlertTitle>Achtung</AlertTitle>
+                   <AlertDescription>
+                     Bitte füllen Sie erst Ihre Firmendaten im oberen Bereich aus und speichern diese, um Rechnungen erstellen zu können.
+                   </AlertDescription>
+                 </Alert>
+               )}
             </CardFooter>
           </form>
         </Form>
@@ -407,7 +434,3 @@ export function InvoiceGenerator({ onInvoicesGenerated, userInfo }: InvoiceGener
     </div>
   );
 }
-
-    
-
-    

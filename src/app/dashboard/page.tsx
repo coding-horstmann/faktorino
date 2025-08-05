@@ -3,38 +3,30 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
-import { EtsyFeeParser } from '@/app/(components)/etsy-fee-parser';
-import { PayoutValidator, ValidationResultDisplay } from '@/app/(components)/payout-validator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { FileText, FileSignature, Upload, Building, CheckCircle, AlertCircle } from 'lucide-react';
+import { Building, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 import type { UserInfo } from '@/lib/pdf-generator';
-import type { BankTransaction } from '@/app/actions';
 
 export default function DashboardPage() {
   
-  const [validationResult, setValidationResult] = useState({
-    grossInvoices: null as number | null,
-    totalFees: null as number | null,
-    payoutAmount: null as number | null,
-    expectedPayout: null as number | null,
-    difference: null as number | null,
-  });
-
-  const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
-
+  const { toast } = useToast();
+  
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
     address: '',
     city: '',
-    taxInfo: '',
+    taxNumber: '',
+    vatId: '',
     taxStatus: 'regular',
+    logo: null,
   });
+
   const [isUserInfoComplete, setIsUserInfoComplete] = useState(false);
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,56 +36,34 @@ export default function DashboardPage() {
   const handleTaxStatusChange = (value: 'regular' | 'small_business') => {
     setUserInfo({ ...userInfo, taxStatus: value });
   };
-
-  const checkUserInfo = () => {
-    if(userInfo.name && userInfo.address && userInfo.city && userInfo.taxInfo) {
-      setIsUserInfoComplete(true);
-    } else {
-        alert("Bitte füllen Sie alle Pflichtangaben für die Rechnungsstellung aus.");
+  
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUserInfo({ ...userInfo, logo: reader.result as string });
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
-  const handleInvoicesGenerated = useCallback((gross: number) => {
-    setValidationResult(prev => {
-        if (prev.grossInvoices === gross) return prev;
-        const newGross = gross;
-        const newExpected = (newGross !== null && prev.totalFees !== null) ? newGross + prev.totalFees : null;
-        const newDifference = (prev.payoutAmount !== null && newExpected !== null) ? prev.payoutAmount - newExpected : null;
-        return {
-          ...prev, 
-          grossInvoices: newGross,
-          expectedPayout: newExpected,
-          difference: newDifference,
-        };
-    });
-  }, []);
-  
-  const handleFeesParsed = useCallback((fees: number) => {
-    setValidationResult(prev => {
-        const negativeFees = -fees;
-        if (prev.totalFees === negativeFees) return prev;
-        const newExpected = (prev.grossInvoices !== null && negativeFees !== null) ? prev.grossInvoices + negativeFees : null;
-        const newDifference = (prev.payoutAmount !== null && newExpected !== null) ? prev.payoutAmount - newExpected : null;
-        return {
-          ...prev, 
-          totalFees: negativeFees,
-          expectedPayout: newExpected,
-          difference: newDifference,
-        };
-    });
-  }, []);
-  
-  const handlePayoutValidated = useCallback((payout: number | null, result: any, transactions: BankTransaction[]) => {
-     setValidationResult(prev => {
-         if (JSON.stringify(prev) === JSON.stringify(result)) return prev;
-         return result;
-     });
-     setBankTransactions(transactions);
-  }, []);
-
-  const isStep1Complete = validationResult.grossInvoices !== null;
-  const isStep2Complete = validationResult.totalFees !== null;
-  const isStep3Complete = validationResult.payoutAmount !== null;
+  const checkUserInfo = useCallback(() => {
+    if(userInfo.name && userInfo.address && userInfo.city && (userInfo.taxNumber || userInfo.vatId)) {
+      setIsUserInfoComplete(true);
+      toast({
+          title: "Daten gespeichert",
+          description: "Ihre Firmendaten wurden erfolgreich übernommen.",
+      });
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Fehlende Angaben",
+            description: "Bitte füllen Sie alle mit * markierten Pflichtfelder aus.",
+        });
+        setIsUserInfoComplete(false);
+    }
+  }, [userInfo, toast]);
 
   return (
     <div className="w-full max-w-4xl space-y-8">
@@ -104,12 +74,12 @@ export default function DashboardPage() {
           </p>
         </header>
         
-        <Accordion type="single" collapsible className="w-full" defaultValue={isUserInfoComplete ? undefined : "item-1"}>
+        <Accordion type="single" collapsible className="w-full" defaultValue={"item-1"}>
           <AccordionItem value="item-1">
             <AccordionTrigger>
                  <div className="flex items-center gap-2 text-lg">
                     {isUserInfoComplete ? <CheckCircle className="text-green-500"/> : <AlertCircle className="text-destructive"/>}
-                    Pflichtangaben für Rechnungen
+                    Ihre Firmendaten für Rechnungen
                 </div>
             </AccordionTrigger>
             <AccordionContent>
@@ -117,31 +87,36 @@ export default function DashboardPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Building className="text-primary"/>
-                        Ihre Firmendaten
+                        Rechnungssteller-Informationen
                     </CardTitle>
                     <CardDescription>
-                        Diese Daten erscheinen auf jeder generierten Rechnung als Absender. Bitte füllen Sie alle Felder aus.
+                        Diese Daten erscheinen auf jeder generierten Rechnung als Absender. Bitte füllen Sie alle mit * markierten Felder aus.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                      <div className="space-y-2">
-                        <Label htmlFor="name">Ihr Name / Firmenname</Label>
+                        <Label htmlFor="name">Ihr Name / Firmenname *</Label>
                         <Input id="name" name="name" value={userInfo.name} onChange={handleUserInfoChange} placeholder="Max Mustermann"/>
                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="address">Ihre Straße & Hausnummer</Label>
+                        <Label htmlFor="address">Ihre Straße & Hausnummer *</Label>
                         <Input id="address" name="address" value={userInfo.address} onChange={handleUserInfoChange} placeholder="Musterstraße 123"/>
                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="city">PLZ & Stadt</Label>
+                        <Label htmlFor="city">PLZ & Stadt *</Label>
                         <Input id="city" name="city" value={userInfo.city} onChange={handleUserInfoChange} placeholder="12345 Musterstadt"/>
                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="taxInfo">Steuernummer oder USt-IdNr.</Label>
-                        <Input id="taxInfo" name="taxInfo" value={userInfo.taxInfo} onChange={handleUserInfoChange} placeholder="DE123456789"/>
+                        <Label htmlFor="taxNumber">Steuernummer</Label>
+                        <Input id="taxNumber" name="taxNumber" value={userInfo.taxNumber} onChange={handleUserInfoChange} placeholder="123/456/7890"/>
+                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="vatId">Umsatzsteuer-IdNr.</Label>
+                        <Input id="vatId" name="vatId" value={userInfo.vatId} onChange={handleUserInfoChange} placeholder="DE123456789"/>
+                        <p className="text-xs text-muted-foreground">Mindestens eines der beiden Felder (Steuernummer oder USt-IdNr.) muss ausgefüllt werden.</p>
                      </div>
                       <div className="space-y-2">
-                        <Label>Besteuerungsart</Label>
+                        <Label>Besteuerungsart *</Label>
                         <RadioGroup defaultValue="regular" onValueChange={handleTaxStatusChange} value={userInfo.taxStatus}>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="regular" id="r1" />
@@ -153,7 +128,14 @@ export default function DashboardPage() {
                           </div>
                         </RadioGroup>
                       </div>
-                     <Button onClick={checkUserInfo} disabled={!userInfo.name || !userInfo.address || !userInfo.city || !userInfo.taxInfo}>
+                      <div className="space-y-2">
+                        <Label htmlFor="logo">Ihr Logo</Label>
+                        <div className="flex items-center gap-4">
+                          {userInfo.logo && <img src={userInfo.logo} alt="Logo Preview" className="h-16 w-16 object-contain border p-1 rounded-md" />}
+                          <Input id="logo" name="logo" type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="max-w-xs" />
+                        </div>
+                      </div>
+                     <Button onClick={checkUserInfo}>
                         Angaben speichern & übernehmen
                      </Button>
                 </CardContent>
@@ -162,43 +144,7 @@ export default function DashboardPage() {
           </AccordionItem>
         </Accordion>
 
-        <Tabs defaultValue="step1" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="step1">
-                <div className="flex items-center gap-2">
-                    {isStep1Complete ? <CheckCircle className="text-green-500"/> : <FileText />}
-                    Etsy-Rechnungen erstellen
-                </div>
-            </TabsTrigger>
-            <TabsTrigger value="step2">
-                <div className="flex items-center gap-2">
-                    {isStep2Complete ? <CheckCircle className="text-green-500"/> : <FileSignature />}
-                    Etsy-Gebühren
-                </div>
-            </TabsTrigger>
-            <TabsTrigger value="step3">
-                <div className="flex items-center gap-2">
-                     {isStep3Complete ? <CheckCircle className="text-green-500"/> : <Upload/>}
-                    Kontoauszug hochladen
-                </div>
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="step1" className="mt-6">
-            <InvoiceGenerator onInvoicesGenerated={handleInvoicesGenerated} userInfo={userInfo} />
-          </TabsContent>
-          <TabsContent value="step2" className="mt-6">
-            <EtsyFeeParser onFeesParsed={handleFeesParsed} />
-          </TabsContent>
-          <TabsContent value="step3" className="mt-6">
-            <PayoutValidator 
-              grossInvoices={validationResult.grossInvoices} 
-              totalFees={validationResult.totalFees} 
-              onPayoutValidated={handlePayoutValidated}
-            />
-          </TabsContent>
-        </Tabs>
-        
-        <ValidationResultDisplay result={validationResult} />
+        <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete}/>
       </div>
     
   );

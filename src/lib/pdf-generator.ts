@@ -14,8 +14,10 @@ export type UserInfo = {
     name: string;
     address: string;
     city: string;
-    taxInfo: string;
+    taxNumber: string;
+    vatId: string;
     taxStatus: 'regular' | 'small_business';
+    logo: string | null;
 }
 
 const ETSY_PLATFORM_INFO = 'Verkauf über die Plattform:\nEtsy Ireland UC\nOne Le Pole Square\nShip Street Great\nDublin 8, Ireland\nUSt-IdNr. IE9777587C';
@@ -23,10 +25,29 @@ const ETSY_PLATFORM_INFO = 'Verkauf über die Plattform:\nEtsy Ireland UC\nOne L
 
 export function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'save'): void;
 export function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'blob'): Promise<Blob | null>;
-export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'save' | 'blob' = 'save'): Promise<Blob | null> | void {
+export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputType: 'save' | 'blob' = 'save'): Promise<Blob | null | void> {
     const doc = new jsPDF();
 
-    const { name: senderName, address: senderAddress, city: senderCity, taxInfo: senderTaxInfo } = userInfo;
+    const { name: senderName, address: senderAddress, city: senderCity, taxNumber, vatId, logo } = userInfo;
+    
+    let headerY = 20;
+
+    if (logo) {
+        try {
+            const img = new Image();
+            img.src = logo;
+            await new Promise(resolve => img.onload = resolve);
+            const imgProps = doc.getImageProperties(logo);
+            const aspectRatio = imgProps.width / imgProps.height;
+            const imgWidth = 25;
+            const imgHeight = imgWidth / aspectRatio;
+            doc.addImage(logo, 'PNG', 170, 15, imgWidth, imgHeight);
+            headerY = 15 + imgHeight + 5; // Adjust header start based on logo height
+        } catch(e) {
+            console.error("Error adding logo to PDF:", e);
+        }
+    }
+
 
     // Absenderzeile (klein, oben)
     doc.setFontSize(8);
@@ -47,17 +68,17 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     });
 
 
-    const headerY = 80;
+    const infoBlockY = headerY > 60 ? headerY : 60;
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     const title = invoice.isCancellation ? 'Stornorechnung' : 'Rechnung';
-    doc.text(title, 20, headerY);
+    doc.text(title, 20, infoBlockY);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Rechnungs-Nr.: ${invoice.invoiceNumber}`, 120, headerY);
-    doc.text(`Rechnungsdatum: ${invoice.orderDate}`, 120, headerY + 5);
-    doc.text(`Leistungsdatum: ${invoice.serviceDate}`, 120, headerY + 10);
+    doc.text(`Rechnungs-Nr.: ${invoice.invoiceNumber}`, 120, infoBlockY);
+    doc.text(`Rechnungsdatum: ${invoice.orderDate}`, 120, infoBlockY + 5);
+    doc.text(`Leistungsdatum: ${invoice.serviceDate}`, 120, infoBlockY + 10);
 
     const tableColumn = ["Pos.", "Bezeichnung", "Menge", "USt.", "Einzelpreis (Netto)", "Gesamt (Netto)"];
     const tableRows: any[][] = [];
@@ -78,7 +99,7 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     doc.autoTable({
         head: [tableColumn],
         body: tableRows,
-        startY: headerY + 20,
+        startY: infoBlockY + 20,
         theme: 'striped',
         headStyles: { fillColor: [30, 30, 30] }
     });
@@ -125,7 +146,8 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     doc.setFontSize(8);
     doc.setTextColor(0);
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-    doc.text(`${senderName}, ${senderAddress}, ${senderCity} | ${senderTaxInfo}`, 20, pageHeight - 10);
+    const taxLine = [senderName, senderAddress, senderCity, taxNumber, vatId].filter(Boolean).join(' | ');
+    doc.text(taxLine, 20, pageHeight - 10);
     
     const fileName = invoice.isCancellation ? `Stornorechnung-${invoice.invoiceNumber.replace('-STORNO','')}.pdf` : `Rechnung-${invoice.invoiceNumber}.pdf`;
 
