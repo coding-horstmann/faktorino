@@ -35,7 +35,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center py-20">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground mb-4 font-headline">
-                Automatisierte Rechnungen für deinen Etsy-Shop
+                Automatisierte Rechnungen für deinen <span className="text-primary">Etsy</span>-Shop
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
                 Spare wertvolle Zeit und erstelle mit wenigen Klicks professionelle und korrekte Rechnungen für alle deine Etsy-Verkäufe.
