@@ -310,7 +310,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-primary"/>
-            1. Etsy-Bestellungen hochladen
+            1. Etsy-CSV hochladen
           </CardTitle>
           <CardDescription>
             Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen.
@@ -342,7 +342,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                   <Info className="h-4 w-4" />
                   <AlertTitle className="font-semibold">Wo finde ich die CSV-Datei?</AlertTitle>
                   <AlertDescription className="text-blue-700">
-                    Etsy-Dashboard → Shop-Manager → Einstellungen → Optionen → Daten herunterladen → Typ: **Bestellte Artikel**
+                    Etsy-Dashboard → Shop-Manager → Einstellungen → Optionen → Daten herunterladen → Typ: <span className="underline font-semibold">Bestellte Artikel</span>
                   </AlertDescription>
                 </Alert>
             </CardContent>
