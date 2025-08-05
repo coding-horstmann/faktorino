@@ -408,7 +408,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 </Button>
             </div>
              <p className="text-xs text-muted-foreground text-center">
-                Rechtlicher Hinweis: Bitte prüfen Sie alle Rechnungen sorgfältig. Für steuerliche Fragen wenden Sie sich an Ihren Steuerberater.
+                Dieses Tool dient ausschließlich der Unterstützung bei der Rechnungserstellung. Es ersetzt keine steuerliche oder rechtliche Beratung. Für die Richtigkeit, Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist allein der Nutzer verantwortlich.
             </p>
 
             <Card>
@@ -641,3 +641,5 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     </div>
   );
 }
+
+    
