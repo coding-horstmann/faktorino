@@ -13,12 +13,14 @@ import { Building, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-r
 import { useToast } from "@/hooks/use-toast";
 import type { UserInfo } from '@/lib/pdf-generator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
 
 
 export default function DashboardPage() {
   
   const { toast } = useToast();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
@@ -33,6 +35,8 @@ export default function DashboardPage() {
   const [isUserInfoComplete, setIsUserInfoComplete] = useState(false);
   const [showMissingInfoAlert, setShowMissingInfoAlert] = useState(false);
   const [accordionValue, setAccordionValue] = useState<string>("");
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof UserInfo, boolean>>>({});
+
 
   useEffect(() => {
     try {
@@ -40,7 +44,9 @@ export default function DashboardPage() {
         if (savedUserInfo) {
             const parsedInfo = JSON.parse(savedUserInfo);
             setUserInfo(parsedInfo);
-            checkUserInfo(parsedInfo, false); // check on load without showing toast
+            checkUserInfo(parsedInfo, false);
+        } else {
+             setAccordionValue("item-1"); // Open if no data is saved
         }
     } catch (error) {
         console.error("Could not load user info from localStorage", error);
@@ -49,6 +55,9 @@ export default function DashboardPage() {
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
+    if (validationErrors[e.target.name as keyof UserInfo]) {
+        setValidationErrors({ ...validationErrors, [e.target.name]: false });
+    }
   };
   
   const handleTaxStatusChange = (value: 'regular' | 'small_business') => {
@@ -79,8 +88,19 @@ export default function DashboardPage() {
   }
 
   const checkUserInfo = useCallback((info: UserInfo, showToast: boolean) => {
-    const isComplete = !!(info.name && info.address && info.city && (info.taxNumber || info.vatId));
+    const errors: Partial<Record<keyof UserInfo, boolean>> = {};
+    if (!info.name) errors.name = true;
+    if (!info.address) errors.address = true;
+    if (!info.city) errors.city = true;
+    if (!info.taxNumber && !info.vatId) {
+        errors.taxNumber = true;
+        errors.vatId = true;
+    }
+    setValidationErrors(errors);
+
+    const isComplete = Object.keys(errors).length === 0;
     setIsUserInfoComplete(isComplete);
+    
     if(isComplete) {
         try {
             localStorage.setItem('userInfo', JSON.stringify(info));
@@ -104,20 +124,20 @@ export default function DashboardPage() {
     } else {
         if(showToast) {
             setShowMissingInfoAlert(true);
+            openAccordionAndFocus();
         }
     }
     return isComplete;
   }, [toast]);
   
   const handleMissingInfo = useCallback(() => {
-    setShowMissingInfoAlert(true);
-  }, []);
+    checkUserInfo(userInfo, true);
+  }, [userInfo, checkUserInfo]);
 
   const openAccordionAndFocus = () => {
     setAccordionValue("item-1");
     setTimeout(() => {
-        accordionTriggerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        accordionTriggerRef.current?.focus();
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
   }
 
@@ -133,7 +153,7 @@ export default function DashboardPage() {
                 </div>
             </AccordionTrigger>
             <AccordionContent>
-              <Card>
+              <Card ref={formRef}>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Building className="text-primary"/>
@@ -146,23 +166,23 @@ export default function DashboardPage() {
                 <CardContent className="space-y-4">
                      <div className="space-y-2">
                         <Label htmlFor="name">Ihr Name / Firmenname *</Label>
-                        <Input id="name" name="name" value={userInfo.name} onChange={handleUserInfoChange} placeholder="Max Mustermann"/>
+                        <Input id="name" name="name" value={userInfo.name} onChange={handleUserInfoChange} placeholder="Max Mustermann" className={cn({'border-destructive': validationErrors.name})}/>
                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="address">Ihre Straße & Hausnummer *</Label>
-                        <Input id="address" name="address" value={userInfo.address} onChange={handleUserInfoChange} placeholder="Musterstraße 123"/>
+                        <Input id="address" name="address" value={userInfo.address} onChange={handleUserInfoChange} placeholder="Musterstraße 123" className={cn({'border-destructive': validationErrors.address})}/>
                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="city">PLZ & Stadt *</Label>
-                        <Input id="city" name="city" value={userInfo.city} onChange={handleUserInfoChange} placeholder="12345 Musterstadt"/>
+                        <Input id="city" name="city" value={userInfo.city} onChange={handleUserInfoChange} placeholder="12345 Musterstadt" className={cn({'border-destructive': validationErrors.city})}/>
                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="taxNumber">Steuernummer</Label>
-                        <Input id="taxNumber" name="taxNumber" value={userInfo.taxNumber} onChange={handleUserInfoChange} placeholder="123/456/7890"/>
+                        <Input id="taxNumber" name="taxNumber" value={userInfo.taxNumber} onChange={handleUserInfoChange} placeholder="123/456/7890" className={cn({'border-destructive': validationErrors.taxNumber})}/>
                      </div>
                      <div className="space-y-2">
                         <Label htmlFor="vatId">Umsatzsteuer-IdNr.</Label>
-                        <Input id="vatId" name="vatId" value={userInfo.vatId} onChange={handleUserInfoChange} placeholder="DE123456789"/>
+                        <Input id="vatId" name="vatId" value={userInfo.vatId} onChange={handleUserInfoChange} placeholder="DE123456789" className={cn({'border-destructive': validationErrors.vatId})}/>
                         <p className="text-xs text-muted-foreground">Mindestens eines der beiden Felder (Steuernummer oder USt-IdNr.) muss ausgefüllt werden.</p>
                      </div>
                       <div className="space-y-2">
@@ -201,11 +221,11 @@ export default function DashboardPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>Fehlende Angaben</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Bitte füllen Sie alle mit * markierten Pflichtfelder im Bereich "Ihre Firmendaten" aus und speichern Sie diese, um Rechnungen erstellen zu können.
+                        Bitte füllen Sie alle mit * markierten Pflichtfelder im Bereich "Ihre Firmendaten" aus und speichern Sie diese, um Rechnungen erstellen zu können. Die fehlenden Felder sind rot markiert.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => { setShowMissingInfoAlert(false); openAccordionAndFocus(); }}>Verstanden</AlertDialogAction>
+                    <AlertDialogAction onClick={() => { setShowMissingInfoAlert(false); }}>Verstanden</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

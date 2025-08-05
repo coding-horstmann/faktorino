@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info, Check, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +22,7 @@ import JSZip from 'jszip';
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const formSchema = z.object({
   csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
@@ -59,6 +60,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
   const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -132,6 +134,13 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
         [name]: value
     });
   }
+   const handleClassificationChange = (value: Invoice['countryClassification']) => {
+    if (!editingInvoice) return;
+    setEditingInvoice({
+      ...editingInvoice,
+      countryClassification: value,
+    });
+  };
 
   const handleEditItemChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if(!editingInvoice) return;
@@ -175,7 +184,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
         return;
     }
     generatePdf(invoice, userInfo, 'save');
-  }, [userInfo, isUserInfoComplete, toast, onMissingInfo]);
+  }, [userInfo, isUserInfoComplete, onMissingInfo]);
 
   const handleDownloadAllPdfs = useCallback(async () => {
     if (!isUserInfoComplete) {
@@ -186,6 +195,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
         toast({
             title: "Keine Rechnungen",
             description: "Es sind keine Rechnungen zum Herunterladen vorhanden.",
+            variant: "destructive"
         });
         return;
     }
@@ -221,8 +231,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
     
     setIsLoading(true);
     setError(null);
-    updateInvoices([]);
-
+    
     const files = Array.from(values.csvFiles as FileList);
     let combinedCsvData = '';
     const fileReadPromises = files.map((file, index) => {
@@ -231,7 +240,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
             reader.onload = (e) => {
                 const content = e.target?.result as string;
                 if (index === 0) {
-                    resolve(content); // Keep header for the first file
+                    resolve(content); 
                 } else {
                     const lines = content.split('\n');
                     resolve(lines.slice(1).join('\n'));
@@ -257,7 +266,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
         if (response.error) {
             setError(response.error);
         } else if (response.data) {
-            updateInvoices(response.data.invoices);
+            updateInvoices([...invoices, ...response.data.invoices]);
         }
     } catch (err: any) {
          setError(err.message || "Fehler beim Lesen der Dateien.");
@@ -265,6 +274,16 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
         setIsLoading(false);
     }
   }
+  
+  const handleInvoiceNumberSave = () => {
+    if (!editingInvoiceNumber) return;
+    updateInvoices(
+      invoices.map((inv) =>
+        inv.id === editingInvoiceNumber.id ? { ...inv, invoiceNumber: editingInvoiceNumber.number } : inv
+      )
+    );
+    setEditingInvoiceNumber(null);
+  };
   
   const invoicesThisMonth = invoices.length;
   const maxInvoices = 10000;
@@ -311,7 +330,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                 </Alert>
             </CardContent>
             <CardFooter className="flex-col items-start gap-4">
-               <Button type="submit" disabled={isLoading || !isUserInfoComplete} className="w-full">
+               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -324,15 +343,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                <div className="w-full text-center text-sm text-muted-foreground">
                     Rechnungen in diesem Monat: {invoicesThisMonth} / {maxInvoices}
                </div>
-               {!isUserInfoComplete && (
-                 <Alert variant="destructive">
-                   <AlertTriangle className="h-4 w-4" />
-                   <AlertTitle>Achtung</AlertTitle>
-                   <AlertDescription>
-                     Bitte füllen Sie erst Ihre Firmendaten im oberen Bereich aus und speichern diese, um Rechnungen erstellen zu können.
-                   </AlertDescription>
-                 </Alert>
-               )}
             </CardFooter>
           </form>
         </Form>
@@ -411,12 +421,12 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                     </AlertDialog>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className={invoices.length > 10 ? "h-[500px] border rounded-md" : ""}>
+                    <ScrollArea className="w-full whitespace-nowrap rounded-md border" style={{ height: invoices.length > 10 ? '500px' : 'auto' }}>
                        <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Rechnungsnr.</TableHead>
+                                    <TableHead className="w-[180px]">Rechnungsnr.</TableHead>
                                     <TableHead>Datum</TableHead>
                                     <TableHead>Käufer</TableHead>
                                     <TableHead>Land</TableHead>
@@ -432,7 +442,28 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                             <TableBody>
                                 {invoices.map((invoice) => (
                                     <TableRow key={invoice.id}>
-                                        <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                                        <TableCell className="font-medium">
+                                          {editingInvoiceNumber?.id === invoice.id ? (
+                                            <div className="flex items-center gap-1">
+                                              <Input
+                                                value={editingInvoiceNumber.number}
+                                                onChange={(e) =>
+                                                  setEditingInvoiceNumber({ ...editingInvoiceNumber, number: e.target.value })
+                                                }
+                                                className="h-8"
+                                              />
+                                              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700" onClick={handleInvoiceNumberSave}><Check className="h-4 w-4"/></Button>
+                                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" onClick={() => setEditingInvoiceNumber(null)}><X className="h-4 w-4"/></Button>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-2">
+                                              {invoice.invoiceNumber}
+                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingInvoiceNumber({ id: invoice.id, number: invoice.invoiceNumber })}>
+                                                <Pencil className="h-3 w-3" />
+                                              </Button>
+                                            </div>
+                                          )}
+                                        </TableCell>
                                         <TableCell>{invoice.orderDate}</TableCell>
                                         <TableCell>{invoice.buyerName}</TableCell>
                                         <TableCell>{invoice.country}</TableCell>
@@ -489,32 +520,54 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                 <ScrollArea className="max-h-[70vh] p-1">
                     <div className="space-y-6 p-4">
                         
-                        <div className="space-y-2">
-                            <Label htmlFor="invoiceNumber">Rechnungs-Nr.</Label>
-                            <Input id="invoiceNumber" name="invoiceNumber" value={editingInvoice.invoiceNumber} onChange={handleEditInvoiceChange}/>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="buyerName">Käufer</Label>
-                            <Input id="buyerName" name="buyerName" value={editingInvoice.buyerName} onChange={handleEditInvoiceChange}/>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="invoiceNumber">Rechnungs-Nr.</Label>
+                                <Input id="invoiceNumber" name="invoiceNumber" value={editingInvoice.invoiceNumber} onChange={handleEditInvoiceChange}/>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="buyerName">Käufer</Label>
+                                <Input id="buyerName" name="buyerName" value={editingInvoice.buyerName} onChange={handleEditInvoiceChange}/>
+                            </div>
                         </div>
 
                          <div className="space-y-2">
                             <Label htmlFor="buyerAddress">Adresse</Label>
-                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress} onChange={handleEditInvoiceChange} rows={4}/>
+                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress.replace(/\\n/g, '\n')} onChange={handleEditInvoiceChange} rows={4}/>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="orderDate">Rechnungsdatum</Label>
-                            <Input id="orderDate" name="orderDate" value={editingInvoice.orderDate} onChange={handleEditInvoiceChange} />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="orderDate">Rechnungsdatum</Label>
+                                <Input id="orderDate" name="orderDate" value={editingInvoice.orderDate} onChange={handleEditInvoiceChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="serviceDate">Leistungsdatum</Label>
+                                <Input id="serviceDate" name="serviceDate" value={editingInvoice.serviceDate} onChange={handleEditInvoiceChange} />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="serviceDate">Leistungsdatum</Label>
-                            <Input id="serviceDate" name="serviceDate" value={editingInvoice.serviceDate} onChange={handleEditInvoiceChange} />
-                        </div>
-                       
-                        <div className="space-y-2">
-                            <Label htmlFor="taxNote">Steuervermerk</Label>
-                            <Textarea id="taxNote" name="taxNote" value={editingInvoice.taxNote} onChange={handleEditInvoiceChange} rows={3}/>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="countryClassification">Klassifizierung</Label>
+                                 <Select
+                                    value={editingInvoice.countryClassification}
+                                    onValueChange={handleClassificationChange}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Klassifizierung auswählen" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Deutschland">Deutschland</SelectItem>
+                                        <SelectItem value="EU-Ausland">EU-Ausland</SelectItem>
+                                        <SelectItem value="Drittland">Drittland</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="taxNote">Steuervermerk</Label>
+                                <Textarea id="taxNote" name="taxNote" value={editingInvoice.taxNote} onChange={handleEditInvoiceChange} rows={3}/>
+                            </div>
                         </div>
 
                         <h4 className="font-semibold mt-4 border-t pt-4">Positionen</h4>
@@ -566,4 +619,3 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
     </div>
   );
 }
-

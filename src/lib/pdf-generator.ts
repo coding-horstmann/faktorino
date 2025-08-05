@@ -55,7 +55,7 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
 
     // Empfängeradresse (links unter dem Absender)
     doc.setFontSize(10);
-    const recipientYStart = 40;
+    const recipientYStart = 35;
     let currentY = recipientYStart;
     doc.text(invoice.buyerName, 20, currentY);
     currentY += 5;
