@@ -251,10 +251,12 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         const header = allCsvContents[0].split('\n')[0];
         const rowsFromAllFiles = allCsvContents.flatMap((content, index) => {
             const lines = content.split('\n');
+            // Skip header only for subsequent files
             return index === 0 ? lines.slice(1) : lines.slice(1);
-        });
+        }).filter(row => row.trim() !== ''); // Filter out empty rows
 
-        const combinedCsvData = [header, ...rowsFromAllFiles].join('\n');
+        // Join header with all rows, ensuring a newline at the end of the header
+        const combinedCsvData = [header.trim(), ...rowsFromAllFiles].join('\n');
         
         if (!combinedCsvData.trim() || rowsFromAllFiles.length === 0) {
             setError("Die ausgewählten Dateien sind leer oder ungültig.");
@@ -262,15 +264,20 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             return;
         }
         
-        const existingInvoiceIds = new Set(invoices.map(inv => inv.id));
-        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, existingInvoiceIds);
+        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, invoices);
 
         if (response.error) {
             setError(response.error);
         } else if (response.data) {
             const newInvoices = response.data.invoices;
-            const uniqueNewInvoices = newInvoices.filter(newInv => !existingInvoiceIds.has(newInv.id));
-            updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber)));
+            const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
+            
+            updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
+                const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
+                const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
+                if (dateA !== dateB) return dateA - dateB;
+                return a.invoiceNumber.localeCompare(b.invoiceNumber);
+            }));
             
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
@@ -634,5 +641,3 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     </div>
   );
 }
-
-    

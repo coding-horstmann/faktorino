@@ -191,7 +191,7 @@ function formatDate(dateStr: string): string {
 export async function generateInvoicesAction(
     csvData: string, 
     taxStatus: UserInfo['taxStatus'],
-    existingInvoiceIds: Set<string>
+    existingInvoices: Invoice[]
 ): Promise<{ data: ProcessCsvOutput | null; error: string | null; }> {
   try {
     const parseResult = Papa.parse(csvData, {
@@ -212,6 +212,8 @@ export async function generateInvoicesAction(
         }
     }
 
+    const existingInvoiceIds = new Set(existingInvoices.map(inv => inv.id));
+    
     const rowsByOrderId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
       const orderId = getColumn(row, ['order id', 'bestellnummer', 'sale id'], normalizedHeaderMap);
@@ -361,17 +363,29 @@ export async function generateInvoicesAction(
         return dateA - dateB;
     });
 
-    const invoices: Invoice[] = [];
+    // Find the highest existing invoice number for each year
     const invoiceCounters: { [year: number]: number } = {};
-
+    for (const inv of existingInvoices) {
+      const match = inv.invoiceNumber.match(/RE-(\d{4})-(\d+)/);
+      if (match) {
+        const year = parseInt(match[1], 10);
+        const num = parseInt(match[2], 10);
+        if (!invoiceCounters[year] || num > invoiceCounters[year]) {
+          invoiceCounters[year] = num;
+        }
+      }
+    }
+    
+    const invoices: Invoice[] = [];
     for (const draft of invoiceDrafts) {
         const dateObject = new Date(draft.orderDate.split('.').reverse().join('-'));
         const orderYear = !isNaN(dateObject.getTime()) ? dateObject.getFullYear() : new Date().getFullYear();
         
         if (!invoiceCounters[orderYear]) {
-            invoiceCounters[orderYear] = 1;
+            invoiceCounters[orderYear] = 0;
         }
-        const invoiceNumberForYear = invoiceCounters[orderYear]++;
+        invoiceCounters[orderYear]++;
+        const invoiceNumberForYear = invoiceCounters[orderYear];
 
         const finalInvoice: Invoice = {
             ...draft,
