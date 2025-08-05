@@ -74,12 +74,6 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
-        <header className="text-center">
-          <h1 className="text-4xl font-bold font-headline text-primary">Etsy-Buchhaltung</h1>
-          <p className="text-muted-foreground mt-2 text-lg">
-            Tool zur automatisierten Etsy-Buchhaltung.
-          </p>
-        </header>
         
         <Accordion type="single" collapsible className="w-full" defaultValue={"item-1"}>
           <AccordionItem value="item-1">

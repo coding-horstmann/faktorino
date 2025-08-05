@@ -369,17 +369,17 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                         Zusammenfassung
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-lg">
-                    <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
-                        <span className="font-medium">Netto-Umsätze:</span>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left">
+                    <div className="p-4 bg-secondary rounded-lg flex flex-col md:flex-row items-center justify-between gap-2">
+                        <span className="font-medium whitespace-nowrap">Netto-Umsätze:</span>
                         <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalNetSales)}</span>
                     </div>
-                     <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
-                        <span className="font-medium">Umsatzsteuer:</span>
+                     <div className="p-4 bg-secondary rounded-lg flex flex-col md:flex-row items-center justify-between gap-2">
+                        <span className="font-medium whitespace-nowrap">Umsatzsteuer:</span>
                         <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalVat)}</span>
                     </div>
-                     <div className="p-4 bg-secondary rounded-lg flex items-center justify-between">
-                        <span className="font-medium">Brutto-Umsätze:</span>
+                     <div className="p-4 bg-secondary rounded-lg flex flex-col md:flex-row items-center justify-between gap-2">
+                        <span className="font-medium whitespace-nowrap">Brutto-Umsätze:</span>
                         <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalGross)}</span>
                     </div>
                 </CardContent>
