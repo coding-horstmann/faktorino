@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info, Check, X } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info, Check, X, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -62,6 +62,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,6 +89,14 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  const filteredInvoices = useMemo(() => {
+    if (!searchTerm) return invoices;
+    return invoices.filter(invoice => 
+        invoice.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [invoices, searchTerm]);
   
   const summary = useMemo(() => {
     const totalNetSales = invoices.reduce((sum, inv) => sum + inv.netTotal, 0);
@@ -240,11 +249,16 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             const reader = new FileReader();
             reader.onload = (e) => {
                 const content = e.target?.result as string;
+                if (!content) {
+                    resolve('');
+                    return;
+                }
+                const lines = content.split('\\n');
+                // For the first file, include the header. For subsequent files, skip it.
                 if (index === 0) {
-                    resolve(content); 
+                    resolve(lines.join('\\n'));
                 } else {
-                    const lines = content.split('\n');
-                    resolve(lines.slice(1).join('\n'));
+                    resolve(lines.slice(1).join('\\n'));
                 }
             };
             reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
@@ -255,7 +269,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
     try {
         const allCsvContents = await Promise.all(fileReadPromises);
-        combinedCsvData = allCsvContents.join('\n');
+        combinedCsvData = allCsvContents.filter(c => c).join('\\n');
         
         if (!combinedCsvData.trim()) {
             setError("Die ausgewählten Dateien sind leer oder ungültig.");
@@ -269,9 +283,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         if (response.error) {
             setError(response.error);
         } else if (response.data) {
-            updateInvoices([...invoices, ...response.data.invoices]);
-             if (fileInputRef.current) {
-              fileInputRef.current.value = "";
+            const newInvoices = response.data.invoices;
+            const uniqueNewInvoices = newInvoices.filter(newInv => !existingInvoiceIds.has(newInv.id));
+            updateInvoices([...invoices, ...uniqueNewInvoices]);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
             }
             form.reset();
         }
@@ -301,7 +317,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-primary"/>
-            CSV-Datei(en) hochladen & Rechnungen erstellen
+            1. Etsy-Bestellungen hochladen
           </CardTitle>
           <CardDescription>
             Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen. Das Tool generiert dann automatisch alle Rechnungen.
@@ -403,30 +419,41 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             </p>
 
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <CardTitle className="flex items-center gap-2">
                         <Euro className="text-primary"/>
-                        Generierte Rechnungen ({invoices.length})
+                        Generierte Rechnungen ({filteredInvoices.length})
                     </CardTitle>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={invoices.length === 0}>
-                                <Trash2 className="mr-2 h-4 w-4"/> Alle löschen
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Sind Sie sicher?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Diese Aktion kann nicht rückgängig gemacht werden. Dadurch werden alle {invoices.length} generierten Rechnungen dauerhaft aus dieser Ansicht entfernt.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteAllInvoices}>Ja, alle löschen</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    <div className="w-full md:w-auto flex items-center gap-2">
+                         <div className="relative w-full md:w-64">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Suche nach Name, Re-Nr..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" disabled={invoices.length === 0}>
+                                    <Trash2 className="mr-2 h-4 w-4"/> Alle löschen
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Sind Sie sicher?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Diese Aktion kann nicht rückgängig gemacht werden. Dadurch werden alle {invoices.length} generierten Rechnungen dauerhaft aus dieser Ansicht entfernt.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteAllInvoices}>Ja, alle löschen</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="w-full overflow-x-auto">
@@ -447,7 +474,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {invoices.map((invoice) => (
+                                {filteredInvoices.map((invoice) => (
                                     <TableRow key={invoice.id}>
                                         <TableCell className="font-medium">
                                           {editingInvoiceNumber?.id === invoice.id ? (
@@ -522,7 +549,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] p-1">
                     <div className="space-y-6 p-4">
-                        
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="invoiceNumber">Rechnungs-Nr.</Label>
@@ -536,7 +562,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
                          <div className="space-y-2">
                             <Label htmlFor="buyerAddress">Adresse</Label>
-                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress.replace(/\\n/g, '\n')} onChange={handleEditInvoiceChange} rows={4}/>
+                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress.replace(/\\n/g, '\\n')} onChange={handleEditInvoiceChange} rows={4}/>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -622,3 +648,5 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     </div>
   );
 }
+
+    
