@@ -87,10 +87,16 @@ export default function DashboardPage() {
   };
   
   const saveAndCheckUserInfo = () => {
-    checkUserInfo(userInfo, true);
+    const isComplete = checkUserInfo(userInfo, true);
+     if(isComplete) {
+        toast({
+            title: "Gespeichert",
+            description: "Ihre Firmendaten wurden erfolgreich übernommen.",
+        });
+    }
   }
 
-  const checkUserInfo = useCallback((info: UserInfo, showToast: boolean) => {
+  const checkUserInfo = useCallback((info: UserInfo, showDialog: boolean) => {
     const errors: Partial<Record<keyof UserInfo, boolean>> = {};
     let taxError = false;
     if (!info.name) errors.name = true;
@@ -108,25 +114,17 @@ export default function DashboardPage() {
     if(isComplete) {
         try {
             localStorage.setItem('userInfo', JSON.stringify(info));
-            if(showToast) {
-                toast({
-                    title: "Gespeichert",
-                    description: "Ihre Firmendaten wurden erfolgreich übernommen.",
-                });
-            }
             setAccordionValue(""); // close accordion on successful save
         } catch (error) {
              console.error("Could not save user info to localStorage", error);
-             if(showToast) {
-                 toast({
-                    variant: "destructive",
-                    title: "Fehler beim Speichern",
-                    description: "Ihre Daten konnten nicht lokal gespeichert werden.",
-                });
-             }
+             toast({
+                variant: "destructive",
+                title: "Fehler beim Speichern",
+                description: "Ihre Daten konnten nicht lokal gespeichert werden.",
+            });
         }
     } else {
-        if(showToast) {
+        if(showDialog) {
             setShowMissingInfoAlert(true);
             openAccordionAndFocus();
         }
@@ -188,7 +186,7 @@ export default function DashboardPage() {
                         <Label htmlFor="vatId">Umsatzsteuer-IdNr.</Label>
                         <Input id="vatId" name="vatId" value={userInfo.vatId} onChange={handleUserInfoChange} placeholder="DE123456789" className={cn({'border-yellow-500': isTaxIdError})}/>
                         <p className={cn("text-xs text-muted-foreground", {'text-yellow-600 font-semibold': isTaxIdError})}>Mindestens eines der beiden Felder (Steuernummer oder USt-IdNr.) muss ausgefüllt werden.</p>
-                     </div>
+                      </div>
                       <div className="space-y-2">
                         <Label>Besteuerungsart *</Label>
                         <RadioGroup defaultValue="regular" onValueChange={handleTaxStatusChange} value={userInfo.taxStatus}>
@@ -218,7 +216,7 @@ export default function DashboardPage() {
           </AccordionItem>
         </Accordion>
 
-        <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete} onMissingInfo={handleMissingInfo} />
+        <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete} onMissingInfo={handleMissingInfo} onUserInfoSave={saveAndCheckUserInfo} />
 
         <AlertDialog open={showMissingInfoAlert} onOpenChange={setShowMissingInfoAlert}>
             <AlertDialogContent>

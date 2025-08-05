@@ -161,7 +161,14 @@ function formatDate(dateStr: string): string {
     const parts = dateStr.match(/(\d+)/g);
     let date: Date;
     if (parts && parts.length === 3) {
-      date = new Date(parseInt(parts[2], 10) > 50 ? `19${parts[2]}` : `20${parts[2]}`, parseInt(parts[0], 10) - 1, parseInt(parts[1], 10));
+      // Assuming MM/DD/YY or similar, which is common in Etsy CSVs
+      const month = parseInt(parts[0], 10);
+      const day = parseInt(parts[1], 10);
+      let year = parseInt(parts[2], 10);
+      if (year < 100) {
+        year += 2000; // E.g., '24' becomes '2024'
+      }
+      date = new Date(year, month - 1, day);
     } else {
       date = new Date(dateStr);
     }
@@ -176,7 +183,11 @@ function formatDate(dateStr: string): string {
 }
 
 
-export async function generateInvoicesAction(csvData: string, taxStatus: UserInfo['taxStatus']): Promise<{ data: ProcessCsvOutput | null; error: string | null; }> {
+export async function generateInvoicesAction(
+    csvData: string, 
+    taxStatus: UserInfo['taxStatus'],
+    existingInvoiceIds: Set<string>
+): Promise<{ data: ProcessCsvOutput | null; error: string | null; }> {
   try {
     const parseResult = Papa.parse(csvData, {
       header: true,
@@ -199,7 +210,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
     const rowsByOrderId = new Map<string, any[]>();
     for (const row of parseResult.data as any[]) {
       const orderId = getColumn(row, ['order id', 'bestellnummer', 'sale id'], normalizedHeaderMap);
-      if (!orderId) continue;
+      if (!orderId || existingInvoiceIds.has(orderId)) continue; // Skip if no ID or already exists
       if (!rowsByOrderId.has(orderId)) {
         rowsByOrderId.set(orderId, []);
       }
@@ -344,7 +355,7 @@ export async function generateInvoicesAction(csvData: string, taxStatus: UserInf
     }
 
     if (invoices.length === 0) {
-        return { data: null, error: "Keine gültigen Bestellungen zur Rechnungsstellung in der CSV-Datei gefunden. Bitte prüfen Sie das Dateiformat und die Spaltennamen." };
+        return { data: null, error: "Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen." };
     }
     
     invoices.sort((a, b) => {

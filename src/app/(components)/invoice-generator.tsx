@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -34,6 +34,7 @@ interface InvoiceGeneratorProps {
   userInfo: UserInfo;
   isUserInfoComplete: boolean;
   onMissingInfo: () => boolean;
+  onUserInfoSave: () => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -54,7 +55,7 @@ const getClassificationBadge = (classification: Invoice['countryClassification']
 };
 
 
-export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }: InvoiceGeneratorProps) {
+export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, onUserInfoSave }: InvoiceGeneratorProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
@@ -62,6 +63,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try {
@@ -261,11 +263,17 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
             return;
         }
 
-        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus);
+        const existingInvoiceIds = new Set(invoices.map(inv => inv.id));
+        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, existingInvoiceIds);
+
         if (response.error) {
             setError(response.error);
         } else if (response.data) {
             updateInvoices([...invoices, ...response.data.invoices]);
+             if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+            form.reset();
         }
     } catch (err: any) {
          setError(err.message || "Fehler beim Lesen der Dateien.");
@@ -313,6 +321,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                           type="file" 
                           accept=".csv"
                           multiple
+                          ref={fileInputRef}
                           onChange={(e) => field.onChange(e.target.files)}
                       />
                     </FormControl>
