@@ -36,7 +36,7 @@ export default function DashboardPage() {
   const [showMissingInfoAlert, setShowMissingInfoAlert] = useState(false);
   const [accordionValue, setAccordionValue] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof UserInfo, boolean>>>({});
-
+  const [isTaxIdError, setIsTaxIdError] = useState(false);
 
   useEffect(() => {
     try {
@@ -57,6 +57,9 @@ export default function DashboardPage() {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
     if (validationErrors[e.target.name as keyof UserInfo]) {
         setValidationErrors({ ...validationErrors, [e.target.name]: false });
+    }
+    if(isTaxIdError && (e.target.name === 'taxNumber' || e.target.name === 'vatId')) {
+        setIsTaxIdError(false);
     }
   };
   
@@ -89,16 +92,17 @@ export default function DashboardPage() {
 
   const checkUserInfo = useCallback((info: UserInfo, showToast: boolean) => {
     const errors: Partial<Record<keyof UserInfo, boolean>> = {};
+    let taxError = false;
     if (!info.name) errors.name = true;
     if (!info.address) errors.address = true;
     if (!info.city) errors.city = true;
     if (!info.taxNumber && !info.vatId) {
-        errors.taxNumber = true;
-        errors.vatId = true;
+        taxError = true;
     }
     setValidationErrors(errors);
+    setIsTaxIdError(taxError);
 
-    const isComplete = Object.keys(errors).length === 0;
+    const isComplete = Object.keys(errors).length === 0 && !taxError;
     setIsUserInfoComplete(isComplete);
     
     if(isComplete) {
@@ -131,7 +135,7 @@ export default function DashboardPage() {
   }, [toast]);
   
   const handleMissingInfo = useCallback(() => {
-    checkUserInfo(userInfo, true);
+    return checkUserInfo(userInfo, true);
   }, [userInfo, checkUserInfo]);
 
   const openAccordionAndFocus = () => {
@@ -178,12 +182,12 @@ export default function DashboardPage() {
                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="taxNumber">Steuernummer</Label>
-                        <Input id="taxNumber" name="taxNumber" value={userInfo.taxNumber} onChange={handleUserInfoChange} placeholder="123/456/7890" className={cn({'border-destructive': validationErrors.taxNumber})}/>
+                        <Input id="taxNumber" name="taxNumber" value={userInfo.taxNumber} onChange={handleUserInfoChange} placeholder="123/456/7890" className={cn({'border-yellow-500': isTaxIdError})}/>
                      </div>
                      <div className="space-y-2">
                         <Label htmlFor="vatId">Umsatzsteuer-IdNr.</Label>
-                        <Input id="vatId" name="vatId" value={userInfo.vatId} onChange={handleUserInfoChange} placeholder="DE123456789" className={cn({'border-destructive': validationErrors.vatId})}/>
-                        <p className="text-xs text-muted-foreground">Mindestens eines der beiden Felder (Steuernummer oder USt-IdNr.) muss ausgefüllt werden.</p>
+                        <Input id="vatId" name="vatId" value={userInfo.vatId} onChange={handleUserInfoChange} placeholder="DE123456789" className={cn({'border-yellow-500': isTaxIdError})}/>
+                        <p className={cn("text-xs text-muted-foreground", {'text-yellow-600 font-semibold': isTaxIdError})}>Mindestens eines der beiden Felder (Steuernummer oder USt-IdNr.) muss ausgefüllt werden.</p>
                      </div>
                       <div className="space-y-2">
                         <Label>Besteuerungsart *</Label>
@@ -221,7 +225,7 @@ export default function DashboardPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>Fehlende Angaben</AlertDialogTitle>
                     <AlertDialogDescription>
-                        Bitte füllen Sie alle mit * markierten Pflichtfelder im Bereich "Ihre Firmendaten" aus und speichern Sie diese, um Rechnungen erstellen zu können. Die fehlenden Felder sind rot markiert.
+                        Bitte füllen Sie alle mit * markierten Pflichtfelder im Bereich "Ihre Firmendaten" aus und speichern Sie diese, um Rechnungen erstellen zu können. Die fehlenden Felder sind markiert.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
