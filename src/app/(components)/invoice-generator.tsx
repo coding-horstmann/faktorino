@@ -106,7 +106,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
   const handleDeleteInvoice = useCallback((invoiceId: string) => {
     updateInvoices(invoices.filter(inv => inv.id !== invoiceId));
-  }, [invoices]);
+  }, [invoices, updateInvoices]);
   
   const handleDeleteAllInvoices = useCallback(() => {
     updateInvoices([]);
@@ -114,7 +114,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         title: "Alle Rechnungen gelöscht",
         description: "Die Liste der generierten Rechnungen ist jetzt leer.",
     });
-  }, [toast]);
+  }, [toast, updateInvoices]);
 
   const handleUpdateInvoice = useCallback(() => {
     if (!editingInvoice) return;
@@ -126,7 +126,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         title: "Rechnung aktualisiert",
         description: `Die Änderungen an Rechnung ${editingInvoice.invoiceNumber} wurden übernommen.`
     });
-  }, [editingInvoice, closeEditDialog, toast, invoices]);
+  }, [editingInvoice, closeEditDialog, toast, invoices, updateInvoices]);
   
   const handleEditInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if(!editingInvoice) return;
@@ -429,10 +429,9 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     </AlertDialog>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="w-full whitespace-nowrap rounded-md border" style={{ height: invoices.length > 20 ? '800px' : 'auto' }}>
-                       <div className="overflow-x-auto">
+                    <div className="w-full overflow-x-auto">
                         <Table>
-                            <TableHeader className="sticky top-0 bg-secondary z-10">
+                            <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-[220px]">Rechnungsnr.</TableHead>
                                     <TableHead>Datum</TableHead>
@@ -444,7 +443,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                         <TableHead className="text-right">USt.</TableHead>
                                     )}
                                     <TableHead className="text-right">Brutto</TableHead>
-                                    <TableHead className="text-center sticky right-0 bg-secondary z-10">Aktionen</TableHead>
+                                    <TableHead className="text-center">Aktionen</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -478,7 +477,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                             <TableCell className="text-right">{formatCurrency(invoice.vatTotal)}</TableCell>
                                         )}
                                         <TableCell className="text-right font-semibold">{formatCurrency(invoice.grossTotal)}</TableCell>
-                                        <TableCell className="text-center space-x-1 sticky right-0 bg-card z-10">
+                                        <TableCell className="text-center space-x-1">
                                             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
                                                 <Download className="mr-2 h-4 w-4"/>PDF
                                             </Button>
@@ -510,7 +509,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                             </TableBody>
                         </Table>
                        </div>
-                    </ScrollArea>
                 </CardContent>
             </Card>
         </div>
