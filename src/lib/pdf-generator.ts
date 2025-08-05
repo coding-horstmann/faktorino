@@ -59,10 +59,10 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     let currentY = recipientYStart;
     doc.text(invoice.buyerName, 20, currentY);
     currentY += 5;
-    const recipientLines = invoice.buyerAddress.split('\n');
+    const recipientLines = invoice.buyerAddress.replace(/\\n/g, '\n').split('\n');
     recipientLines.forEach((line) => {
         if (line.trim() !== '') {
-            doc.text(line, 20, currentY);
+            doc.text(line.trim(), 20, currentY);
             currentY += 5;
         }
     });
@@ -71,14 +71,23 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     const infoBlockY = headerY > 60 ? headerY : 60;
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    const title = invoice.isCancellation ? 'Stornorechnung' : 'Rechnung';
+    const title = 'Rechnung';
     doc.text(title, 20, infoBlockY);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Rechnungs-Nr.: ${invoice.invoiceNumber}`, 120, infoBlockY);
-    doc.text(`Rechnungsdatum: ${invoice.orderDate}`, 120, infoBlockY + 5);
-    doc.text(`Leistungsdatum: ${invoice.serviceDate}`, 120, infoBlockY + 10);
+    let infoX = 120;
+    let infoXEnd = 200;
+
+    doc.text(`Rechnungs-Nr.:`, infoX, infoBlockY);
+    doc.text(`${invoice.invoiceNumber}`, infoXEnd, infoBlockY, {align: 'right'});
+    
+    doc.text(`Rechnungsdatum:`, infoX, infoBlockY + 5);
+    doc.text(`${invoice.orderDate}`, infoXEnd, infoBlockY + 5, {align: 'right'});
+    
+    doc.text(`Leistungsdatum:`, infoX, infoBlockY + 10);
+    doc.text(`${invoice.serviceDate}`, infoXEnd, infoBlockY + 10, {align: 'right'});
+
 
     const tableColumn = ["Pos.", "Bezeichnung", "Menge", "USt.", "Einzelpreis (Netto)", "Gesamt (Netto)"];
     const tableRows: any[][] = [];
@@ -126,16 +135,13 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
 
-    // Position for tax notes and other info
     let infoY = finalY + 15;
     const taxNoteLines = doc.splitTextToSize(invoice.taxNote, 100);
     doc.text(taxNoteLines, 20, infoY);
     infoY += (taxNoteLines.length * 4) + 5;
     
-    if (!invoice.isCancellation) {
-        doc.text("Zahlung dankend erhalten.", 20, infoY);
-        infoY += 10;
-    }
+    doc.text("Zahlung dankend erhalten.", 20, infoY);
+    infoY += 10;
 
     doc.setFontSize(8);
     doc.setTextColor(100);
@@ -146,10 +152,15 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     doc.setFontSize(8);
     doc.setTextColor(0);
     const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
-    const taxLine = [senderName, senderAddress, senderCity, taxNumber, vatId].filter(Boolean).join(' | ');
-    doc.text(taxLine, 20, pageHeight - 10);
+    const taxInfo = [];
+    if(taxNumber) taxInfo.push(`St.-Nr.: ${taxNumber}`);
+    if(vatId) taxInfo.push(`USt-IdNr.: ${vatId}`);
     
-    const fileName = invoice.isCancellation ? `Stornorechnung-${invoice.invoiceNumber.replace('-STORNO','')}.pdf` : `Rechnung-${invoice.invoiceNumber}.pdf`;
+    const footerLine = [senderName, senderAddress, senderCity].join(' | ');
+    doc.text(footerLine, 20, pageHeight - 15);
+    doc.text(taxInfo.join(' | '), 20, pageHeight - 10);
+    
+    const fileName = `Rechnung-${invoice.invoiceNumber}.pdf`;
 
     if (outputType === 'save') {
         doc.save(fileName);

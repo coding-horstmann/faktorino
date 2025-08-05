@@ -28,7 +28,7 @@ export function SiteHeader() {
             {isLoggedIn ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="icon" className="rounded-full">
+                  <Button variant="secondary" size="icon" className="rounded-full bg-blue-600 text-white hover:bg-blue-700">
                     <UserCircle className="h-5 w-5" />
                     <span className="sr-only">Nutzermenü öffnen</span>
                   </Button>

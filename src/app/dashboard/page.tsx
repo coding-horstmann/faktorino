@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 export default function DashboardPage() {
   
   const { toast } = useToast();
+  const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
@@ -31,6 +32,20 @@ export default function DashboardPage() {
 
   const [isUserInfoComplete, setIsUserInfoComplete] = useState(false);
   const [showMissingInfoAlert, setShowMissingInfoAlert] = useState(false);
+  const [accordionValue, setAccordionValue] = useState<string>("");
+
+  useEffect(() => {
+    try {
+        const savedUserInfo = localStorage.getItem('userInfo');
+        if (savedUserInfo) {
+            const parsedInfo = JSON.parse(savedUserInfo);
+            setUserInfo(parsedInfo);
+            checkUserInfo(parsedInfo, false); // check on load without showing toast
+        }
+    } catch (error) {
+        console.error("Could not load user info from localStorage", error);
+    }
+  }, []);
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
@@ -58,26 +73,55 @@ export default function DashboardPage() {
       reader.readAsDataURL(file);
     }
   };
+  
+  const saveAndCheckUserInfo = () => {
+    checkUserInfo(userInfo, true);
+  }
 
-  const checkUserInfo = useCallback(() => {
-    if(userInfo.name && userInfo.address && userInfo.city && (userInfo.taxNumber || userInfo.vatId)) {
-      setIsUserInfoComplete(true);
-      toast({
-          title: "Daten gespeichert",
-          description: "Ihre Firmendaten wurden erfolgreich übernommen.",
-      });
+  const checkUserInfo = useCallback((info: UserInfo, showToast: boolean) => {
+    const isComplete = !!(info.name && info.address && info.city && (info.taxNumber || info.vatId));
+    setIsUserInfoComplete(isComplete);
+    if(isComplete) {
+        try {
+            localStorage.setItem('userInfo', JSON.stringify(info));
+            if(showToast) {
+                toast({
+                    title: "Daten gespeichert",
+                    description: "Ihre Firmendaten wurden erfolgreich übernommen.",
+                });
+            }
+            setAccordionValue(""); // close accordion on successful save
+        } catch (error) {
+             console.error("Could not save user info to localStorage", error);
+             if(showToast) {
+                 toast({
+                    variant: "destructive",
+                    title: "Fehler beim Speichern",
+                    description: "Ihre Daten konnten nicht lokal gespeichert werden.",
+                });
+             }
+        }
     } else {
-        setShowMissingInfoAlert(true);
-        setIsUserInfoComplete(false);
+        if(showToast) {
+            setShowMissingInfoAlert(true);
+        }
     }
-  }, [userInfo, toast]);
+  }, [toast]);
+  
+  const openAccordionAndFocus = () => {
+    setAccordionValue("item-1");
+    setTimeout(() => {
+        accordionTriggerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        accordionTriggerRef.current?.focus();
+    }, 100);
+  }
 
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
         
-        <Accordion type="single" collapsible className="w-full" defaultValue={"item-1"}>
+        <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
           <AccordionItem value="item-1">
-            <AccordionTrigger>
+            <AccordionTrigger ref={accordionTriggerRef}>
                  <div className="flex items-center gap-2 text-lg">
                     {isUserInfoComplete ? <CheckCircle className="text-green-500"/> : <AlertCircle className="text-destructive"/>}
                     Ihre Firmendaten für Rechnungen
@@ -136,8 +180,8 @@ export default function DashboardPage() {
                           <Input id="logo" name="logo" type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="max-w-xs" />
                         </div>
                       </div>
-                     <Button onClick={checkUserInfo}>
-                        Angaben speichern & übernehmen
+                     <Button onClick={saveAndCheckUserInfo}>
+                        Speichern
                      </Button>
                 </CardContent>
               </Card>
@@ -145,7 +189,7 @@ export default function DashboardPage() {
           </AccordionItem>
         </Accordion>
 
-        <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete}/>
+        <InvoiceGenerator userInfo={userInfo} isUserInfoComplete={isUserInfoComplete} onMissingInfo={openAccordionAndFocus} />
 
         <AlertDialog open={showMissingInfoAlert} onOpenChange={setShowMissingInfoAlert}>
             <AlertDialogContent>
@@ -156,7 +200,7 @@ export default function DashboardPage() {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogAction onClick={() => setShowMissingInfoAlert(false)}>Verstanden</AlertDialogAction>
+                    <AlertDialogAction onClick={() => { setShowMissingInfoAlert(false); openAccordionAndFocus(); }}>Verstanden</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

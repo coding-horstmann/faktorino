@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, RotateCcw, Info } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,6 +32,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface InvoiceGeneratorProps {
   userInfo: UserInfo;
   isUserInfoComplete: boolean;
+  onMissingInfo: () => void;
 }
 
 const formatCurrency = (value: number) => {
@@ -52,13 +53,33 @@ const getClassificationBadge = (classification: Invoice['countryClassification']
 };
 
 
-export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGeneratorProps) {
+export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }: InvoiceGeneratorProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+        const savedInvoices = localStorage.getItem('generatedInvoices');
+        if(savedInvoices) {
+            setInvoices(JSON.parse(savedInvoices));
+        }
+    } catch(e) {
+        console.error("Could not load invoices from localStorage", e);
+    }
+  }, []);
+
+  const updateInvoices = (newInvoices: Invoice[]) => {
+      setInvoices(newInvoices);
+      try {
+        localStorage.setItem('generatedInvoices', JSON.stringify(newInvoices));
+      } catch(e) {
+        console.error("Could not save invoices to localStorage", e);
+      }
+  }
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -80,50 +101,28 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
   }, []);
 
   const handleDeleteInvoice = useCallback((invoiceId: string) => {
-    setInvoices(prevInvoices => prevInvoices.filter(inv => inv.id !== invoiceId));
-  }, []);
+    updateInvoices(invoices.filter(inv => inv.id !== invoiceId));
+  }, [invoices]);
   
   const handleDeleteAllInvoices = useCallback(() => {
-    setInvoices([]);
+    updateInvoices([]);
     toast({
         title: "Alle Rechnungen gelöscht",
         description: "Die Liste der generierten Rechnungen ist jetzt leer.",
     });
   }, [toast]);
 
-
-  const handleCreateCancellation = useCallback((invoiceToCancel: Invoice) => {
-    const cancellationInvoice: Invoice = {
-      ...invoiceToCancel,
-      id: `${invoiceToCancel.id}-STORNO`, // a unique id for the cancellation
-      invoiceNumber: `Storno-${invoiceToCancel.invoiceNumber}`,
-      netTotal: -invoiceToCancel.netTotal,
-      vatTotal: -invoiceToCancel.vatTotal,
-      grossTotal: -invoiceToCancel.grossTotal,
-      items: invoiceToCancel.items.map(item => ({
-        ...item,
-        quantity: item.quantity,
-        netAmount: -item.netAmount,
-        vatAmount: -item.vatAmount,
-        grossAmount: -item.grossAmount,
-      })),
-      taxNote: `Stornierung der Rechnung ${invoiceToCancel.invoiceNumber}.\n${invoiceToCancel.taxNote}`,
-      isCancellation: true,
-    };
-    setInvoices(prev => [...prev, cancellationInvoice]);
-  }, []);
-
   const handleUpdateInvoice = useCallback(() => {
     if (!editingInvoice) return;
-    setInvoices(prevInvoices => 
-        prevInvoices.map(inv => inv.id === editingInvoice.id ? editingInvoice : inv)
+    updateInvoices(
+        invoices.map(inv => inv.id === editingInvoice.id ? editingInvoice : inv)
     );
     closeEditDialog();
     toast({
         title: "Rechnung aktualisiert",
         description: `Die Änderungen an Rechnung ${editingInvoice.invoiceNumber} wurden übernommen.`
     });
-  }, [editingInvoice, closeEditDialog, toast]);
+  }, [editingInvoice, closeEditDialog, toast, invoices]);
   
   const handleEditInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if(!editingInvoice) return;
@@ -172,23 +171,15 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
 
   const handleDownloadPdf = useCallback((invoice: Invoice) => {
     if (!isUserInfoComplete) {
-        toast({
-            variant: "destructive",
-            title: "Fehlende Angaben",
-            description: "Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus und speichern Sie diese.",
-        });
+        onMissingInfo();
         return;
     }
     generatePdf(invoice, userInfo, 'save');
-  }, [userInfo, isUserInfoComplete, toast]);
+  }, [userInfo, isUserInfoComplete, toast, onMissingInfo]);
 
   const handleDownloadAllPdfs = useCallback(async () => {
     if (!isUserInfoComplete) {
-        toast({
-            variant: "destructive",
-            title: "Fehlende Angaben",
-            description: "Bitte füllen Sie zuerst die Pflichtangaben für die Rechnungserstellung aus und speichern Sie diese.",
-        });
+        onMissingInfo();
         return;
     }
     if (invoices.length === 0) {
@@ -205,7 +196,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
     for (const invoice of invoices) {
         const pdfBlob = await generatePdf(invoice, userInfo, 'blob');
         if (pdfBlob) {
-            const fileName = invoice.isCancellation ? `Stornorechnung-${invoice.invoiceNumber.replace('-STORNO','')}.pdf` : `Rechnung-${invoice.invoiceNumber}.pdf`;
+            const fileName = `Rechnung-${invoice.invoiceNumber}.pdf`;
             zip.file(fileName, pdfBlob);
         }
     }
@@ -220,21 +211,17 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
         setIsZipping(false);
     });
 
-  }, [invoices, userInfo, isUserInfoComplete, toast]);
+  }, [invoices, userInfo, isUserInfoComplete, toast, onMissingInfo]);
 
   async function onSubmit(values: FormValues) {
     if (!isUserInfoComplete) {
-        toast({
-            variant: "destructive",
-            title: "Fehlende Angaben",
-            description: "Bitte füllen Sie zuerst Ihre Firmendaten aus, bevor Sie Rechnungen generieren.",
-        });
+        onMissingInfo();
         return;
     }
     
     setIsLoading(true);
     setError(null);
-    setInvoices([]);
+    updateInvoices([]);
 
     const files = Array.from(values.csvFiles as FileList);
     let combinedCsvData = '';
@@ -270,7 +257,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
         if (response.error) {
             setError(response.error);
         } else if (response.data) {
-            setInvoices(response.data.invoices);
+            updateInvoices(response.data.invoices);
         }
     } catch (err: any) {
          setError(err.message || "Fehler beim Lesen der Dateien.");
@@ -279,7 +266,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
     }
   }
   
-  // Dummy value for invoice counter
   const invoicesThisMonth = invoices.length;
   const maxInvoices = 10000;
 
@@ -289,7 +275,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-primary"/>
-            1. Etsy-Bestellungen hochladen & Rechnungen generieren
+            CSV-Datei(en) hochladen & Rechnungen erstellen
           </CardTitle>
           <CardDescription>
             Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen. Das Tool generiert dann automatisch alle Rechnungen.
@@ -369,18 +355,18 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                         Zusammenfassung
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center md:text-left">
-                    <div className="p-4 bg-secondary rounded-lg flex flex-col md:flex-row items-center justify-between gap-2">
-                        <span className="font-medium whitespace-nowrap">Netto-Umsätze:</span>
-                        <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalNetSales)}</span>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="p-4 bg-secondary rounded-lg flex flex-col items-center justify-center gap-1 text-center">
+                        <span className="font-medium whitespace-nowrap text-muted-foreground">Netto-Umsätze</span>
+                        <span className="font-bold text-lg text-accent-foreground">{formatCurrency(summary.totalNetSales)}</span>
                     </div>
-                     <div className="p-4 bg-secondary rounded-lg flex flex-col md:flex-row items-center justify-between gap-2">
-                        <span className="font-medium whitespace-nowrap">Umsatzsteuer:</span>
-                        <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalVat)}</span>
+                     <div className="p-4 bg-secondary rounded-lg flex flex-col items-center justify-center gap-1 text-center">
+                        <span className="font-medium whitespace-nowrap text-muted-foreground">Umsatzsteuer</span>
+                        <span className="font-bold text-lg text-accent-foreground">{formatCurrency(summary.totalVat)}</span>
                     </div>
-                     <div className="p-4 bg-secondary rounded-lg flex flex-col md:flex-row items-center justify-between gap-2">
-                        <span className="font-medium whitespace-nowrap">Brutto-Umsätze:</span>
-                        <span className="font-bold text-accent-foreground">{formatCurrency(summary.totalGross)}</span>
+                     <div className="p-4 bg-secondary rounded-lg flex flex-col items-center justify-center gap-1 text-center">
+                        <span className="font-medium whitespace-nowrap text-muted-foreground">Brutto-Umsätze</span>
+                        <span className="font-bold text-lg text-accent-foreground">{formatCurrency(summary.totalGross)}</span>
                     </div>
                 </CardContent>
             </Card>
@@ -425,7 +411,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                     </AlertDialog>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className={invoices.length > 50 ? "h-[700px]" : ""}>
+                    <ScrollArea className={invoices.length > 10 ? "h-[500px] border rounded-md" : ""}>
+                       <div className="overflow-x-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
@@ -444,7 +431,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                             </TableHeader>
                             <TableBody>
                                 {invoices.map((invoice) => (
-                                    <TableRow key={invoice.id} className={invoice.isCancellation ? 'bg-red-100 dark:bg-red-900/30' : ''}>
+                                    <TableRow key={invoice.id}>
                                         <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
                                         <TableCell>{invoice.orderDate}</TableCell>
                                         <TableCell>{invoice.buyerName}</TableCell>
@@ -454,16 +441,13 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                                         {userInfo.taxStatus === 'regular' && (
                                             <TableCell className="text-right">{formatCurrency(invoice.vatTotal)}</TableCell>
                                         )}
-                                        <TableCell className={`text-right font-semibold ${invoice.isCancellation ? 'text-destructive' : ''}`}>{formatCurrency(invoice.grossTotal)}</TableCell>
+                                        <TableCell className="text-right font-semibold">{formatCurrency(invoice.grossTotal)}</TableCell>
                                         <TableCell className="text-center space-x-1">
                                             <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
                                                 <Download className="mr-2 h-4 w-4"/>PDF
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)} disabled={invoice.isCancellation}>
+                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)}>
                                                 <Pencil className="h-4 w-4" />
-                                            </Button>
-                                             <Button variant="ghost" size="icon" onClick={() => handleCreateCancellation(invoice)} disabled={invoice.isCancellation || invoices.some(i => i.id === `${invoice.id}-STORNO`)}>
-                                                <RotateCcw className="h-4 w-4" />
                                             </Button>
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
@@ -489,6 +473,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                                 ))}
                             </TableBody>
                         </Table>
+                       </div>
                     </ScrollArea>
                 </CardContent>
             </Card>
@@ -496,55 +481,76 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
       )}
 
       {editingInvoice && (
-        <Dialog open={!!editingInvoice} onOpenChange={closeEditDialog}>
-            <DialogContent className="sm:max-w-[800px]">
+        <Dialog open={!!editingInvoice} onOpenChange={(isOpen) => !isOpen && closeEditDialog()}>
+            <DialogContent className="sm:max-w-4xl">
                 <DialogHeader>
                     <DialogTitle>Rechnung bearbeiten: {editingInvoice.invoiceNumber}</DialogTitle>
                 </DialogHeader>
-                <ScrollArea className="max-h-[70vh] p-4">
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="invoiceNumber" className="text-right">Rechnungs-Nr.</Label>
-                            <Input id="invoiceNumber" name="invoiceNumber" value={editingInvoice.invoiceNumber} onChange={handleEditInvoiceChange} className="col-span-3"/>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="buyerName" className="text-right">Käufer</Label>
-                            <Input id="buyerName" name="buyerName" value={editingInvoice.buyerName} onChange={handleEditInvoiceChange} className="col-span-3"/>
-                        </div>
-                        <div className="grid grid-cols-4 items-start gap-4">
-                            <Label htmlFor="buyerAddress" className="text-right mt-2">Adresse</Label>
-                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress} onChange={handleEditInvoiceChange} className="col-span-3" rows={4}/>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="orderDate" className="text-right">Rechnungsdatum</Label>
-                            <Input id="orderDate" name="orderDate" value={editingInvoice.orderDate} onChange={handleEditInvoiceChange} className="col-span-3"/>
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="serviceDate" className="text-right">Leistungsdatum</Label>
-                            <Input id="serviceDate" name="serviceDate" value={editingInvoice.serviceDate} onChange={handleEditInvoiceChange} className="col-span-3"/>
-                        </div>
-                         <div className="grid grid-cols-4 items-start gap-4">
-                            <Label htmlFor="taxNote" className="text-right mt-2">Steuervermerk</Label>
-                            <Textarea id="taxNote" name="taxNote" value={editingInvoice.taxNote} onChange={handleEditInvoiceChange} className="col-span-3" rows={3}/>
+                <ScrollArea className="max-h-[70vh] p-1">
+                    <div className="grid gap-6 p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="invoiceNumber">Rechnungs-Nr.</Label>
+                                <Input id="invoiceNumber" name="invoiceNumber" value={editingInvoice.invoiceNumber} onChange={handleEditInvoiceChange}/>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="buyerName">Käufer</Label>
+                                <Input id="buyerName" name="buyerName" value={editingInvoice.buyerName} onChange={handleEditInvoiceChange}/>
+                            </div>
                         </div>
 
-                        <h4 className="font-semibold col-span-4 mt-4">Positionen</h4>
+                         <div className="space-y-2">
+                            <Label htmlFor="buyerAddress">Adresse</Label>
+                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress} onChange={handleEditInvoiceChange} rows={4}/>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="orderDate">Rechnungsdatum</Label>
+                                <Input id="orderDate" name="orderDate" value={editingInvoice.orderDate} onChange={handleEditInvoiceChange} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="serviceDate">Leistungsdatum</Label>
+                                <Input id="serviceDate" name="serviceDate" value={editingInvoice.serviceDate} onChange={handleEditInvoiceChange} />
+                            </div>
+                        </div>
+                       
+                        <div className="space-y-2">
+                            <Label htmlFor="taxNote">Steuervermerk</Label>
+                            <Textarea id="taxNote" name="taxNote" value={editingInvoice.taxNote} onChange={handleEditInvoiceChange} rows={3}/>
+                        </div>
+
+                        <h4 className="font-semibold col-span-4 mt-4 border-t pt-4">Positionen</h4>
+                        <div className="space-y-4">
                         {editingInvoice.items.map((item, index) => (
-                           <Card key={index} className="col-span-4 p-4">
-                               <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-                                    <Input name="name" value={item.name} onChange={(e) => handleEditItemChange(index, e)} placeholder="Bezeichnung" />
-                                    <Input name="quantity" value={item.quantity} onChange={(e) => handleEditItemChange(index, e)} placeholder="Menge" type="number" />
-                                    <Input name="netAmount" value={item.netAmount.toFixed(2)} onChange={(e) => handleEditItemChange(index, e)} placeholder="Nettobetrag" type="number" step="0.01" />
-                                    <Input name="vatRate" value={item.vatRate} onChange={(e) => handleEditItemChange(index, e)} placeholder="USt %" type="number" />
-                                    <div className="p-2 bg-muted rounded-md text-sm">Brutto: {formatCurrency(item.grossAmount)}</div>
+                           <Card key={index} className="p-4">
+                               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                                    <div className="space-y-1 md:col-span-2">
+                                        <Label>Bezeichnung</Label>
+                                        <Input name="name" value={item.name} onChange={(e) => handleEditItemChange(index, e)} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label>Menge</Label>
+                                        <Input name="quantity" value={item.quantity} onChange={(e) => handleEditItemChange(index, e)} type="number" />
+                                    </div>
+                                    <div className="space-y-1">
+                                         <Label>Nettobetrag</Label>
+                                        <Input name="netAmount" value={item.netAmount.toFixed(2)} onChange={(e) => handleEditItemChange(index, e)} type="number" step="0.01" />
+                                    </div>
+                                     <div className="space-y-1">
+                                        <Label>USt %</Label>
+                                        <Input name="vatRate" value={item.vatRate} onChange={(e) => handleEditItemChange(index, e)} type="number" />
+                                    </div>
                                </div>
+                               <div className="mt-2 text-right text-sm text-muted-foreground">Brutto (berechnet): {formatCurrency(item.grossAmount)}</div>
                            </Card>
                         ))}
+                        </div>
 
-                        <div className="col-span-4 mt-4 text-right space-y-2">
-                            <p>Netto: {formatCurrency(editingInvoice.netTotal)}</p>
-                            <p>USt.: {formatCurrency(editingInvoice.vatTotal)}</p>
-                            <p className="font-bold">Brutto: {formatCurrency(editingInvoice.grossTotal)}</p>
+                        <div className="col-span-4 mt-4 text-right space-y-2 border-t pt-4">
+                            <div className="flex justify-end items-center gap-4"><span>Netto:</span> <span>{formatCurrency(editingInvoice.netTotal)}</span></div>
+                            <div className="flex justify-end items-center gap-4"><span>USt.:</span> <span>{formatCurrency(editingInvoice.vatTotal)}</span></div>
+                            <div className="flex justify-end items-center gap-4 font-bold text-lg"><span>Brutto:</span> <span>{formatCurrency(editingInvoice.grossTotal)}</span></div>
                         </div>
                     </div>
                 </ScrollArea>
