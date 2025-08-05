@@ -243,40 +243,25 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     setError(null);
     
     const files = Array.from(values.csvFiles as FileList);
-    let combinedCsvData = '';
-    const fileReadPromises = files.map((file, index) => {
-        return new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const content = e.target?.result as string;
-                if (!content) {
-                    resolve('');
-                    return;
-                }
-                const lines = content.split('\\n');
-                // For the first file, include the header. For subsequent files, skip it.
-                if (index === 0) {
-                    resolve(lines.join('\\n'));
-                } else {
-                    resolve(lines.slice(1).join('\\n'));
-                }
-            };
-            reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
-            reader.readAsText(file, 'UTF-8');
-        });
-    });
-
+    const fileReadPromises = files.map(file => file.text());
 
     try {
         const allCsvContents = await Promise.all(fileReadPromises);
-        combinedCsvData = allCsvContents.filter(c => c).join('\\n');
         
-        if (!combinedCsvData.trim()) {
+        const header = allCsvContents[0].split('\n')[0];
+        const rowsFromAllFiles = allCsvContents.flatMap((content, index) => {
+            const lines = content.split('\n');
+            return index === 0 ? lines.slice(1) : lines.slice(1);
+        });
+
+        const combinedCsvData = [header, ...rowsFromAllFiles].join('\n');
+        
+        if (!combinedCsvData.trim() || rowsFromAllFiles.length === 0) {
             setError("Die ausgewählten Dateien sind leer oder ungültig.");
             setIsLoading(false);
             return;
         }
-
+        
         const existingInvoiceIds = new Set(invoices.map(inv => inv.id));
         const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, existingInvoiceIds);
 
@@ -285,14 +270,15 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         } else if (response.data) {
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !existingInvoiceIds.has(newInv.id));
-            updateInvoices([...invoices, ...uniqueNewInvoices]);
+            updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber)));
+            
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
             form.reset();
         }
     } catch (err: any) {
-         setError(err.message || "Fehler beim Lesen der Dateien.");
+         setError(err.message || "Fehler beim Lesen oder Verarbeiten der Dateien.");
     } finally {
         setIsLoading(false);
     }
@@ -562,7 +548,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
                          <div className="space-y-2">
                             <Label htmlFor="buyerAddress">Adresse</Label>
-                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress.replace(/\\n/g, '\\n')} onChange={handleEditInvoiceChange} rows={4}/>
+                            <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress.replace(/\\n/g, '\n')} onChange={handleEditInvoiceChange} rows={4}/>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
