@@ -407,7 +407,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     )}
                 </Button>
             </div>
-             <p className="text-xs text-muted-foreground text-center">
+             <p className="text-sm text-muted-foreground text-center">
                 Dieses Tool dient ausschließlich der Unterstützung bei der Rechnungserstellung. Es ersetzt keine steuerliche oder rechtliche Beratung. Für die Richtigkeit, Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist allein der Nutzer verantwortlich.
             </p>
 
@@ -641,5 +641,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     </div>
   );
 }
+
+    
 
     
