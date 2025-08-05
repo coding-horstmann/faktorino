@@ -222,8 +222,7 @@ export async function generateInvoicesAction(
       rowsByOrderId.get(orderId)!.push(row);
     }
 
-    const invoices: Invoice[] = [];
-    const invoiceCounters: { [year: number]: number } = {};
+    const invoiceDrafts: Omit<Invoice, 'invoiceNumber'>[] = [];
     let totalNetSales = 0;
     let totalVat = 0;
 
@@ -329,18 +328,10 @@ export async function generateInvoicesAction(
       const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date', 'datum des kaufs'], normalizedHeaderMap);
       const orderDate = formatDate(orderDateRaw);
       
-      const dateObject = new Date(orderDate.split('.').reverse().join('-'));
-      const orderYear = !isNaN(dateObject.getTime()) ? dateObject.getFullYear() : new Date().getFullYear();
-      
-      if (!invoiceCounters[orderYear]) {
-          invoiceCounters[orderYear] = 1;
-      }
-      const invoiceNumberForYear = invoiceCounters[orderYear]++;
       const finalOrderDate = orderDate || new Date().toLocaleDateString('de-DE');
 
-      const invoice: Invoice = {
+      const invoiceDraft: Omit<Invoice, 'invoiceNumber'> = {
         id: orderId,
-        invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
         orderDate: finalOrderDate,
         serviceDate: finalOrderDate,
         buyerName: buyerName || 'Unbekannt',
@@ -354,24 +345,41 @@ export async function generateInvoicesAction(
         countryClassification,
       };
       
-      invoices.push(invoice);
-      totalNetSales += invoice.netTotal;
-      totalVat += invoice.vatTotal;
+      invoiceDrafts.push(invoiceDraft);
+      totalNetSales += invoiceDraft.netTotal;
+      totalVat += invoiceDraft.vatTotal;
     }
 
-    if (invoices.length === 0) {
+    if (invoiceDrafts.length === 0) {
         return { data: null, error: "Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen." };
     }
     
-    invoices.sort((a, b) => {
+    // Sort drafts by date to ensure chronological invoice numbers
+    invoiceDrafts.sort((a, b) => {
         const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
         const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
-        if (dateA !== dateB) {
-            return dateA - dateB;
-        }
-        return a.invoiceNumber.localeCompare(b.invoiceNumber);
+        return dateA - dateB;
     });
 
+    const invoices: Invoice[] = [];
+    const invoiceCounters: { [year: number]: number } = {};
+
+    for (const draft of invoiceDrafts) {
+        const dateObject = new Date(draft.orderDate.split('.').reverse().join('-'));
+        const orderYear = !isNaN(dateObject.getTime()) ? dateObject.getFullYear() : new Date().getFullYear();
+        
+        if (!invoiceCounters[orderYear]) {
+            invoiceCounters[orderYear] = 1;
+        }
+        const invoiceNumberForYear = invoiceCounters[orderYear]++;
+
+        const finalInvoice: Invoice = {
+            ...draft,
+            invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
+        };
+        invoices.push(finalInvoice);
+    }
+    
     const result: ProcessCsvOutput = {
       invoices,
       summary: {
@@ -498,5 +506,3 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
-
-    
