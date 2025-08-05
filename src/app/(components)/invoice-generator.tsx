@@ -310,10 +310,10 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="text-primary"/>
-            1. Etsy-Bestellungen hochladen
+            1. Etsy-CSV hochladen
           </CardTitle>
           <CardDescription>
-            Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen. Das Tool generiert dann automatisch alle Rechnungen.
+            Laden Sie Ihre Etsy-Bestell-CSV-Dateien hoch. Sie können mehrere Dateien auswählen.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -407,7 +407,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     )}
                 </Button>
             </div>
-             <p className="text-sm text-muted-foreground text-center">
+             <p className="text-base text-muted-foreground text-center">
                 Dieses Tool dient ausschließlich der Unterstützung bei der Rechnungserstellung. Es ersetzt keine steuerliche oder rechtliche Beratung. Für die Richtigkeit, Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist allein der Nutzer verantwortlich.
             </p>
 
@@ -641,6 +641,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     </div>
   );
 }
+
+    
 
     
 
