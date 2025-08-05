@@ -456,11 +456,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                                               <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" onClick={() => setEditingInvoiceNumber(null)}><X className="h-4 w-4"/></Button>
                                             </div>
                                           ) : (
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setEditingInvoiceNumber({ id: invoice.id, number: invoice.invoiceNumber })}>
                                               {invoice.invoiceNumber}
-                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingInvoiceNumber({ id: invoice.id, number: invoice.invoiceNumber })}>
-                                                <Pencil className="h-3 w-3" />
-                                              </Button>
                                             </div>
                                           )}
                                         </TableCell>
