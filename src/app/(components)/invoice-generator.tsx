@@ -487,16 +487,15 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                     <DialogTitle>Rechnung bearbeiten: {editingInvoice.invoiceNumber}</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] p-1">
-                    <div className="grid gap-6 p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="invoiceNumber">Rechnungs-Nr.</Label>
-                                <Input id="invoiceNumber" name="invoiceNumber" value={editingInvoice.invoiceNumber} onChange={handleEditInvoiceChange}/>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="buyerName">Käufer</Label>
-                                <Input id="buyerName" name="buyerName" value={editingInvoice.buyerName} onChange={handleEditInvoiceChange}/>
-                            </div>
+                    <div className="space-y-6 p-4">
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="invoiceNumber">Rechnungs-Nr.</Label>
+                            <Input id="invoiceNumber" name="invoiceNumber" value={editingInvoice.invoiceNumber} onChange={handleEditInvoiceChange}/>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="buyerName">Käufer</Label>
+                            <Input id="buyerName" name="buyerName" value={editingInvoice.buyerName} onChange={handleEditInvoiceChange}/>
                         </div>
 
                          <div className="space-y-2">
@@ -504,15 +503,13 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                             <Textarea id="buyerAddress" name="buyerAddress" value={editingInvoice.buyerAddress} onChange={handleEditInvoiceChange} rows={4}/>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div className="space-y-2">
-                                <Label htmlFor="orderDate">Rechnungsdatum</Label>
-                                <Input id="orderDate" name="orderDate" value={editingInvoice.orderDate} onChange={handleEditInvoiceChange} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="serviceDate">Leistungsdatum</Label>
-                                <Input id="serviceDate" name="serviceDate" value={editingInvoice.serviceDate} onChange={handleEditInvoiceChange} />
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="orderDate">Rechnungsdatum</Label>
+                            <Input id="orderDate" name="orderDate" value={editingInvoice.orderDate} onChange={handleEditInvoiceChange} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="serviceDate">Leistungsdatum</Label>
+                            <Input id="serviceDate" name="serviceDate" value={editingInvoice.serviceDate} onChange={handleEditInvoiceChange} />
                         </div>
                        
                         <div className="space-y-2">
@@ -520,26 +517,28 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                             <Textarea id="taxNote" name="taxNote" value={editingInvoice.taxNote} onChange={handleEditInvoiceChange} rows={3}/>
                         </div>
 
-                        <h4 className="font-semibold col-span-4 mt-4 border-t pt-4">Positionen</h4>
+                        <h4 className="font-semibold mt-4 border-t pt-4">Positionen</h4>
                         <div className="space-y-4">
                         {editingInvoice.items.map((item, index) => (
-                           <Card key={index} className="p-4">
-                               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                                    <div className="space-y-1 md:col-span-2">
+                           <Card key={index} className="p-4 bg-secondary">
+                               <div className="space-y-3">
+                                    <div className="space-y-1">
                                         <Label>Bezeichnung</Label>
                                         <Input name="name" value={item.name} onChange={(e) => handleEditItemChange(index, e)} />
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label>Menge</Label>
-                                        <Input name="quantity" value={item.quantity} onChange={(e) => handleEditItemChange(index, e)} type="number" />
-                                    </div>
-                                    <div className="space-y-1">
-                                         <Label>Nettobetrag</Label>
-                                        <Input name="netAmount" value={item.netAmount.toFixed(2)} onChange={(e) => handleEditItemChange(index, e)} type="number" step="0.01" />
-                                    </div>
-                                     <div className="space-y-1">
-                                        <Label>USt %</Label>
-                                        <Input name="vatRate" value={item.vatRate} onChange={(e) => handleEditItemChange(index, e)} type="number" />
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <div className="space-y-1">
+                                          <Label>Menge</Label>
+                                          <Input name="quantity" value={item.quantity} onChange={(e) => handleEditItemChange(index, e)} type="number" />
+                                      </div>
+                                      <div className="space-y-1">
+                                          <Label>Nettobetrag</Label>
+                                          <Input name="netAmount" value={item.netAmount.toFixed(2)} onChange={(e) => handleEditItemChange(index, e)} type="number" step="0.01" />
+                                      </div>
+                                      <div className="space-y-1">
+                                          <Label>USt %</Label>
+                                          <Input name="vatRate" value={item.vatRate} onChange={(e) => handleEditItemChange(index, e)} type="number" />
+                                      </div>
                                     </div>
                                </div>
                                <div className="mt-2 text-right text-sm text-muted-foreground">Brutto (berechnet): {formatCurrency(item.grossAmount)}</div>
@@ -547,7 +546,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
                         ))}
                         </div>
 
-                        <div className="col-span-4 mt-4 text-right space-y-2 border-t pt-4">
+                        <div className="mt-4 text-right space-y-2 border-t pt-4">
                             <div className="flex justify-end items-center gap-4"><span>Netto:</span> <span>{formatCurrency(editingInvoice.netTotal)}</span></div>
                             <div className="flex justify-end items-center gap-4"><span>USt.:</span> <span>{formatCurrency(editingInvoice.vatTotal)}</span></div>
                             <div className="flex justify-end items-center gap-4 font-bold text-lg"><span>Brutto:</span> <span>{formatCurrency(editingInvoice.grossTotal)}</span></div>
@@ -567,3 +566,4 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo }
     </div>
   );
 }
+
