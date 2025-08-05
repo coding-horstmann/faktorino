@@ -140,22 +140,20 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
     const updatedItems = [...editingInvoice.items];
     const itemToUpdate = { ...updatedItems[index] };
 
+    let numericValue = 0;
     if (name === 'quantity' || name === 'netAmount' || name === 'vatRate') {
-        const numericValue = parseFloat(value.replace(',', '.')) || 0;
-        (itemToUpdate as any)[name] = numericValue;
-
-        // Recalculate amounts
-        if (name === 'quantity' || name === 'netAmount') {
-            itemToUpdate.grossAmount = itemToUpdate.netAmount * (1 + itemToUpdate.vatRate / 100);
-            itemToUpdate.vatAmount = itemToUpdate.grossAmount - itemToUpdate.netAmount;
-        } else if (name === 'vatRate') {
-             itemToUpdate.grossAmount = itemToUpdate.netAmount * (1 + numericValue / 100);
-             itemToUpdate.vatAmount = itemToUpdate.grossAmount - itemToUpdate.netAmount;
-        }
-
+      numericValue = parseFloat(value.replace(',', '.')) || 0;
+      (itemToUpdate as any)[name] = numericValue;
     } else {
         (itemToUpdate as any)[name] = value;
     }
+    
+    // Recalculate amounts
+    const net = name === 'netAmount' ? numericValue : itemToUpdate.netAmount;
+    const vatRate = name === 'vatRate' ? numericValue : itemToUpdate.vatRate;
+
+    itemToUpdate.vatAmount = net * (vatRate / 100);
+    itemToUpdate.grossAmount = net + itemToUpdate.vatAmount;
     
     updatedItems[index] = itemToUpdate;
 
@@ -248,8 +246,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                 if (index === 0) {
                     resolve(content); // Keep header for the first file
                 } else {
-                    const lines = content.split('\\n');
-                    resolve(lines.slice(1).join('\\n'));
+                    const lines = content.split('\n');
+                    resolve(lines.slice(1).join('\n'));
                 }
             };
             reader.onerror = (e) => reject(`Fehler beim Lesen der Datei ${file.name}`);
@@ -260,7 +258,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
 
     try {
         const allCsvContents = await Promise.all(fileReadPromises);
-        combinedCsvData = allCsvContents.join('\\n');
+        combinedCsvData = allCsvContents.join('\n');
         
         if (!combinedCsvData.trim()) {
             setError("Die ausgewählten Dateien sind leer oder ungültig.");
@@ -501,7 +499,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
         <Dialog open={!!editingInvoice} onOpenChange={closeEditDialog}>
             <DialogContent className="sm:max-w-[800px]">
                 <DialogHeader>
-                    <DialogTitle>Rechnung bearbeiten</DialogTitle>
+                    <DialogTitle>Rechnung bearbeiten: {editingInvoice.invoiceNumber}</DialogTitle>
                 </DialogHeader>
                 <ScrollArea className="max-h-[70vh] p-4">
                     <div className="grid gap-4 py-4">
@@ -536,12 +534,18 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete }: InvoiceGenera
                                <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
                                     <Input name="name" value={item.name} onChange={(e) => handleEditItemChange(index, e)} placeholder="Bezeichnung" />
                                     <Input name="quantity" value={item.quantity} onChange={(e) => handleEditItemChange(index, e)} placeholder="Menge" type="number" />
-                                    <Input name="netAmount" value={item.netAmount} onChange={(e) => handleEditItemChange(index, e)} placeholder="Nettobetrag" type="number" step="0.01" />
+                                    <Input name="netAmount" value={item.netAmount.toFixed(2)} onChange={(e) => handleEditItemChange(index, e)} placeholder="Nettobetrag" type="number" step="0.01" />
                                     <Input name="vatRate" value={item.vatRate} onChange={(e) => handleEditItemChange(index, e)} placeholder="USt %" type="number" />
                                     <div className="p-2 bg-muted rounded-md text-sm">Brutto: {formatCurrency(item.grossAmount)}</div>
                                </div>
                            </Card>
                         ))}
+
+                        <div className="col-span-4 mt-4 text-right space-y-2">
+                            <p>Netto: {formatCurrency(editingInvoice.netTotal)}</p>
+                            <p>USt.: {formatCurrency(editingInvoice.vatTotal)}</p>
+                            <p className="font-bold">Brutto: {formatCurrency(editingInvoice.grossTotal)}</p>
+                        </div>
                     </div>
                 </ScrollArea>
                 <DialogFooter>
