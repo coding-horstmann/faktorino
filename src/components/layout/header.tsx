@@ -1,9 +1,9 @@
-
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { BookCopy, UserCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function SiteHeader() {
-  const isLoggedIn = true;
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await signOut();
+  };
 
   return (
     <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 w-full border-b">
@@ -25,7 +31,7 @@ export function SiteHeader() {
         </Link>
         
         <nav className="flex items-center space-x-2">
-            {isLoggedIn ? (
+            {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="icon" className="rounded-full bg-blue-600 text-white hover:bg-blue-700">
@@ -47,7 +53,7 @@ export function SiteHeader() {
                      <a href="#" target="_blank">Abo & Rechnungen</a>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Abmelden</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>Abmelden</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (

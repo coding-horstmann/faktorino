@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -11,16 +10,28 @@ import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Building, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/AuthContext';
+import { UserService } from '@/lib/user-service';
 import type { UserInfo } from '@/lib/pdf-generator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
 
 export default function DashboardPage() {
-  
+
   const { toast } = useToast();
+  const { user } = useAuth();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Debug auth state
+  useEffect(() => {
+    console.log('Dashboard: user state changed:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      userId: user?.id
+    });
+  }, [user]);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
@@ -39,19 +50,34 @@ export default function DashboardPage() {
   const [isTaxIdError, setIsTaxIdError] = useState(false);
 
   useEffect(() => {
-    try {
-        const savedUserInfo = localStorage.getItem('userInfo');
-        if (savedUserInfo) {
-            const parsedInfo = JSON.parse(savedUserInfo);
-            setUserInfo(parsedInfo);
-            checkUserInfo(parsedInfo, false);
+    const loadUserProfile = async () => {
+      if (!user) return;
+
+      try {
+        const profile = await UserService.getUserProfile(user.id);
+        if (profile) {
+          const mappedUserInfo: UserInfo = {
+            name: profile.name,
+            address: profile.address,
+            city: profile.city,
+            taxNumber: profile.tax_number || '',
+            vatId: profile.vat_id || '',
+            taxStatus: profile.tax_status,
+            logo: profile.logo_url,
+          };
+          setUserInfo(mappedUserInfo);
+          checkUserInfo(mappedUserInfo, false);
         } else {
-             setAccordionValue("item-1"); // Open if no data is saved
+          setAccordionValue("item-1"); // Open if no data is saved
         }
-    } catch (error) {
-        console.error("Could not load user info from localStorage", error);
-    }
-  }, []);
+      } catch (error) {
+        console.error("Could not load user profile from Supabase", error);
+        setAccordionValue("item-1");
+      }
+    };
+
+    loadUserProfile();
+  }, [user]);
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
@@ -86,13 +112,34 @@ export default function DashboardPage() {
     }
   };
   
-  const saveAndCheckUserInfo = () => {
+  const saveAndCheckUserInfo = async () => {
+    if (!user) return;
+
     const isComplete = checkUserInfo(userInfo, true);
-     if(isComplete) {
+    if(isComplete) {
+      try {
+        await UserService.updateUserProfile(user.id, {
+          name: userInfo.name,
+          address: userInfo.address,
+          city: userInfo.city,
+          tax_number: userInfo.taxNumber || null,
+          vat_id: userInfo.vatId || null,
+          tax_status: userInfo.taxStatus,
+          logo_url: userInfo.logo,
+        });
+
         toast({
             title: "Gespeichert",
             description: "Ihre Firmendaten wurden erfolgreich übernommen.",
         });
+      } catch (error) {
+        console.error('Error saving user profile:', error);
+        toast({
+            variant: "destructive",
+            title: "Fehler beim Speichern",
+            description: "Ihre Daten konnten nicht gespeichert werden.",
+        });
+      }
     }
   }
 
@@ -111,18 +158,7 @@ export default function DashboardPage() {
     const isComplete = Object.keys(errors).length === 0 && !taxError;
     setIsUserInfoComplete(isComplete);
     
-    if(isComplete) {
-        try {
-            localStorage.setItem('userInfo', JSON.stringify(info));
-        } catch (error) {
-             console.error("Could not save user info to localStorage", error);
-             toast({
-                variant: "destructive",
-                title: "Fehler beim Speichern",
-                description: "Ihre Daten konnten nicht lokal gespeichert werden.",
-            });
-        }
-    } else {
+    if(!isComplete) {
         if(showDialog) {
             setShowMissingInfoAlert(true);
             openAccordionAndFocus();

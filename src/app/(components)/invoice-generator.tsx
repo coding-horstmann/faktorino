@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
@@ -7,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { generateInvoicesAction, type Invoice } from '@/app/actions';
 import { generatePdf, type UserInfo } from '@/lib/pdf-generator';
+import { useAuth } from '@/contexts/AuthContext';
+import { InvoiceService } from '@/lib/invoice-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -58,32 +59,63 @@ const getClassificationBadge = (classification: Invoice['countryClassification']
 export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, onUserInfoSave }: InvoiceGeneratorProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
   const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try {
-        const savedInvoices = localStorage.getItem('generatedInvoices');
-        if(savedInvoices) {
-            setInvoices(JSON.parse(savedInvoices));
-        }
-    } catch(e) {
-        console.error("Could not load invoices from localStorage", e);
-    }
-  }, []);
+    const loadInvoices = async () => {
+      console.log('InvoiceGenerator: loadInvoices called, user:', user?.id, user?.email);
+      if (!user) {
+        console.log('InvoiceGenerator: No user found, skipping invoice load');
+        setIsLoadingInvoices(false);
+        return;
+      }
+
+      try {
+        const dbInvoices = await InvoiceService.getUserInvoices(user.id);
+
+        // Convert database format to app format
+        const convertedInvoices: Invoice[] = dbInvoices.map(dbInvoice => ({
+          id: dbInvoice.id,
+          invoiceNumber: dbInvoice.invoice_number,
+          orderDate: dbInvoice.order_date,
+          serviceDate: dbInvoice.service_date,
+          buyerName: dbInvoice.buyer_name,
+          buyerAddress: dbInvoice.buyer_address,
+          country: dbInvoice.country,
+          countryClassification: dbInvoice.country_classification,
+          netTotal: dbInvoice.net_total,
+          vatTotal: dbInvoice.vat_total,
+          grossTotal: dbInvoice.gross_total,
+          taxNote: dbInvoice.tax_note,
+          items: dbInvoice.items
+        }));
+
+        setInvoices(convertedInvoices);
+      } catch (error) {
+        console.error('Error loading invoices:', error);
+        toast({
+          variant: "destructive",
+          title: "Fehler beim Laden",
+          description: "Rechnungen konnten nicht geladen werden.",
+        });
+      } finally {
+        setIsLoadingInvoices(false);
+      }
+    };
+
+    loadInvoices();
+  }, [user, toast]);
 
   const updateInvoices = (newInvoices: Invoice[]) => {
       setInvoices(newInvoices);
-      try {
-        localStorage.setItem('generatedInvoices', JSON.stringify(newInvoices));
-      } catch(e) {
-        console.error("Could not save invoices to localStorage", e);
-      }
   }
 
   const form = useForm<FormValues>({
@@ -113,29 +145,106 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     setEditingInvoice(null);
   }, []);
 
-  const handleDeleteInvoice = useCallback((invoiceId: string) => {
-    updateInvoices(invoices.filter(inv => inv.id !== invoiceId));
-  }, [invoices, updateInvoices]);
-  
-  const handleDeleteAllInvoices = useCallback(() => {
-    updateInvoices([]);
-    toast({
-        title: "Alle Rechnungen gelöscht",
-        description: "Die Liste der generierten Rechnungen ist jetzt leer.",
-    });
-  }, [toast, updateInvoices]);
+  const handleDeleteInvoice = useCallback(async (invoiceId: string) => {
+    if (!user) return;
 
-  const handleUpdateInvoice = useCallback(() => {
-    if (!editingInvoice) return;
-    updateInvoices(
-        invoices.map(inv => inv.id === editingInvoice.id ? editingInvoice : inv)
-    );
-    closeEditDialog();
-    toast({
-        title: "Rechnung aktualisiert",
-        description: `Die Änderungen an Rechnung ${editingInvoice.invoiceNumber} wurden übernommen.`
-    });
-  }, [editingInvoice, closeEditDialog, toast, invoices, updateInvoices]);
+    try {
+      const success = await InvoiceService.deleteInvoice(invoiceId);
+      if (success) {
+        updateInvoices(invoices.filter(inv => inv.id !== invoiceId));
+        toast({
+          title: "Rechnung gelöscht",
+          description: "Die Rechnung wurde erfolgreich gelöscht.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Die Rechnung konnte nicht gelöscht werden.",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting invoice:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Ein Fehler beim Löschen ist aufgetreten.",
+      });
+    }
+  }, [invoices, updateInvoices, user, toast]);
+  
+  const handleDeleteAllInvoices = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const success = await InvoiceService.deleteAllUserInvoices(user.id);
+      if (success) {
+        updateInvoices([]);
+        toast({
+            title: "Alle Rechnungen gelöscht",
+            description: "Die Liste der generierten Rechnungen ist jetzt leer.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Die Rechnungen konnten nicht gelöscht werden.",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting all invoices:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Ein Fehler beim Löschen ist aufgetreten.",
+      });
+    }
+  }, [user, toast, updateInvoices]);
+
+  const handleUpdateInvoice = useCallback(async () => {
+    if (!editingInvoice || !user) return;
+
+    try {
+      const updatedInvoice = await InvoiceService.updateInvoice(editingInvoice.id, {
+        invoice_number: editingInvoice.invoiceNumber,
+        order_date: editingInvoice.orderDate,
+        service_date: editingInvoice.serviceDate,
+        buyer_name: editingInvoice.buyerName,
+        buyer_address: editingInvoice.buyerAddress,
+        country: editingInvoice.country,
+        country_classification: editingInvoice.countryClassification,
+        net_total: editingInvoice.netTotal,
+        vat_total: editingInvoice.vatTotal,
+        gross_total: editingInvoice.grossTotal,
+        tax_note: editingInvoice.taxNote,
+        items: editingInvoice.items
+      });
+
+      if (updatedInvoice) {
+        updateInvoices(
+            invoices.map(inv => inv.id === editingInvoice.id ? editingInvoice : inv)
+        );
+        closeEditDialog();
+        toast({
+            title: "Rechnung aktualisiert",
+            description: `Die Änderungen an Rechnung ${editingInvoice.invoiceNumber} wurden übernommen.`
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Die Rechnung konnte nicht aktualisiert werden.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Ein Fehler beim Aktualisieren ist aufgetreten.",
+      });
+    }
+  }, [editingInvoice, closeEditDialog, toast, invoices, updateInvoices, user]);
   
   const handleEditInvoiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if(!editingInvoice) return;
@@ -275,17 +384,54 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
         if (response.error) {
             setError(response.error);
-        } else if (response.data) {
+        } else if (response.data && user) {
+            console.log('InvoiceGenerator: Got response data, user:', user.id);
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
-            
-            updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
-                const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
-                const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
-                if (dateA !== dateB) return dateA - dateB;
-                return a.invoiceNumber.localeCompare(b.invoiceNumber);
-            }));
-            
+            console.log('InvoiceGenerator: Saving', uniqueNewInvoices.length, 'new invoices to Supabase');
+
+            // Save new invoices to Supabase
+            try {
+                const invoicesToSave = uniqueNewInvoices.map(invoice => ({
+                    id: invoice.id,
+                    user_id: user.id,
+                    invoice_number: invoice.invoiceNumber,
+                    order_date: invoice.orderDate,
+                    service_date: invoice.serviceDate,
+                    buyer_name: invoice.buyerName,
+                    buyer_address: invoice.buyerAddress,
+                    country: invoice.country,
+                    country_classification: invoice.countryClassification,
+                    net_total: invoice.netTotal,
+                    vat_total: invoice.vatTotal,
+                    gross_total: invoice.grossTotal,
+                    tax_note: invoice.taxNote,
+                    items: invoice.items
+                }));
+
+                const savedInvoices = await InvoiceService.createMultipleInvoices(invoicesToSave);
+                console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
+
+                if (savedInvoices.length > 0) {
+                    updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
+                        const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
+                        const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
+                        if (dateA !== dateB) return dateA - dateB;
+                        return a.invoiceNumber.localeCompare(b.invoiceNumber);
+                    }));
+
+                    toast({
+                        title: "Rechnungen erstellt",
+                        description: `${uniqueNewInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                    });
+                } else {
+                    setError('Rechnungen konnten nicht gespeichert werden.');
+                }
+            } catch (saveError) {
+                console.error('Error saving invoices:', saveError);
+                setError('Fehler beim Speichern der Rechnungen.');
+            }
+
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
@@ -298,14 +444,40 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     }
   }
   
-  const handleInvoiceNumberSave = () => {
-    if (!editingInvoiceNumber) return;
-    updateInvoices(
-      invoices.map((inv) =>
-        inv.id === editingInvoiceNumber.id ? { ...inv, invoiceNumber: editingInvoiceNumber.number } : inv
-      )
-    );
-    setEditingInvoiceNumber(null);
+  const handleInvoiceNumberSave = async () => {
+    if (!editingInvoiceNumber || !user) return;
+
+    try {
+      const updatedInvoice = await InvoiceService.updateInvoice(editingInvoiceNumber.id, {
+        invoice_number: editingInvoiceNumber.number
+      });
+
+      if (updatedInvoice) {
+        updateInvoices(
+          invoices.map((inv) =>
+            inv.id === editingInvoiceNumber.id ? { ...inv, invoiceNumber: editingInvoiceNumber.number } : inv
+          )
+        );
+        setEditingInvoiceNumber(null);
+        toast({
+          title: "Rechnungsnummer aktualisiert",
+          description: "Die Rechnungsnummer wurde erfolgreich geändert.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Die Rechnungsnummer konnte nicht aktualisiert werden.",
+        });
+      }
+    } catch (error) {
+      console.error('Error updating invoice number:', error);
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Ein Fehler beim Aktualisieren ist aufgetreten.",
+      });
+    }
   };
   
   const invoicesThisMonth = invoices.length;
@@ -456,24 +628,23 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="h-[70vh] w-full">
-                         <div className="relative w-full overflow-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[220px]">Rechnungsnr.</TableHead>
-                                        <TableHead>Datum</TableHead>
-                                        <TableHead>Käufer</TableHead>
-                                        <TableHead>Land</TableHead>
-                                        <TableHead>Klassifizierung</TableHead>
-                                        <TableHead className="text-right">Netto</TableHead>
-                                        {userInfo.taxStatus === 'regular' && (
-                                            <TableHead className="text-right">USt.</TableHead>
-                                        )}
-                                        <TableHead className="text-right">Brutto</TableHead>
-                                        <TableHead className="text-center">Aktionen</TableHead>
-                                    </TableRow>
-                                </TableHeader>
+                    <div className="relative h-[70vh] w-full overflow-auto">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-background z-10">
+                                <TableRow>
+                                    <TableHead className="w-[140px] min-w-[140px] bg-background">Rechnungsnr.</TableHead>
+                                    <TableHead className="w-[80px] min-w-[80px] bg-background">Datum</TableHead>
+                                    <TableHead className="min-w-[120px] bg-background">Käufer</TableHead>
+                                    <TableHead className="w-[60px] min-w-[60px] bg-background">Land</TableHead>
+                                    <TableHead className="w-[90px] min-w-[90px] bg-background">Klassifizierung</TableHead>
+                                    <TableHead className="text-right w-[80px] min-w-[80px] bg-background">Netto</TableHead>
+                                    {userInfo.taxStatus === 'regular' && (
+                                        <TableHead className="text-right w-[70px] min-w-[70px] bg-background">USt.</TableHead>
+                                    )}
+                                    <TableHead className="text-right w-[80px] min-w-[80px] bg-background">Brutto</TableHead>
+                                    <TableHead className="text-center w-[100px] min-w-[100px] bg-background">Aktionen</TableHead>
+                                </TableRow>
+                            </TableHeader>
                                 <TableBody>
                                     {filteredInvoices.map((invoice) => (
                                         <TableRow key={invoice.id}>
@@ -537,9 +708,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                         </TableRow>
                                     ))}
                                 </TableBody>
-                            </Table>
-                        </div>
-                    </ScrollArea>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -652,5 +822,3 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     </div>
   );
 }
-
-    
