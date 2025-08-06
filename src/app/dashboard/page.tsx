@@ -50,6 +50,8 @@ export default function DashboardPage() {
   const [accordionValue, setAccordionValue] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof UserInfo, boolean>>>({});
   const [isTaxIdError, setIsTaxIdError] = useState(false);
+  const [showEmailBanner, setShowEmailBanner] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
