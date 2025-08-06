@@ -466,7 +466,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                         // Don't fail the whole process if usage tracking fails
                     }
 
-                    updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
+                    updateInvoices([...invoices, ...invoicesToCreate].sort((a, b) => {
                         const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
                         const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
                         if (dateA !== dateB) return dateA - dateB;
@@ -475,7 +475,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
                     toast({
                         title: "Rechnungen erstellt",
-                        description: `${savedInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                        description: limitWarning || `${savedInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                        variant: limitWarning ? "default" : "default"
                     });
                 } else {
                     setError('Rechnungen konnten nicht gespeichert werden.');
