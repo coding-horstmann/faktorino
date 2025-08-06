@@ -619,9 +619,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                   'Rechnungen generieren'
                 )}
               </Button>
-               <div className="w-full text-center text-sm text-muted-foreground">
-                    Erstellte Rechnungen in diesem Monat: {invoicesThisMonth} / {maxInvoices}
-               </div>
+               {monthlyUsage && (
+                 <div className="w-full text-center text-sm text-muted-foreground">
+                     Erstellte Rechnungen in diesem Monat: {monthlyUsage.invoice_count.toLocaleString()} / {monthlyUsage.limit.toLocaleString()}
+                 </div>
+               )}
             </CardFooter>
           </form>
         </Form>
