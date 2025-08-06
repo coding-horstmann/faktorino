@@ -407,12 +407,21 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
 
-            // Check usage limit before saving
+            // Check usage limit and create as many as possible
             const usageCheck = await UsageService.canCreateInvoices(user.id, uniqueNewInvoices.length);
+            let invoicesToCreate = uniqueNewInvoices;
+            let limitWarning = '';
+
             if (!usageCheck.canCreate) {
-                setError(usageCheck.message || 'Monatliches Limit erreicht');
-                setIsLoading(false);
-                return;
+                if (usageCheck.usage.remaining === 0) {
+                    setError('Sie haben Ihr monatliches Limit von 10.000 Rechnungen erreicht. Das Limit wird am 1. des nächsten Monats zurückgesetzt.');
+                    setIsLoading(false);
+                    return;
+                } else {
+                    // Create only as many as possible
+                    invoicesToCreate = uniqueNewInvoices.slice(0, usageCheck.usage.remaining);
+                    limitWarning = `Nur ${usageCheck.usage.remaining} von ${uniqueNewInvoices.length} Rechnungen erstellt (Monatslimit erreicht).`;
+                }
             }
 
             console.log('InvoiceGenerator: Saving', uniqueNewInvoices.length, 'new invoices to Supabase');
@@ -742,7 +751,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
-                                                            <AlertDialogTitle>Rechnung wirklich löschen?</AlertDialogTitle>
+                                                            <AlertDialogTitle>Rechnung wirklich l��schen?</AlertDialogTitle>
                                                             <AlertDialogDescription>
                                                                 Möchten Sie die Rechnung {invoice.invoiceNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
                                                             </AlertDialogDescription>
