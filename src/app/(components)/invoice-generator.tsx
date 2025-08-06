@@ -116,6 +116,22 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     loadInvoices();
   }, [user, toast]);
 
+  // Load monthly usage data
+  useEffect(() => {
+    const loadUsage = async () => {
+      if (!user) return;
+
+      try {
+        const usage = await UsageService.getCurrentMonthUsage(user.id);
+        setMonthlyUsage(usage);
+      } catch (error) {
+        console.error('Error loading usage:', error);
+      }
+    };
+
+    loadUsage();
+  }, [user]);
+
   const updateInvoices = (newInvoices: Invoice[]) => {
       setInvoices(newInvoices);
   }
