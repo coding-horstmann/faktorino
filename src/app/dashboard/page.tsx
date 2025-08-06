@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Building, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
 import type { UserInfo } from '@/lib/pdf-generator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 
