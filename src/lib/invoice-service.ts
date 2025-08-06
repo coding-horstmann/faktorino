@@ -55,6 +55,7 @@ export class InvoiceService {
 
         if (error) {
           console.error('Error creating invoice batch:', error);
+          console.error('Error details:', error.message, error.details, error.hint);
           throw error;
         }
 
