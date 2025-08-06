@@ -406,6 +406,15 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             console.log('InvoiceGenerator: Got response data, user:', user.id);
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
+
+            // Check usage limit before saving
+            const usageCheck = await UsageService.canCreateInvoices(user.id, uniqueNewInvoices.length);
+            if (!usageCheck.canCreate) {
+                setError(usageCheck.message || 'Monatliches Limit erreicht');
+                setIsLoading(false);
+                return;
+            }
+
             console.log('InvoiceGenerator: Saving', uniqueNewInvoices.length, 'new invoices to Supabase');
 
             // Save new invoices to Supabase
