@@ -23,11 +23,13 @@ export default function RootLayout({
     <html lang="de" className={inter.variable}>
       <head/>
       <body className="font-body antialiased flex flex-col min-h-screen">
-        <SiteHeader />
-        <main className="flex-grow flex justify-center items-start p-4 sm:p-8 md:p-12">
-            {children}
-        </main>
-        <SiteFooter />
+        <AuthProvider>
+          <SiteHeader />
+          <main className="flex-grow flex justify-center items-start p-4 sm:p-8 md:p-12">
+              {children}
+          </main>
+          <SiteFooter />
+        </AuthProvider>
         <Toaster />
       </body>
     </html>
