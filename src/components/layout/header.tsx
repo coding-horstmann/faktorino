@@ -25,7 +25,7 @@ export function SiteHeader() {
         </Link>
         
         <nav className="flex items-center space-x-2">
-            {isLoggedIn ? (
+            {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="secondary" size="icon" className="rounded-full bg-blue-600 text-white hover:bg-blue-700">
@@ -47,7 +47,7 @@ export function SiteHeader() {
                      <a href="#" target="_blank">Abo & Rechnungen</a>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Abmelden</DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut}>Abmelden</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
