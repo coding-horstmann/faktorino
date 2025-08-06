@@ -523,9 +523,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
       });
     }
   };
-  
-  const invoicesThisMonth = invoices.length;
-  const maxInvoices = 10000;
 
   return (
     <div className="space-y-6">
