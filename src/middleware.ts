@@ -62,6 +62,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // If user is not signed in and trying to access welcome page, redirect to login
+  if (!user && isWelcomePage) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
   // If user is signed in and the current path is /login or /register, redirect to /dashboard
   if (user && (request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register'))) {
     const url = request.nextUrl.clone()
