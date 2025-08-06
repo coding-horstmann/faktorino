@@ -223,6 +223,39 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
+
+        {showEmailBanner && user && !user.email_confirmed_at && (
+          <Alert className="border-yellow-200 bg-yellow-50">
+            <Mail className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="flex items-center justify-between w-full">
+              <div className="flex-1">
+                <span className="text-yellow-800 font-medium">E-Mail-Bestätigung ausstehend:</span>
+                <span className="text-yellow-700 ml-2">
+                  Bitte bestätigen Sie Ihre E-Mail-Adresse ({user.email}), um alle Funktionen zu nutzen.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendConfirmation}
+                  disabled={resendLoading}
+                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                >
+                  {resendLoading ? "Wird gesendet..." : "E-Mail erneut senden"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEmailBanner(false)}
+                  className="text-yellow-600 hover:bg-yellow-100"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
         
         <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
           <AccordionItem value="item-1">
