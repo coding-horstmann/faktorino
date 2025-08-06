@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { UsageService, type MonthlyUsage } from '@/lib/usage-service';
 
 const formSchema = z.object({
   csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
@@ -65,6 +66,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsage | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +115,22 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
     loadInvoices();
   }, [user, toast]);
+
+  // Load monthly usage data
+  useEffect(() => {
+    const loadUsage = async () => {
+      if (!user) return;
+
+      try {
+        const usage = await UsageService.getCurrentMonthUsage(user.id);
+        setMonthlyUsage(usage);
+      } catch (error) {
+        console.error('Error loading usage:', error);
+      }
+    };
+
+    loadUsage();
+  }, [user]);
 
   const updateInvoices = (newInvoices: Invoice[]) => {
       setInvoices(newInvoices);
@@ -388,32 +406,67 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             console.log('InvoiceGenerator: Got response data, user:', user.id);
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
-            console.log('InvoiceGenerator: Saving', uniqueNewInvoices.length, 'new invoices to Supabase');
+
+            // Check usage limit and create as many as possible
+            const usageCheck = await UsageService.canCreateInvoices(user.id, uniqueNewInvoices.length);
+            let invoicesToCreate = uniqueNewInvoices;
+            let limitWarning = '';
+
+            if (!usageCheck.canCreate) {
+                if (usageCheck.usage.remaining === 0) {
+                    setError('Sie haben Ihr monatliches Limit von 10.000 Rechnungen erreicht. Das Limit wird am 1. des nächsten Monats zurückgesetzt.');
+                    setIsLoading(false);
+                    return;
+                } else {
+                    // Create only as many as possible
+                    invoicesToCreate = uniqueNewInvoices.slice(0, usageCheck.usage.remaining);
+                    limitWarning = `Nur ${usageCheck.usage.remaining} von ${uniqueNewInvoices.length} Rechnungen erstellt (Monatslimit erreicht).`;
+                }
+            }
+
+            console.log('InvoiceGenerator: Saving', invoicesToCreate.length, 'new invoices to Supabase');
 
             // Save new invoices to Supabase
             try {
-                const invoicesToSave = uniqueNewInvoices.map(invoice => ({
-                    id: invoice.id,
-                    user_id: user.id,
-                    invoice_number: invoice.invoiceNumber,
-                    order_date: invoice.orderDate,
-                    service_date: invoice.serviceDate,
-                    buyer_name: invoice.buyerName,
-                    buyer_address: invoice.buyerAddress,
-                    country: invoice.country,
-                    country_classification: invoice.countryClassification,
-                    net_total: invoice.netTotal,
-                    vat_total: invoice.vatTotal,
-                    gross_total: invoice.grossTotal,
-                    tax_note: invoice.taxNote,
-                    items: invoice.items
-                }));
+                const invoicesToSave = invoicesToCreate.map(invoice => {
+                    // Convert DD.MM.YYYY to YYYY-MM-DD for database
+                    const formatDateForDB = (dateStr: string) => {
+                        const [day, month, year] = dateStr.split('.');
+                        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                    };
+
+                    return {
+                        // Don't include id - let database generate it
+                        user_id: user.id,
+                        invoice_number: invoice.invoiceNumber,
+                        order_date: formatDateForDB(invoice.orderDate),
+                        service_date: formatDateForDB(invoice.serviceDate),
+                        buyer_name: invoice.buyerName,
+                        buyer_address: invoice.buyerAddress,
+                        country: invoice.country,
+                        country_classification: invoice.countryClassification,
+                        net_total: invoice.netTotal,
+                        vat_total: invoice.vatTotal,
+                        gross_total: invoice.grossTotal,
+                        tax_note: invoice.taxNote,
+                        items: invoice.items
+                    };
+                });
 
                 const savedInvoices = await InvoiceService.createMultipleInvoices(invoicesToSave);
                 console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
 
                 if (savedInvoices.length > 0) {
-                    updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
+                    // Update usage tracking
+                    try {
+                        const updatedUsage = await UsageService.incrementUsage(user.id, savedInvoices.length);
+                        setMonthlyUsage(updatedUsage);
+                    } catch (usageError) {
+                        console.error('Error updating usage:', usageError);
+                        // Don't fail the whole process if usage tracking fails
+                    }
+
+                    updateInvoices([...invoices, ...invoicesToCreate].sort((a, b) => {
                         const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
                         const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
                         if (dateA !== dateB) return dateA - dateB;
@@ -422,7 +475,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
                     toast({
                         title: "Rechnungen erstellt",
-                        description: `${uniqueNewInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                        description: limitWarning || `${savedInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                        variant: limitWarning ? "default" : "default"
                     });
                 } else {
                     setError('Rechnungen konnten nicht gespeichert werden.');
@@ -479,12 +533,16 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
       });
     }
   };
-  
-  const invoicesThisMonth = invoices.length;
-  const maxInvoices = 10000;
 
   return (
     <div className="space-y-6">
+      {/* Dezente monatliche Nutzungsanzeige */}
+      {monthlyUsage && (
+        <div className="text-right text-xs font-medium text-primary mb-2 bg-primary/5 px-2 py-1 rounded">
+          {UsageService.formatMonthYear(monthlyUsage.month_year)}: {monthlyUsage.invoice_count.toLocaleString()} / {monthlyUsage.limit.toLocaleString()} Rechnungen
+        </div>
+      )}
+
       <Card className="w-full shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -536,9 +594,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                   'Rechnungen generieren'
                 )}
               </Button>
-               <div className="w-full text-center text-sm text-muted-foreground">
-                    Erstellte Rechnungen in diesem Monat: {invoicesThisMonth} / {maxInvoices}
-               </div>
+               {monthlyUsage && (
+                 <div className="w-full text-center text-sm text-muted-foreground">
+                     Erstellte Rechnungen in diesem Monat: {monthlyUsage.invoice_count.toLocaleString()} / {monthlyUsage.limit.toLocaleString()}
+                 </div>
+               )}
             </CardFooter>
           </form>
         </Form>
@@ -634,7 +694,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                 <TableRow>
                                     <TableHead className="w-[140px] min-w-[140px] bg-background">Rechnungsnr.</TableHead>
                                     <TableHead className="w-[80px] min-w-[80px] bg-background">Datum</TableHead>
-                                    <TableHead className="min-w-[120px] bg-background">Käufer</TableHead>
+                                    <TableHead className="min-w-[120px] bg-background">Kunde</TableHead>
                                     <TableHead className="w-[60px] min-w-[60px] bg-background">Land</TableHead>
                                     <TableHead className="w-[90px] min-w-[90px] bg-background">Klassifizierung</TableHead>
                                     <TableHead className="text-right w-[80px] min-w-[80px] bg-background">Netto</TableHead>

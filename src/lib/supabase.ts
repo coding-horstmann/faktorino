@@ -109,6 +109,31 @@ export type Database = {
           updated_at?: string
         }
       }
+      user_monthly_usage: {
+        Row: {
+          id: string
+          user_id: string
+          month_year: string
+          invoice_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          month_year: string
+          invoice_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          month_year?: string
+          invoice_count?: number
+          updated_at?: string
+        }
+      }
     }
   }
 }
