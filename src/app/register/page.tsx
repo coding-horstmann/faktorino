@@ -112,7 +112,7 @@ export default function RegisterPage() {
           description: "Bitte überprüfen Sie Ihre E-Mail, um Ihr Konto zu bestätigen.",
         });
 
-        router.push('/dashboard');
+        router.push('/welcome');
       }
     } catch (err: any) {
       setError('Ein unerwarteter Fehler ist aufgetreten.');
@@ -129,7 +129,7 @@ export default function RegisterPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/welcome`
         }
       });
 

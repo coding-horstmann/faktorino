@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Building, CheckCircle, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
 import type { UserInfo } from '@/lib/pdf-generator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 
 
@@ -24,13 +26,19 @@ export default function DashboardPage() {
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Debug auth state
+  // Debug auth state and check email confirmation
   useEffect(() => {
     console.log('Dashboard: user state changed:', {
       hasUser: !!user,
       userEmail: user?.email,
-      userId: user?.id
+      userId: user?.id,
+      emailConfirmed: !!user?.email_confirmed_at
     });
+
+    // Show email confirmation banner if user is not confirmed
+    if (user && !user.email_confirmed_at) {
+      setShowEmailBanner(true);
+    }
   }, [user]);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
@@ -48,6 +56,8 @@ export default function DashboardPage() {
   const [accordionValue, setAccordionValue] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof UserInfo, boolean>>>({});
   const [isTaxIdError, setIsTaxIdError] = useState(false);
+  const [showEmailBanner, setShowEmailBanner] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -178,8 +188,74 @@ export default function DashboardPage() {
     }, 100);
   }
 
+  const handleResendConfirmation = async () => {
+    if (!user?.email) return;
+
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email
+      });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Die Bestätigungs-E-Mail konnte nicht erneut gesendet werden.",
+        });
+      } else {
+        toast({
+          title: "E-Mail gesendet",
+          description: "Eine neue Bestätigungs-E-Mail wurde an Ihre E-Mail-Adresse gesendet.",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Ein unerwarteter Fehler ist aufgetreten.",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
+
+        {showEmailBanner && user && !user.email_confirmed_at && (
+          <Alert className="border-yellow-200 bg-yellow-50">
+            <Mail className="h-4 w-4 text-yellow-600" />
+            <AlertDescription className="flex items-center justify-between w-full">
+              <div className="flex-1">
+                <span className="text-yellow-800 font-medium">E-Mail-Bestätigung ausstehend:</span>
+                <span className="text-yellow-700 ml-2">
+                  Bitte bestätigen Sie Ihre E-Mail-Adresse ({user.email}), um alle Funktionen zu nutzen.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendConfirmation}
+                  disabled={resendLoading}
+                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                >
+                  {resendLoading ? "Wird gesendet..." : "E-Mail erneut senden"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowEmailBanner(false)}
+                  className="text-yellow-600 hover:bg-yellow-100"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
         
         <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
           <AccordionItem value="item-1">

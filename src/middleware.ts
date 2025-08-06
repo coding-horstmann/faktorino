@@ -52,10 +52,20 @@ export async function middleware(request: NextRequest) {
   const publicPaths = ['/login', '/register', '/agb', '/datenschutz', '/impressum', '/kontakt', '/']
   const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
+  // Allow authenticated users to access welcome page
+  const isWelcomePage = request.nextUrl.pathname.startsWith('/welcome')
+
   // If user is not signed in and the current path is not public, redirect to homepage
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
+    return NextResponse.redirect(url)
+  }
+
+  // If user is not signed in and trying to access welcome page, redirect to login
+  if (!user && isWelcomePage) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
