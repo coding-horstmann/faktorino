@@ -363,7 +363,6 @@ export default function AccountSettingsPage() {
                         onClick={handleRequestPasswordReset}
                         className="w-full"
                         disabled={changingPassword}
-                        variant="outline"
                     >
                         {changingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Passwort vergessen E-Mail anfordern
