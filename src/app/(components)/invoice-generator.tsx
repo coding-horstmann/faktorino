@@ -410,6 +410,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 }));
 
                 const savedInvoices = await InvoiceService.createMultipleInvoices(invoicesToSave);
+                console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
 
                 if (savedInvoices.length > 0) {
                     updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {

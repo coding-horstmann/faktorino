@@ -16,6 +16,12 @@ import {
 export function SiteHeader() {
   const { user, signOut } = useAuth();
 
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await signOut();
+  };
+
   return (
     <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 w-full border-b">
       <div className="container flex h-16 items-center">
@@ -47,7 +53,7 @@ export function SiteHeader() {
                      <a href="#" target="_blank">Abo & Rechnungen</a>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>Abmelden</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut}>Abmelden</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
