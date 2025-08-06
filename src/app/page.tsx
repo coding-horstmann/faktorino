@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from "@/components/ui/button";
@@ -40,9 +39,14 @@ export default function Home() {
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
                 Spare wertvolle Zeit und erstelle mit wenigen Klicks professionelle und korrekte Rechnungen für alle deine Etsy-Verkäufe.
             </p>
-            <Button asChild size="lg">
-                <Link href="/register">Jetzt 14 Tage kostenlos testen</Link>
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button asChild size="lg">
+                    <Link href="/register">Jetzt 14 Tage kostenlos testen</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                    <Link href="/login">Bereits Kunde? Anmelden</Link>
+                </Button>
+            </div>
         </section>
 
         {/* Trust Icons Section */}
