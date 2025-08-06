@@ -1,9 +1,9 @@
-
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { BookCopy, UserCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function SiteHeader() {
-  const isLoggedIn = true;
+  const { user, signOut } = useAuth();
 
   return (
     <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 w-full border-b">
