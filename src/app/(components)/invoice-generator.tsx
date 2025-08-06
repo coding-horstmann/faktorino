@@ -536,13 +536,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
   return (
     <div className="space-y-6">
-      {/* Dezente monatliche Nutzungsanzeige */}
-      {monthlyUsage && (
-        <div className="text-right text-xs font-medium text-primary mb-2 bg-primary/5 px-2 py-1 rounded">
-          {UsageService.formatMonthYear(monthlyUsage.month_year)}: {monthlyUsage.invoice_count.toLocaleString()} / {monthlyUsage.limit.toLocaleString()} Rechnungen
-        </div>
-      )}
-
       <Card className="w-full shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
