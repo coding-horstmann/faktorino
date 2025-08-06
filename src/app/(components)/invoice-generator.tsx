@@ -694,7 +694,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                 <TableRow>
                                     <TableHead className="w-[140px] min-w-[140px] bg-background">Rechnungsnr.</TableHead>
                                     <TableHead className="w-[80px] min-w-[80px] bg-background">Datum</TableHead>
-                                    <TableHead className="min-w-[120px] bg-background">K��ufer</TableHead>
+                                    <TableHead className="min-w-[120px] bg-background">Kunde</TableHead>
                                     <TableHead className="w-[60px] min-w-[60px] bg-background">Land</TableHead>
                                     <TableHead className="w-[90px] min-w-[90px] bg-background">Klassifizierung</TableHead>
                                     <TableHead className="text-right w-[80px] min-w-[80px] bg-background">Netto</TableHead>
