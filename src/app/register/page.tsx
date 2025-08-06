@@ -88,21 +88,22 @@ export default function RegisterPage() {
       }
 
       if (data.user) {
-        // Create user profile in our users table
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            id: data.user.id,
-            email: formData.email,
-            name: formData.name,
-            address: formData.address,
-            city: formData.city,
-            tax_number: formData.taxId || null,
-            tax_status: 'regular'
-          });
-
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
+        // Create user profile in our users table - but only if the user is confirmed
+        // For email confirmation flow, this will be handled by the trigger
+        if (data.user.email_confirmed_at) {
+          try {
+            await UserService.createUserProfile({
+              id: data.user.id,
+              email: formData.email,
+              name: formData.name,
+              address: formData.address,
+              city: formData.city,
+              tax_number: formData.taxId || null,
+              tax_status: 'regular'
+            });
+          } catch (profileError) {
+            console.error('Error creating user profile:', profileError);
+          }
         }
 
         toast({
