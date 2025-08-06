@@ -188,6 +188,39 @@ export default function DashboardPage() {
     }, 100);
   }
 
+  const handleResendConfirmation = async () => {
+    if (!user?.email) return;
+
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user.email
+      });
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Fehler",
+          description: "Die Bestätigungs-E-Mail konnte nicht erneut gesendet werden.",
+        });
+      } else {
+        toast({
+          title: "E-Mail gesendet",
+          description: "Eine neue Bestätigungs-E-Mail wurde an Ihre E-Mail-Adresse gesendet.",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Ein unerwarteter Fehler ist aufgetreten.",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
         
