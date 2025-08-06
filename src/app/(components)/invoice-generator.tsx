@@ -448,6 +448,15 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
 
                 if (savedInvoices.length > 0) {
+                    // Update usage tracking
+                    try {
+                        const updatedUsage = await UsageService.incrementUsage(user.id, savedInvoices.length);
+                        setMonthlyUsage(updatedUsage);
+                    } catch (usageError) {
+                        console.error('Error updating usage:', usageError);
+                        // Don't fail the whole process if usage tracking fails
+                    }
+
                     updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
                         const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
                         const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
@@ -457,7 +466,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
                     toast({
                         title: "Rechnungen erstellt",
-                        description: `${uniqueNewInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                        description: `${savedInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
                     });
                 } else {
                     setError('Rechnungen konnten nicht gespeichert werden.');
@@ -669,7 +678,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                 <TableRow>
                                     <TableHead className="w-[140px] min-w-[140px] bg-background">Rechnungsnr.</TableHead>
                                     <TableHead className="w-[80px] min-w-[80px] bg-background">Datum</TableHead>
-                                    <TableHead className="min-w-[120px] bg-background">Käufer</TableHead>
+                                    <TableHead className="min-w-[120px] bg-background">K��ufer</TableHead>
                                     <TableHead className="w-[60px] min-w-[60px] bg-background">Land</TableHead>
                                     <TableHead className="w-[90px] min-w-[90px] bg-background">Klassifizierung</TableHead>
                                     <TableHead className="text-right w-[80px] min-w-[80px] bg-background">Netto</TableHead>
