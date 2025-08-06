@@ -392,22 +392,30 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
             // Save new invoices to Supabase
             try {
-                const invoicesToSave = uniqueNewInvoices.map(invoice => ({
-                    id: invoice.id,
-                    user_id: user.id,
-                    invoice_number: invoice.invoiceNumber,
-                    order_date: invoice.orderDate,
-                    service_date: invoice.serviceDate,
-                    buyer_name: invoice.buyerName,
-                    buyer_address: invoice.buyerAddress,
-                    country: invoice.country,
-                    country_classification: invoice.countryClassification,
-                    net_total: invoice.netTotal,
-                    vat_total: invoice.vatTotal,
-                    gross_total: invoice.grossTotal,
-                    tax_note: invoice.taxNote,
-                    items: invoice.items
-                }));
+                const invoicesToSave = uniqueNewInvoices.map(invoice => {
+                    // Convert DD.MM.YYYY to YYYY-MM-DD for database
+                    const formatDateForDB = (dateStr: string) => {
+                        const [day, month, year] = dateStr.split('.');
+                        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                    };
+
+                    return {
+                        // Don't include id - let database generate it
+                        user_id: user.id,
+                        invoice_number: invoice.invoiceNumber,
+                        order_date: formatDateForDB(invoice.orderDate),
+                        service_date: formatDateForDB(invoice.serviceDate),
+                        buyer_name: invoice.buyerName,
+                        buyer_address: invoice.buyerAddress,
+                        country: invoice.country,
+                        country_classification: invoice.countryClassification,
+                        net_total: invoice.netTotal,
+                        vat_total: invoice.vatTotal,
+                        gross_total: invoice.grossTotal,
+                        tax_note: invoice.taxNote,
+                        items: invoice.items
+                    };
+                });
 
                 const savedInvoices = await InvoiceService.createMultipleInvoices(invoicesToSave);
                 console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
