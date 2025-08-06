@@ -28,32 +28,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Debug logging
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
+    console.log('AuthProvider state:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      loading
     })
+  }, [user, loading])
+
+  useEffect(() => {
+    let mounted = true;
+
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error) {
+          console.error('Error getting session:', error)
+        }
+        if (mounted) {
+          setUser(session?.user ?? null)
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('Auth error:', error)
+        if (mounted) {
+          setUser(null)
+          setLoading(false)
+        }
+      }
+    }
+
+    getInitialSession()
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.email)
+      if (mounted) {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      console.log('Signing out user:', user?.email)
+      setUser(null)
+      setLoading(true)
+
+      // Clear the session
+      await supabase.auth.signOut({ scope: 'local' })
+
       // Force complete page reload to clear all auth state
-      window.location.replace('/')
+      setTimeout(() => {
+        window.location.replace('/')
+      }, 100)
     } catch (error) {
       console.error('Error signing out:', error)
       // Force reload even if signout fails
+      setUser(null)
       window.location.replace('/')
     }
   }
