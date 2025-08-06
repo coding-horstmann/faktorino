@@ -23,6 +23,15 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Debug auth state
+  useEffect(() => {
+    console.log('Dashboard: user state changed:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      userId: user?.id
+    });
+  }, [user]);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
