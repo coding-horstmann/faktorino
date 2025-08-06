@@ -382,17 +382,51 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
         if (response.error) {
             setError(response.error);
-        } else if (response.data) {
+        } else if (response.data && user) {
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
-            
-            updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
-                const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
-                const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
-                if (dateA !== dateB) return dateA - dateB;
-                return a.invoiceNumber.localeCompare(b.invoiceNumber);
-            }));
-            
+
+            // Save new invoices to Supabase
+            try {
+                const invoicesToSave = uniqueNewInvoices.map(invoice => ({
+                    id: invoice.id,
+                    user_id: user.id,
+                    invoice_number: invoice.invoiceNumber,
+                    order_date: invoice.orderDate,
+                    service_date: invoice.serviceDate,
+                    buyer_name: invoice.buyerName,
+                    buyer_address: invoice.buyerAddress,
+                    country: invoice.country,
+                    country_classification: invoice.countryClassification,
+                    net_total: invoice.netTotal,
+                    vat_total: invoice.vatTotal,
+                    gross_total: invoice.grossTotal,
+                    tax_note: invoice.taxNote,
+                    items: invoice.items
+                }));
+
+                const savedInvoices = await InvoiceService.createMultipleInvoices(invoicesToSave);
+
+                if (savedInvoices.length > 0) {
+                    updateInvoices([...invoices, ...uniqueNewInvoices].sort((a, b) => {
+                        const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
+                        const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
+                        if (dateA !== dateB) return dateA - dateB;
+                        return a.invoiceNumber.localeCompare(b.invoiceNumber);
+                    }));
+
+                    toast({
+                        title: "Rechnungen erstellt",
+                        description: `${uniqueNewInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                    });
+                } else {
+                    setError('Rechnungen konnten nicht gespeichert werden.');
+                }
+            } catch (saveError) {
+                console.error('Error saving invoices:', saveError);
+                setError('Fehler beim Speichern der Rechnungen.');
+            }
+
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
