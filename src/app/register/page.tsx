@@ -174,27 +174,6 @@ export default function RegisterPage() {
 
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <Button 
-            type="button" 
-            variant="outline" 
-            className="w-full" 
-            onClick={handleGoogleRegister}
-            disabled={loading}
-          >
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Mit Google registrieren
-          </Button>
-          <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                      Oder fahre fort mit
-                  </span>
-              </div>
-          </div>
-          
           <form onSubmit={handleRegister} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">E-Mail-Adresse *</Label>
