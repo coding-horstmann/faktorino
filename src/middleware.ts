@@ -43,10 +43,10 @@ export async function middleware(request: NextRequest) {
   const publicPaths = ['/login', '/register', '/agb', '/datenschutz', '/impressum', '/kontakt', '/']
   const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
-  // If user is not signed in and the current path is not public, redirect to /login
+  // If user is not signed in and the current path is not public, redirect to homepage
   if (!user && !isPublicPath) {
     const url = request.nextUrl.clone()
-    url.pathname = '/login'
+    url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
