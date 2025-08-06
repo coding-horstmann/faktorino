@@ -529,6 +529,48 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
   return (
     <div className="space-y-6">
+      {/* Monthly Usage Display */}
+      {monthlyUsage && (
+        <Card className="w-full shadow-sm border-l-4 border-l-primary">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-sm font-medium">
+              <span className="flex items-center gap-2">
+                <PieChart className="h-4 w-4 text-primary" />
+                Monatliche Nutzung ({UsageService.formatMonthYear(monthlyUsage.month_year)})
+              </span>
+              <Badge variant={monthlyUsage.percentage >= 90 ? "destructive" : monthlyUsage.percentage >= 75 ? "secondary" : "default"}>
+                {monthlyUsage.percentage}%
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Rechnungen erstellt:</span>
+                <span className="font-medium">{monthlyUsage.invoice_count.toLocaleString()} / {monthlyUsage.limit.toLocaleString()}</span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    monthlyUsage.percentage >= 90 ? 'bg-destructive' :
+                    monthlyUsage.percentage >= 75 ? 'bg-orange-500' : 'bg-primary'
+                  }`}
+                  style={{ width: `${Math.min(monthlyUsage.percentage, 100)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Verbleibend: {monthlyUsage.remaining.toLocaleString()}</span>
+                {monthlyUsage.percentage >= 80 && (
+                  <span className="text-orange-600 font-medium">
+                    {monthlyUsage.percentage >= 95 ? 'Limit fast erreicht!' : 'Achtung: Hohes Nutzungsvolumen'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="w-full shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
