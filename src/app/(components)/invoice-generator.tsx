@@ -456,86 +456,88 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="w-full overflow-x-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[220px]">Rechnungsnr.</TableHead>
-                                    <TableHead>Datum</TableHead>
-                                    <TableHead>Käufer</TableHead>
-                                    <TableHead>Land</TableHead>
-                                    <TableHead>Klassifizierung</TableHead>
-                                    <TableHead className="text-right">Netto</TableHead>
-                                    {userInfo.taxStatus === 'regular' && (
-                                        <TableHead className="text-right">USt.</TableHead>
-                                    )}
-                                    <TableHead className="text-right">Brutto</TableHead>
-                                    <TableHead className="text-center">Aktionen</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredInvoices.map((invoice) => (
-                                    <TableRow key={invoice.id}>
-                                        <TableCell className="font-medium">
-                                          {editingInvoiceNumber?.id === invoice.id ? (
-                                            <div className="flex items-center gap-1 w-[200px]">
-                                              <Input
-                                                value={editingInvoiceNumber.number}
-                                                onChange={(e) =>
-                                                  setEditingInvoiceNumber({ ...editingInvoiceNumber, number: e.target.value })
-                                                }
-                                                className="h-8"
-                                              />
-                                              <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700" onClick={handleInvoiceNumberSave}><Check className="h-4 w-4"/></Button>
-                                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" onClick={() => setEditingInvoiceNumber(null)}><X className="h-4 w-4"/></Button>
-                                            </div>
-                                          ) : (
-                                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setEditingInvoiceNumber({ id: invoice.id, number: invoice.invoiceNumber })}>
-                                              {invoice.invoiceNumber}
-                                            </div>
-                                          )}
-                                        </TableCell>
-                                        <TableCell>{invoice.orderDate}</TableCell>
-                                        <TableCell>{invoice.buyerName}</TableCell>
-                                        <TableCell>{invoice.country}</TableCell>
-                                        <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(invoice.netTotal)}</TableCell>
+                    <ScrollArea className="h-[60vh] w-full">
+                        <div className="w-full overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[220px]">Rechnungsnr.</TableHead>
+                                        <TableHead>Datum</TableHead>
+                                        <TableHead>Käufer</TableHead>
+                                        <TableHead>Land</TableHead>
+                                        <TableHead>Klassifizierung</TableHead>
+                                        <TableHead className="text-right">Netto</TableHead>
                                         {userInfo.taxStatus === 'regular' && (
-                                            <TableCell className="text-right">{formatCurrency(invoice.vatTotal)}</TableCell>
+                                            <TableHead className="text-right">USt.</TableHead>
                                         )}
-                                        <TableCell className="text-right font-semibold">{formatCurrency(invoice.grossTotal)}</TableCell>
-                                        <TableCell className="text-center space-x-1">
-                                            <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
-                                                <Download className="mr-2 h-4 w-4"/>PDF
-                                            </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)}>
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                    <AlertDialogTitle>Rechnung wirklich löschen?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Möchten Sie die Rechnung {invoice.invoiceNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
-                                                    </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                    <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDeleteInvoice(invoice.id)}>Ja, löschen</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </TableCell>
+                                        <TableHead className="text-right">Brutto</TableHead>
+                                        <TableHead className="text-center">Aktionen</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                       </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredInvoices.map((invoice) => (
+                                        <TableRow key={invoice.id}>
+                                            <TableCell className="font-medium">
+                                              {editingInvoiceNumber?.id === invoice.id ? (
+                                                <div className="flex items-center gap-1 w-[200px]">
+                                                  <Input
+                                                    value={editingInvoiceNumber.number}
+                                                    onChange={(e) =>
+                                                      setEditingInvoiceNumber({ ...editingInvoiceNumber, number: e.target.value })
+                                                    }
+                                                    className="h-8"
+                                                  />
+                                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700" onClick={handleInvoiceNumberSave}><Check className="h-4 w-4"/></Button>
+                                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" onClick={() => setEditingInvoiceNumber(null)}><X className="h-4 w-4"/></Button>
+                                                </div>
+                                              ) : (
+                                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => setEditingInvoiceNumber({ id: invoice.id, number: invoice.invoiceNumber })}>
+                                                  {invoice.invoiceNumber}
+                                                </div>
+                                              )}
+                                            </TableCell>
+                                            <TableCell>{invoice.orderDate}</TableCell>
+                                            <TableCell>{invoice.buyerName}</TableCell>
+                                            <TableCell>{invoice.country}</TableCell>
+                                            <TableCell>{getClassificationBadge(invoice.countryClassification)}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(invoice.netTotal)}</TableCell>
+                                            {userInfo.taxStatus === 'regular' && (
+                                                <TableCell className="text-right">{formatCurrency(invoice.vatTotal)}</TableCell>
+                                            )}
+                                            <TableCell className="text-right font-semibold">{formatCurrency(invoice.grossTotal)}</TableCell>
+                                            <TableCell className="text-center space-x-1">
+                                                <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(invoice)}>
+                                                    <Download className="mr-2 h-4 w-4"/>PDF
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => openEditDialog(invoice)}>
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                        <AlertDialogTitle>Rechnung wirklich löschen?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Möchten Sie die Rechnung {invoice.invoiceNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
+                                                        </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteInvoice(invoice.id)}>Ja, löschen</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </ScrollArea>
                 </CardContent>
             </Card>
         </div>
