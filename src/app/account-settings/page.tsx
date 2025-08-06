@@ -355,7 +355,7 @@ export default function AccountSettingsPage() {
                 <CardHeader>
                     <CardTitle>Passwort zurücksetzen</CardTitle>
                     <CardDescription>
-                        Fordern Sie eine "Passwort vergessen" E-Mail an, um Ihr Passwort zu ändern.
+                        Fordern Sie eine "Passwort zurücksetzen" E-Mail an, um Ihr Passwort zu ändern.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -365,7 +365,7 @@ export default function AccountSettingsPage() {
                         disabled={changingPassword}
                     >
                         {changingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Passwort vergessen E-Mail anfordern
+                        Passwort zurücksetzen
                     </Button>
                 </CardContent>
             </Card>

@@ -37,17 +37,38 @@ export class InvoiceService {
   }
 
   static async createMultipleInvoices(invoices: InvoiceInsert[]): Promise<InvoiceRow[]> {
-    const { data, error } = await supabase
-      .from('invoices')
-      .insert(invoices)
-      .select()
+    try {
+      console.log('Creating invoices batch of:', invoices.length);
 
-    if (error) {
-      console.error('Error creating invoices:', error)
-      return []
+      // Insert in smaller batches to avoid issues
+      const batchSize = 10;
+      const results: InvoiceRow[] = [];
+
+      for (let i = 0; i < invoices.length; i += batchSize) {
+        const batch = invoices.slice(i, i + batchSize);
+        console.log(`Inserting batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(invoices.length/batchSize)}`);
+
+        const { data, error } = await supabase
+          .from('invoices')
+          .insert(batch)
+          .select('*');
+
+        if (error) {
+          console.error('Error creating invoice batch:', error);
+          throw error;
+        }
+
+        if (data) {
+          results.push(...data);
+        }
+      }
+
+      console.log('Successfully created', results.length, 'invoices');
+      return results;
+    } catch (error) {
+      console.error('Error in createMultipleInvoices:', error);
+      return [];
     }
-
-    return data || []
   }
 
   static async updateInvoice(invoiceId: string, updates: InvoiceUpdate): Promise<InvoiceRow | null> {
