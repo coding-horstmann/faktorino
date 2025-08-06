@@ -71,7 +71,9 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
   useEffect(() => {
     const loadInvoices = async () => {
+      console.log('InvoiceGenerator: loadInvoices called, user:', user?.id, user?.email);
       if (!user) {
+        console.log('InvoiceGenerator: No user found, skipping invoice load');
         setIsLoadingInvoices(false);
         return;
       }
@@ -383,8 +385,10 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         if (response.error) {
             setError(response.error);
         } else if (response.data && user) {
+            console.log('InvoiceGenerator: Got response data, user:', user.id);
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
+            console.log('InvoiceGenerator: Saving', uniqueNewInvoices.length, 'new invoices to Supabase');
 
             // Save new invoices to Supabase
             try {
