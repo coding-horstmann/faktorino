@@ -12,6 +12,7 @@ import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from '@/lib/supabase';
+import { UserService } from '@/lib/user-service';
 import { useToast } from "@/hooks/use-toast";
 
 export default function RegisterPage() {
