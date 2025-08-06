@@ -26,13 +26,19 @@ export default function DashboardPage() {
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Debug auth state
+  // Debug auth state and check email confirmation
   useEffect(() => {
     console.log('Dashboard: user state changed:', {
       hasUser: !!user,
       userEmail: user?.email,
-      userId: user?.id
+      userId: user?.id,
+      emailConfirmed: !!user?.email_confirmed_at
     });
+
+    // Show email confirmation banner if user is not confirmed
+    if (user && !user.email_confirmed_at) {
+      setShowEmailBanner(true);
+    }
   }, [user]);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
