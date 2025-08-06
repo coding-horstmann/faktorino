@@ -459,17 +459,17 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                         <Table>
                             <TableHeader className="sticky top-0 bg-background z-10">
                                 <TableRow>
-                                    <TableHead className="w-[220px] min-w-[220px] bg-background">Rechnungsnr.</TableHead>
-                                    <TableHead className="min-w-[100px] bg-background">Datum</TableHead>
-                                    <TableHead className="min-w-[150px] bg-background">Käufer</TableHead>
-                                    <TableHead className="min-w-[100px] bg-background">Land</TableHead>
-                                    <TableHead className="min-w-[120px] bg-background">Klassifizierung</TableHead>
-                                    <TableHead className="text-right min-w-[100px] bg-background">Netto</TableHead>
+                                    <TableHead className="w-[140px] min-w-[140px] bg-background">Rechnungsnr.</TableHead>
+                                    <TableHead className="w-[80px] min-w-[80px] bg-background">Datum</TableHead>
+                                    <TableHead className="min-w-[120px] bg-background">Käufer</TableHead>
+                                    <TableHead className="w-[60px] min-w-[60px] bg-background">Land</TableHead>
+                                    <TableHead className="w-[90px] min-w-[90px] bg-background">Klassifizierung</TableHead>
+                                    <TableHead className="text-right w-[80px] min-w-[80px] bg-background">Netto</TableHead>
                                     {userInfo.taxStatus === 'regular' && (
-                                        <TableHead className="text-right min-w-[100px] bg-background">USt.</TableHead>
+                                        <TableHead className="text-right w-[70px] min-w-[70px] bg-background">USt.</TableHead>
                                     )}
-                                    <TableHead className="text-right min-w-[100px] bg-background">Brutto</TableHead>
-                                    <TableHead className="text-center min-w-[120px] bg-background">Aktionen</TableHead>
+                                    <TableHead className="text-right w-[80px] min-w-[80px] bg-background">Brutto</TableHead>
+                                    <TableHead className="text-center w-[100px] min-w-[100px] bg-background">Aktionen</TableHead>
                                 </TableRow>
                             </TableHeader>
                                 <TableBody>
