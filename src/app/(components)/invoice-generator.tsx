@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
@@ -456,24 +455,23 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <ScrollArea className="h-[70vh] w-full">
-                         <div className="relative w-full overflow-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[220px]">Rechnungsnr.</TableHead>
-                                        <TableHead>Datum</TableHead>
-                                        <TableHead>Käufer</TableHead>
-                                        <TableHead>Land</TableHead>
-                                        <TableHead>Klassifizierung</TableHead>
-                                        <TableHead className="text-right">Netto</TableHead>
-                                        {userInfo.taxStatus === 'regular' && (
-                                            <TableHead className="text-right">USt.</TableHead>
-                                        )}
-                                        <TableHead className="text-right">Brutto</TableHead>
-                                        <TableHead className="text-center">Aktionen</TableHead>
-                                    </TableRow>
-                                </TableHeader>
+                    <div className="relative h-[70vh] w-full overflow-auto">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-background z-10">
+                                <TableRow>
+                                    <TableHead className="w-[220px] min-w-[220px] bg-background">Rechnungsnr.</TableHead>
+                                    <TableHead className="min-w-[100px] bg-background">Datum</TableHead>
+                                    <TableHead className="min-w-[150px] bg-background">Käufer</TableHead>
+                                    <TableHead className="min-w-[100px] bg-background">Land</TableHead>
+                                    <TableHead className="min-w-[120px] bg-background">Klassifizierung</TableHead>
+                                    <TableHead className="text-right min-w-[100px] bg-background">Netto</TableHead>
+                                    {userInfo.taxStatus === 'regular' && (
+                                        <TableHead className="text-right min-w-[100px] bg-background">USt.</TableHead>
+                                    )}
+                                    <TableHead className="text-right min-w-[100px] bg-background">Brutto</TableHead>
+                                    <TableHead className="text-center min-w-[120px] bg-background">Aktionen</TableHead>
+                                </TableRow>
+                            </TableHeader>
                                 <TableBody>
                                     {filteredInvoices.map((invoice) => (
                                         <TableRow key={invoice.id}>
@@ -537,9 +535,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                         </TableRow>
                                     ))}
                                 </TableBody>
-                            </Table>
-                        </div>
-                    </ScrollArea>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -652,5 +649,3 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     </div>
   );
 }
-
-    
