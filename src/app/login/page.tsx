@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
   const { toast } = useToast();
@@ -72,6 +73,36 @@ export default function LoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Bitte geben Sie Ihre E-Mail-Adresse ein.');
+      return;
+    }
+
+    setForgotPasswordLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      toast({
+        title: "E-Mail gesendet!",
+        description: "Prüfen Sie Ihren Posteingang für den Passwort-Reset-Link.",
+      });
+    } catch (err: any) {
+      setError('Ein unerwarteter Fehler ist aufgetreten.');
+    } finally {
+      setForgotPasswordLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-md">
         <Card>
@@ -118,6 +149,16 @@ export default function LoginPage() {
                     Anmelden
                   </Button>
                   <div className="text-center space-y-2">
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      onClick={handleForgotPassword}
+                      disabled={forgotPasswordLoading}
+                    >
+                      {forgotPasswordLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                      Passwort vergessen?
+                    </Button>
                     <Link href="/register" passHref>
                         <Button variant="link" size="sm">Noch kein Konto? Registrieren</Button>
                     </Link>

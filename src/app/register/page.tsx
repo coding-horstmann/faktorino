@@ -110,7 +110,7 @@ export default function RegisterPage() {
           description: "Bitte überprüfen Sie Ihre E-Mail, um Ihr Konto zu bestätigen.",
         });
 
-        router.push('/login');
+        router.push('/dashboard');
       }
     } catch (err: any) {
       setError('Ein unerwarteter Fehler ist aufgetreten.');
