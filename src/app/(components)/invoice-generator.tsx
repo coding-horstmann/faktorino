@@ -424,11 +424,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 }
             }
 
-            console.log('InvoiceGenerator: Saving', uniqueNewInvoices.length, 'new invoices to Supabase');
+            console.log('InvoiceGenerator: Saving', invoicesToCreate.length, 'new invoices to Supabase');
 
             // Save new invoices to Supabase
             try {
-                const invoicesToSave = uniqueNewInvoices.map(invoice => {
+                const invoicesToSave = invoicesToCreate.map(invoice => {
                     // Convert DD.MM.YYYY to YYYY-MM-DD for database
                     const formatDateForDB = (dateStr: string) => {
                         const [day, month, year] = dateStr.split('.');
@@ -751,7 +751,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
-                                                            <AlertDialogTitle>Rechnung wirklich l��schen?</AlertDialogTitle>
+                                                            <AlertDialogTitle>Rechnung wirklich löschen?</AlertDialogTitle>
                                                             <AlertDialogDescription>
                                                                 Möchten Sie die Rechnung {invoice.invoiceNumber} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.
                                                             </AlertDialogDescription>
