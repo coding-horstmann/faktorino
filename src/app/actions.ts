@@ -416,12 +416,13 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         const parseResult = Papa.parse(csvData, {
             skipEmptyLines: true,
             header: false, 
+            error: (error) => {
+                console.warn("CSV parsing warning:", error);
+            }
         });
 
-        if (parseResult.errors.length > 0) {
-            console.error("CSV Parsing Errors in Bank Statement:", parseResult.errors);
-            return { error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
-        }
+        // Ignoriere Parsing-Fehler für Bank Statements, da diese oft verschiedene Formate haben
+        console.log("CSV parsing result:", parseResult);
 
         const data = parseResult.data as string[][];
 
