@@ -18,7 +18,13 @@ export async function POST(request: NextRequest) {
     }
     const { origin } = new URL(request.url)
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore })
+    const supabase = createRouteHandlerClient<Database>(
+      { cookies: () => cookieStore },
+      {
+        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      }
+    )
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
