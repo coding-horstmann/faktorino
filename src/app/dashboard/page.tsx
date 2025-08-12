@@ -267,6 +267,16 @@ export default function DashboardPage() {
     }
   };
 
+  // Compute trial state and remaining days
+  const trialInfo = (() => {
+    if (!billingInfo?.trial_end) return { trialActive: false, remainingDays: 0 } as const;
+    const end = new Date(billingInfo.trial_end);
+    const now = Date.now();
+    const trialActive = end.getTime() > now;
+    const remainingDays = trialActive ? Math.ceil((end.getTime() - now) / (1000 * 60 * 60 * 24)) : 0;
+    return { trialActive, remainingDays } as const;
+  })();
+
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
 
@@ -299,7 +309,31 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Billing banner */}
+        {/* Trial banner (Option C) */}
+        {user && billingInfo && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
+          <Alert className="border-blue-200 bg-blue-50">
+            <CreditCard className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="flex items-center justify-between w-full">
+              <div className="flex-1">
+                <span className="text-blue-800 font-medium">Kostenloser Test aktiv</span>
+                <span className="text-blue-700 ml-2">
+                  Noch {trialInfo.remainingDays} Tag{trialInfo.remainingDays === 1 ? '' : 'e'} verbleibend. Sichern Sie sich nahtlosen Zugang, indem Sie jetzt Ihr Abo starten.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                <Button
+                  onClick={startCheckout}
+                  disabled={billingLoading}
+                  className="h-9 px-3 border border-blue-300 text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  Jetzt abonnieren
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Billing banner (no access) */}
         {user && billingInfo && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
