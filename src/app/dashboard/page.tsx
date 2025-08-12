@@ -71,7 +71,8 @@ export default function DashboardPage() {
   const [isTaxIdError, setIsTaxIdError] = useState(false);
   const [showEmailBanner, setShowEmailBanner] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null } | null>(null);
+  // Default so Banner erscheint sofort bis echte Daten geladen sind
+  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null } | null>({ status: null, trial_end: null });
   const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export default function DashboardPage() {
             .single();
           if (data) setBillingInfo({ status: (data as any).subscription_status || null, trial_end: (data as any).trial_end || null });
         } catch (e) {
-          // ignore
+          // keep default which shows subscribe banner for non-abos
         }
       } catch (error) {
         console.error("Could not load user profile from Supabase", error);
@@ -261,7 +262,7 @@ export default function DashboardPage() {
       }
       throw new Error(data?.error || 'Checkout fehlgeschlagen');
     } catch (e) {
-      // noop
+      toast({ variant: 'destructive', title: 'Fehler', description: e instanceof Error ? e.message : 'Checkout fehlgeschlagen' });
     } finally {
       setBillingLoading(false);
     }

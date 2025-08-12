@@ -3,8 +3,18 @@ import { cookies } from 'next/headers'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { stripe } from '@/lib/stripe'
 
+// Force Node.js runtime to use Stripe Node SDK reliably on Vercel/Next
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
+    // Fail fast if Stripe env is not configured correctly
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return NextResponse.json({ error: 'Stripe-Konfiguration fehlt: STRIPE_SECRET_KEY' }, { status: 500 })
+    }
+    if (!process.env.STRIPE_PRICE_ID) {
+      return NextResponse.json({ error: 'Stripe-Konfiguration fehlt: STRIPE_PRICE_ID' }, { status: 500 })
+    }
     const { origin } = new URL(request.url)
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })

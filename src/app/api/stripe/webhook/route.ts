@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { stripe } from '@/lib/stripe'
 
+// Stripe Webhooks require the raw body; ensure Node.js runtime
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   const hdrs = await headers()
   const sig = hdrs.get('stripe-signature')
