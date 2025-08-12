@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       }
 
       if (data.user) {
+        let shouldForceSetup = false
         // Check if user profile exists, if not create it
         try {
           const { data: existingUser } = await supabase
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
               tax_number: userMetadata.tax_id || null,
               tax_status: 'regular'
             })
+            shouldForceSetup = true
           }
 
           // Ensure Stripe customer exists immediately at registration
@@ -71,8 +73,10 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Redirect to dashboard on success
-      return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
+      // Redirect: force payment method setup once after registration
+      const nextUrl = new URL('/account-settings', requestUrl.origin)
+      nextUrl.searchParams.set('setup', 'required')
+      return NextResponse.redirect(nextUrl)
     } catch (error) {
       console.error('Session exchange error:', error)
       return NextResponse.redirect(new URL('/login?error=session_error', requestUrl.origin))

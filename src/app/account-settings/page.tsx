@@ -44,6 +44,9 @@ function AccountSettingsContent() {
         if (searchParams?.get('billing') === 'required') {
             toast({ variant: 'destructive', title: 'Abo erforderlich', description: 'Bitte schließen Sie ein Abo ab, um fortzufahren.' });
         }
+        if (searchParams?.get('setup') === 'required') {
+            toast({ title: 'Fast geschafft!', description: 'Bitte hinterlegen Sie jetzt eine Zahlungsmethode (keine Abbuchung während des Tests).' });
+        }
         const loadUserData = async () => {
             if (!user) {
                 setLoading(false);
@@ -248,6 +251,23 @@ function AccountSettingsContent() {
         }
     };
 
+    const startSetup = async () => {
+        try {
+            setBillingLoading(true);
+            const res = await fetch('/api/stripe/setup', { method: 'POST' });
+            const data = await res.json();
+            if (data?.url) {
+                window.location.href = data.url as string;
+                return;
+            }
+            throw new Error(data?.error || 'Setup fehlgeschlagen');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Fehler', description: e.message || 'Setup fehlgeschlagen' });
+        } finally {
+            setBillingLoading(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="container mx-auto w-full max-w-xl flex justify-center items-center h-64">
@@ -420,11 +440,14 @@ function AccountSettingsContent() {
                 <CardHeader>
                     <CardTitle>Abonnement</CardTitle>
                     <CardDescription>
-                        Schließen Sie ein Abo für 4,99 € / Monat ab. 14 Tage kostenloser Test.
+                        Hinterlegen Sie optional schon jetzt eine Zahlungsmethode. 14 Tage kostenlos, keine automatische Belastung.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <div className="flex gap-2">
+                        <Button onClick={startSetup} disabled={billingLoading} className="flex-1 border border-input">
+                            Zahlungsmethode hinterlegen (kostenlos)
+                        </Button>
                         <Button onClick={startCheckout} disabled={billingLoading} className="flex-1">
                             Jetzt abonnieren
                         </Button>
@@ -433,7 +456,7 @@ function AccountSettingsContent() {
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                        Test endet automatisch nach 14 Tagen. Danach nur mit aktiv abgeschlossenem Abo nutzbar.
+                        Test endet automatisch nach 14 Tagen. Es erfolgt keine automatische Abbuchung ohne expliziten Abo-Abschluss.
                     </p>
                 </CardContent>
             </Card>
