@@ -79,7 +79,8 @@ export default function RegisterPage() {
             address: formData.address,
             city: formData.city,
             tax_id: formData.taxId,
-          }
+          },
+          emailRedirectTo: `https://etsy-tool-ohne-stripe-k9u5.vercel.app/auth/callback`
         }
       });
 
@@ -129,7 +130,7 @@ export default function RegisterPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/welcome`
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
 

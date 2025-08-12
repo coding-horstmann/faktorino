@@ -28,7 +28,7 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -38,8 +38,12 @@ export default function LoginPage() {
         return;
       }
 
+      // Check if this is a new user (first time login)
+      const isNewUser = data.user?.created_at && 
+        new Date(data.user.created_at).getTime() > new Date().getTime() - (24 * 60 * 60 * 1000); // Within last 24 hours
+
       toast({
-        title: "Willkommen zurück!",
+        title: isNewUser ? "Willkommen!" : "Willkommen zurück!",
         description: "Sie wurden erfolgreich angemeldet.",
       });
 
@@ -59,7 +63,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
 

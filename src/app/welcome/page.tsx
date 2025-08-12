@@ -36,7 +36,10 @@ export default function WelcomePage() {
     try {
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: user.email
+        email: user.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       });
 
       if (error) {

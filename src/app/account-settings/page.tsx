@@ -149,7 +149,10 @@ export default function AccountSettingsPage() {
 
         try {
             const { error } = await supabase.auth.updateUser({
-                email: formData.newEmail
+                email: formData.newEmail,
+                options: {
+                    emailRedirectTo: `${window.location.origin}/auth/callback`
+                }
             });
 
             if (error) {
