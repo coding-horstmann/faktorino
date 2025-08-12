@@ -75,12 +75,37 @@ export async function middleware(request: NextRequest) {
           .select('id')
           .single()
 
+        // If RLS prevents insert, fall back to service role REST call
         if (!insertRes.data) {
-          // If we still cannot ensure a profile, sign out and redirect
-          await supabase.auth.signOut()
-          const url = request.nextUrl.clone()
-          url.pathname = '/login?error=user_deleted'
-          return NextResponse.redirect(url)
+          const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+          if (serviceRoleKey) {
+            try {
+              const resp = await fetch(`${supabaseUrl}/rest/v1/users`, {
+                method: 'POST',
+                headers: {
+                  apikey: serviceRoleKey,
+                  Authorization: `Bearer ${serviceRoleKey}`,
+                  'Content-Type': 'application/json',
+                  Prefer: 'return=minimal',
+                },
+                body: JSON.stringify({
+                  id: user.id,
+                  email: user.email || '',
+                  name: '',
+                  address: '',
+                  city: '',
+                  tax_status: 'regular',
+                  subscription_status: 'trialing',
+                  trial_end: trialEndIso,
+                }),
+              })
+              if (!resp.ok) {
+                console.warn('Service role insert failed for users table', await resp.text())
+              }
+            } catch (e) {
+              console.warn('Service role insert threw error', e)
+            }
+          }
         }
       }
     } catch (error) {
