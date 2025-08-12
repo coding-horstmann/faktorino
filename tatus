@@ -1,0 +1,471 @@
+[1mdiff --git a/src/app/dashboard/page.tsx b/src/app/dashboard/page.tsx[m
+[1mindex 1457206..2b816bd 100644[m
+[1m--- a/src/app/dashboard/page.tsx[m
+[1m+++ b/src/app/dashboard/page.tsx[m
+[36m@@ -1,6 +1,7 @@[m
+ 'use client';[m
+ [m
+ import { useState, useEffect, useCallback, useRef } from 'react';[m
+[32m+[m[32mimport { useRouter } from 'next/navigation';[m
+ import { InvoiceGenerator } from '@/app/(components)/invoice-generator';[m
+ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"[m
+ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"[m
+[36m@@ -22,7 +23,8 @@[m [mimport { cn } from '@/lib/utils';[m
+ export default function DashboardPage() {[m
+ [m
+   const { toast } = useToast();[m
+[31m-  const { user } = useAuth();[m
+[32m+[m[32m  const { user, userExists } = useAuth();[m
+[32m+[m[32m  const router = useRouter();[m
+   const accordionTriggerRef = useRef<HTMLButtonElement>(null);[m
+   const formRef = useRef<HTMLDivElement>(null);[m
+ [m
+[36m@@ -32,14 +34,25 @@[m [mexport default function DashboardPage() {[m
+       hasUser: !!user,[m
+       userEmail: user?.email,[m
+       userId: user?.id,[m
+[31m-      emailConfirmed: !!user?.email_confirmed_at[m
+[32m+[m[32m      emailConfirmed: !!user?.email_confirmed_at,[m
+[32m+[m[32m      userExists[m
+     });[m
+ [m
+     // Show email confirmation banner if user is not confirmed[m
+     if (user && !user.email_confirmed_at) {[m
+       setShowEmailBanner(true);[m
+     }[m
+[31m-  }, [user]);[m
+[32m+[m
+[32m+[m[32m    // If user doesn't exist in our table, redirect to login[m
+[32m+[m[32m    if (user && !userExists) {[m
+[32m+[m[32m      toast({[m
+[32m+[m[32m        variant: "destructive",[m
+[32m+[m[32m        title: "Zugriff verweigert",[m
+[32m+[m[32m        description: "Ihr Benutzerkonto wurde gelöscht. Sie werden zur Anmeldeseite weitergeleitet.",[m
+[32m+[m[32m      });[m
+[32m+[m[32m      router.push('/login?error=user_deleted');[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }, [user, userExists, router, toast]);[m
+   [m
+   const [userInfo, setUserInfo] = useState<UserInfo>({[m
+     name: '',[m
+[1mdiff --git a/src/app/login/page.tsx b/src/app/login/page.tsx[m
+[1mindex 8ae8b07..e2473e4 100644[m
+[1m--- a/src/app/login/page.tsx[m
+[1m+++ b/src/app/login/page.tsx[m
+[36m@@ -1,6 +1,6 @@[m
+ 'use client';[m
+ [m
+[31m-import { useState } from 'react';[m
+[32m+[m[32mimport { useState, useEffect } from 'react';[m
+ import { useRouter } from 'next/navigation';[m
+ import { Button } from "@/components/ui/button";[m
+ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";[m
+[36m@@ -22,6 +22,16 @@[m [mexport default function LoginPage() {[m
+   const router = useRouter();[m
+   const { toast } = useToast();[m
+ [m
+[32m+[m[32m  // Check for error parameters in URL[m
+[32m+[m[32m  useEffect(() => {[m
+[32m+[m[32m    const urlParams = new URLSearchParams(window.location.search);[m
+[32m+[m[32m    const errorParam = urlParams.get('error');[m
+[32m+[m[41m    [m
+[32m+[m[32m    if (errorParam === 'user_deleted') {[m
+[32m+[m[32m      setError('Ihr Benutzerkonto wurde gelöscht. Bitte kontaktieren Sie den Administrator.');[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }, []);[m
+[32m+[m
+   const handleLogin = async (e: React.FormEvent) => {[m
+     e.preventDefault();[m
+     setLoading(true);[m
+[36m@@ -55,121 +65,146 @@[m [mexport default function LoginPage() {[m
+     }[m
+   };[m
+ [m
+[31m-  const handleGoogleLogin = async () => {[m
+[31m-    setLoading(true);[m
+[32m+[m[32m  const handleForgotPassword = async () => {[m
+[32m+[m[32m    if (!email) {[m
+[32m+[m[32m      setError('Bitte geben Sie Ihre E-Mail-Adresse ein.');[m
+[32m+[m[32m      return;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    setForgotPasswordLoading(true);[m
+     setError('');[m
+ [m
+     try {[m
+[31m-      const { error } = await supabase.auth.signInWithOAuth({[m
+[31m-        provider: 'google',[m
+[31m-        options: {[m
+[31m-          redirectTo: `${window.location.origin}/auth/callback`[m
+[31m-        }[m
+[32m+[m[32m      const { error } = await supabase.auth.resetPasswordForEmail(email, {[m
+[32m+[m[32m        redirectTo: `${window.location.origin}/reset-password`,[m
+       });[m
+ [m
+       if (error) {[m
+         setError(error.message);[m
+[31m-        setLoading(false);[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        toast({[m
+[32m+[m[32m          title: "E-Mail gesendet",[m
+[32m+[m[32m          description: "Eine E-Mail zum Zurücksetzen Ihres Passworts wurde gesendet.",[m
+[32m+[m[32m        });[m
+       }[m
+     } catch (err: any) {[m
+       setError('Ein unerwarteter Fehler ist aufgetreten.');[m
+[31m-      setLoading(false);[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setForgotPasswordLoading(false);[m
+     }[m
+   };[m
+ [m
+[31m-  const handleForgotPassword = async () => {[m
+[31m-    if (!email) {[m
+[31m-      setError('Bitte geben Sie Ihre E-Mail-Adresse ein.');[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    setForgotPasswordLoading(true);[m
+[32m+[m[32m  const handleGoogleLogin = async () => {[m
+[32m+[m[32m    setLoading(true);[m
+     setError('');[m
+ [m
+     try {[m
+[31m-      const { error } = await supabase.auth.resetPasswordForEmail(email, {[m
+[31m-        redirectTo: `${window.location.origin}/reset-password`[m
+[32m+[m[32m      const { error } = await supabase.auth.signInWithOAuth({[m
+[32m+[m[32m        provider: 'google',[m
+[32m+[m[32m        options: {[m
+[32m+[m[32m          redirectTo: `${window.location.origin}/auth/callback`[m
+[32m+[m[32m        }[m
+       });[m
+ [m
+       if (error) {[m
+         setError(error.message);[m
+[31m-        return;[m
+[32m+[m[32m        setLoading(false);[m
+       }[m
+[31m-[m
+[31m-      toast({[m
+[31m-        title: "E-Mail gesendet!",[m
+[31m-        description: "Prüfen Sie Ihren Posteingang für den Passwort-Reset-Link.",[m
+[31m-      });[m
+     } catch (err: any) {[m
+       setError('Ein unerwarteter Fehler ist aufgetreten.');[m
+[31m-    } finally {[m
+[31m-      setForgotPasswordLoading(false);[m
+[32m+[m[32m      setLoading(false);[m
+     }[m
+   };[m
+ [m
+   return ([m
+[31m-    <div className="w-full max-w-md">[m
+[31m-        <Card>[m
+[31m-            <CardHeader>[m
+[31m-                <CardTitle>Anmelden</CardTitle>[m
+[31m-                <CardDescription>[m
+[31m-                    Melden Sie sich bei Ihrem EtsyBuchhalter-Konto an.[m
+[31m-                </CardDescription>[m
+[31m-            </CardHeader>[m
+[31m-            <form onSubmit={handleLogin}>[m
+[31m-              <CardContent className="space-y-4">[m
+[31m-                  <div className="space-y-2">[m
+[31m-                      <Label htmlFor="email">E-Mail</Label>[m
+[31m-                      <Input [m
+[31m-                        id="email" [m
+[31m-                        type="email" [m
+[31m-                        placeholder="ihre@email.de" [m
+[31m-                        value={email}[m
+[31m-                        onChange={(e) => setEmail(e.target.value)}[m
+[31m-                        required[m
+[31m-                        disabled={loading}[m
+[31m-                      />[m
+[31m-                  </div>[m
+[31m-                   <div className="space-y-2">[m
+[31m-                      <Label htmlFor="password">Passwort</Label>[m
+[31m-                      <Input [m
+[31m-                        id="password" [m
+[31m-                        type="password" [m
+[31m-                        value={password}[m
+[31m-                        onChange={(e) => setPassword(e.target.value)}[m
+[31m-                        required[m
+[31m-                        disabled={loading}[m
+[31m-                      />[m
+[31m-                  </div>[m
+[31m-                  {error && ([m
+[31m-                    <Alert variant="destructive">[m
+[31m-                      <AlertDescription>{error}</AlertDescription>[m
+[31m-                    </Alert>[m
+[31m-                  )}[m
+[31m-              </CardContent>[m
+[31m-              <CardFooter className="flex flex-col gap-4">[m
+[31m-                  <Button type="submit" className="w-full" disabled={loading}>[m
+[31m-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}[m
+[31m-                    Anmelden[m
+[31m-                  </Button>[m
+[31m-                  <div className="text-center space-y-2">[m
+[31m-                    <Button[m
+[31m-                      type="button"[m
+[31m-                      variant="link"[m
+[31m-                      size="sm"[m
+[31m-                      onClick={handleForgotPassword}[m
+[31m-                      disabled={forgotPasswordLoading}[m
+[31m-                    >[m
+[31m-                      {forgotPasswordLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}[m
+[31m-                      Passwort vergessen?[m
+[31m-                    </Button>[m
+[31m-                    <Link href="/register" passHref>[m
+[31m-                        <Button variant="link" size="sm">Noch kein Konto? Registrieren</Button>[m
+[31m-                    </Link>[m
+[31m-                  </div>[m
+[31m-              </CardFooter>[m
+[31m-            </form>[m
+[31m-        </Card>[m
+[32m+[m[32m    <div className="w-full max-w-lg space-y-6">[m
+[32m+[m[32m      <div className="text-center">[m
+[32m+[m[32m        <h1 className="text-3xl font-bold">Anmelden</h1>[m
+[32m+[m[32m        <p className="text-muted-foreground">Willkommen zurück bei EtsyBuchhalter</p>[m
+[32m+[m[32m      </div>[m
+[32m+[m
+[32m+[m[32m      <Card>[m
+[32m+[m[32m        <CardHeader>[m
+[32m+[m[32m          <CardTitle>Anmelden</CardTitle>[m
+[32m+[m[32m          <CardDescription>[m
+[32m+[m[32m            Melden Sie sich mit Ihren Zugangsdaten an[m
+[32m+[m[32m          </CardDescription>[m
+[32m+[m[32m        </CardHeader>[m
+[32m+[m[32m        <CardContent className="space-y-4">[m
+[32m+[m[32m          {error && ([m
+[32m+[m[32m            <Alert variant="destructive">[m
+[32m+[m[32m              <AlertDescription>{error}</AlertDescription>[m
+[32m+[m[32m            </Alert>[m
+[32m+[m[32m          )}[m
+[32m+[m[41m          [m
+[32m+[m[32m          <form onSubmit={handleLogin} className="space-y-4">[m
+[32m+[m[32m            <div className="space-y-2">[m
+[32m+[m[32m              <Label htmlFor="email">E-Mail</Label>[m
+[32m+[m[32m              <Input[m
+[32m+[m[32m                id="email"[m
+[32m+[m[32m                type="email"[m
+[32m+[m[32m                placeholder="ihre@email.de"[m
+[32m+[m[32m                value={email}[m
+[32m+[m[32m                onChange={(e) => setEmail(e.target.value)}[m
+[32m+[m[32m                required[m
+[32m+[m[32m              />[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <div className="space-y-2">[m
+[32m+[m[32m              <Label htmlFor="password">Passwort</Label>[m
+[32m+[m[32m              <Input[m
+[32m+[m[32m                id="password"[m
+[32m+[m[32m                type="password"[m
+[32m+[m[32m                placeholder="Ihr Passwort"[m
+[32m+[m[32m                value={password}[m
+[32m+[m[32m                onChange={(e) => setPassword(e.target.value)}[m
+[32m+[m[32m                required[m
+[32m+[m[32m              />[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <Button type="submit" className="w-full" disabled={loading}>[m
+[32m+[m[32m              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}[m
+[32m+[m[32m              Anmelden[m
+[32m+[m[32m            </Button>[m
+[32m+[m[32m          </form>[m
+[32m+[m
+[32m+[m[32m          <div className="text-center">[m
+[32m+[m[32m            <Button[m
+[32m+[m[32m              variant="link"[m
+[32m+[m[32m              onClick={handleForgotPassword}[m
+[32m+[m[32m              disabled={forgotPasswordLoading || !email}[m
+[32m+[m[32m              className="text-sm"[m
+[32m+[m[32m            >[m
+[32m+[m[32m              {forgotPasswordLoading ? ([m
+[32m+[m[32m                <>[m
+[32m+[m[32m                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />[m
+[32m+[m[32m                  Wird gesendet...[m
+[32m+[m[32m                </>[m
+[32m+[m[32m              ) : ([m
+[32m+[m[32m                "Passwort vergessen?"[m
+[32m+[m[32m              )}[m
+[32m+[m[32m            </Button>[m
+[32m+[m[32m          </div>[m
+[32m+[m
+[32m+[m[32m          <Separator />[m
+[32m+[m
+[32m+[m[32m          <Button[m
+[32m+[m[32m            variant="outline"[m
+[32m+[m[32m            onClick={handleGoogleLogin}[m
+[32m+[m[32m            disabled={loading}[m
+[32m+[m[32m            className="w-full"[m
+[32m+[m[32m          >[m
+[32m+[m[32m            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}[m
+[32m+[m[32m            Mit Google anmelden[m
+[32m+[m[32m          </Button>[m
+[32m+[m[32m        </CardContent>[m
+[32m+[m[32m        <CardFooter className="flex justify-center">[m
+[32m+[m[32m          <p className="text-sm text-muted-foreground">[m
+[32m+[m[32m            Noch kein Konto?{" "}[m
+[32m+[m[32m            <Link href="/register" className="text-primary hover:underline">[m
+[32m+[m[32m              Jetzt registrieren[m
+[32m+[m[32m            </Link>[m
+[32m+[m[32m          </p>[m
+[32m+[m[32m        </CardFooter>[m
+[32m+[m[32m      </Card>[m
+     </div>[m
+   );[m
+ }[m
+[1mdiff --git a/src/contexts/AuthContext.tsx b/src/contexts/AuthContext.tsx[m
+[1mindex 0ec99e6..bdc901d 100644[m
+[1m--- a/src/contexts/AuthContext.tsx[m
+[1m+++ b/src/contexts/AuthContext.tsx[m
+[36m@@ -3,17 +3,20 @@[m
+ import { createContext, useContext, useEffect, useState } from 'react'[m
+ import { User } from '@supabase/supabase-js'[m
+ import { supabase } from '@/lib/supabase'[m
+[32m+[m[32mimport { UserService } from '@/lib/user-service'[m
+ [m
+ interface AuthContextType {[m
+   user: User | null[m
+   loading: boolean[m
+   signOut: () => Promise<void>[m
+[32m+[m[32m  userExists: boolean[m
+ }[m
+ [m
+ const AuthContext = createContext<AuthContextType>({[m
+   user: null,[m
+   loading: true,[m
+   signOut: async () => {},[m
+[32m+[m[32m  userExists: false,[m
+ })[m
+ [m
+ export const useAuth = () => {[m
+[36m@@ -27,15 +30,28 @@[m [mexport const useAuth = () => {[m
+ export function AuthProvider({ children }: { children: React.ReactNode }) {[m
+   const [user, setUser] = useState<User | null>(null)[m
+   const [loading, setLoading] = useState(true)[m
+[32m+[m[32m  const [userExists, setUserExists] = useState(false)[m
+ [m
+   // Debug logging[m
+   useEffect(() => {[m
+     console.log('AuthProvider state:', {[m
+       hasUser: !!user,[m
+       userEmail: user?.email,[m
+[31m-      loading[m
+[32m+[m[32m      loading,[m
+[32m+[m[32m      userExists[m
+     })[m
+[31m-  }, [user, loading])[m
+[32m+[m[32m  }, [user, loading, userExists])[m
+[32m+[m
+[32m+[m[32m  // Check if user exists in our users table[m
+[32m+[m[32m  const checkUserExists = async (userId: string) => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const profile = await UserService.getUserProfile(userId)[m
+[32m+[m[32m      return !!profile[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m      console.error('Error checking user existence:', error)[m
+[32m+[m[32m      return false[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+ [m
+   useEffect(() => {[m
+     let mounted = true;[m
+[36m@@ -49,12 +65,30 @@[m [mexport function AuthProvider({ children }: { children: React.ReactNode }) {[m
+         }[m
+         if (mounted) {[m
+           setUser(session?.user ?? null)[m
+[32m+[m[41m          [m
+[32m+[m[32m          // Check if user exists in our users table[m
+[32m+[m[32m          if (session?.user) {[m
+[32m+[m[32m            const exists = await checkUserExists(session.user.id)[m
+[32m+[m[32m            setUserExists(exists)[m
+[32m+[m[41m            [m
+[32m+[m[32m            // If user doesn't exist in our table, sign them out[m
+[32m+[m[32m            if (!exists) {[m
+[32m+[m[32m              console.log('User not found in users table, signing out')[m
+[32m+[m[32m              await supabase.auth.signOut({ scope: 'local' })[m
+[32m+[m[32m              setUser(null)[m
+[32m+[m[32m              setUserExists(false)[m
+[32m+[m[32m            }[m
+[32m+[m[32m          } else {[m
+[32m+[m[32m            setUserExists(false)[m
+[32m+[m[32m          }[m
+[32m+[m[41m          [m
+           setLoading(false)[m
+         }[m
+       } catch (error) {[m
+         console.error('Auth error:', error)[m
+         if (mounted) {[m
+           setUser(null)[m
+[32m+[m[32m          setUserExists(false)[m
+           setLoading(false)[m
+         }[m
+       }[m
+[36m@@ -69,6 +103,23 @@[m [mexport function AuthProvider({ children }: { children: React.ReactNode }) {[m
+       console.log('Auth state change:', event, session?.user?.email)[m
+       if (mounted) {[m
+         setUser(session?.user ?? null)[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Check if user exists in our users table[m
+[32m+[m[32m        if (session?.user) {[m
+[32m+[m[32m          const exists = await checkUserExists(session.user.id)[m
+[32m+[m[32m          setUserExists(exists)[m
+[32m+[m[41m          [m
+[32m+[m[32m          // If user doesn't exist in our table, sign them out[m
+[32m+[m[32m          if (!exists) {[m
+[32m+[m[32m            console.log('User not found in users table, signing out')[m
+[32m+[m[32m            await supabase.auth.signOut({ scope: 'local' })[m
+[32m+[m[32m            setUser(null)[m
+[32m+[m[32m            setUserExists(false)[m
+[32m+[m[32m          }[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m          setUserExists(false)[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+         setLoading(false)[m
+       }[m
+     })[m
+[36m@@ -83,6 +134,7 @@[m [mexport function AuthProvider({ children }: { children: React.ReactNode }) {[m
+     try {[m
+       console.log('Signing out user:', user?.email)[m
+       setUser(null)[m
+[32m+[m[32m      setUserExists(false)[m
+       setLoading(true)[m
+ [m
+       // Clear the session[m
+[36m@@ -96,12 +148,13 @@[m [mexport function AuthProvider({ children }: { children: React.ReactNode }) {[m
+       console.error('Error signing out:', error)[m
+       // Force reload even if signout fails[m
+       setUser(null)[m
+[32m+[m[32m      setUserExists(false)[m
+       window.location.replace('/')[m
+     }[m
+   }[m
+ [m
+   return ([m
+[31m-    <AuthContext.Provider value={{ user, loading, signOut }}>[m
+[32m+[m[32m    <AuthContext.Provider value={{ user, loading, signOut, userExists }}>[m
+       {children}[m
+     </AuthContext.Provider>[m
+   )[m
+[1mdiff --git a/src/middleware.ts b/src/middleware.ts[m
+[1mindex 7f8f903..888a4ed 100644[m
+[1m--- a/src/middleware.ts[m
+[1m+++ b/src/middleware.ts[m
+[36m@@ -48,6 +48,35 @@[m [mexport async function middleware(request: NextRequest) {[m
+     data: { user },[m
+   } = await supabase.auth.getUser()[m
+ [m
+[32m+[m[32m  // If user is authenticated, check if they exist in our users table[m
+[32m+[m[32m  if (user) {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const { data: userProfile, error } = await supabase[m
+[32m+[m[32m        .from('users')[m
+[32m+[m[32m        .select('id')[m
+[32m+[m[32m        .eq('id', user.id)[m
+[32m+[m[32m        .single()[m
+[32m+[m
+[32m+[m[32m      // If user doesn't exist in our table, sign them out and redirect[m
+[32m+[m[32m      if (error || !userProfile) {[m
+[32m+[m[32m        console.log('User not found in users table, signing out')[m
+[32m+[m[32m        await supabase.auth.signOut()[m
+[32m+[m[41m        [m
+[3

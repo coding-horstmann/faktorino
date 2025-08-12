@@ -3,17 +3,20 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { UserService } from '@/lib/user-service'
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   signOut: () => Promise<void>
+  userExists: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signOut: async () => {},
+  userExists: false,
 })
 
 export const useAuth = () => {
@@ -27,15 +30,28 @@ export const useAuth = () => {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [userExists, setUserExists] = useState(false)
 
   // Debug logging
   useEffect(() => {
     console.log('AuthProvider state:', {
       hasUser: !!user,
       userEmail: user?.email,
-      loading
+      loading,
+      userExists
     })
-  }, [user, loading])
+  }, [user, loading, userExists])
+
+  // Check if user exists in our users table
+  const checkUserExists = async (userId: string) => {
+    try {
+      const profile = await UserService.getUserProfile(userId)
+      return !!profile
+    } catch (error) {
+      console.error('Error checking user existence:', error)
+      return false
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -49,12 +65,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (mounted) {
           setUser(session?.user ?? null)
+          
+          // Check if user exists in our users table
+          if (session?.user) {
+            const exists = await checkUserExists(session.user.id)
+            setUserExists(exists)
+            
+            // If user doesn't exist in our table, sign them out
+            if (!exists) {
+              console.log('User not found in users table, signing out')
+              await supabase.auth.signOut({ scope: 'local' })
+              setUser(null)
+              setUserExists(false)
+            }
+          } else {
+            setUserExists(false)
+          }
+          
           setLoading(false)
         }
       } catch (error) {
         console.error('Auth error:', error)
         if (mounted) {
           setUser(null)
+          setUserExists(false)
           setLoading(false)
         }
       }
@@ -69,6 +103,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Auth state change:', event, session?.user?.email)
       if (mounted) {
         setUser(session?.user ?? null)
+        
+        // Check if user exists in our users table
+        if (session?.user) {
+          const exists = await checkUserExists(session.user.id)
+          setUserExists(exists)
+          
+          // If user doesn't exist in our table, sign them out
+          if (!exists) {
+            console.log('User not found in users table, signing out')
+            await supabase.auth.signOut({ scope: 'local' })
+            setUser(null)
+            setUserExists(false)
+          }
+        } else {
+          setUserExists(false)
+        }
+        
         setLoading(false)
       }
     })
@@ -83,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('Signing out user:', user?.email)
       setUser(null)
+      setUserExists(false)
       setLoading(true)
 
       // Clear the session
@@ -96,12 +148,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Error signing out:', error)
       // Force reload even if signout fails
       setUser(null)
+      setUserExists(false)
       window.location.replace('/')
     }
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, userExists }}>
       {children}
     </AuthContext.Provider>
   )

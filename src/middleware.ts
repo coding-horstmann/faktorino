@@ -48,6 +48,35 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // If user is authenticated, check if they exist in our users table
+  if (user) {
+    try {
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .single()
+
+      // If user doesn't exist in our table, sign them out and redirect
+      if (error || !userProfile) {
+        console.log('User not found in users table, signing out')
+        await supabase.auth.signOut()
+        
+        const url = request.nextUrl.clone()
+        url.pathname = '/login?error=user_deleted'
+        return NextResponse.redirect(url)
+      }
+    } catch (error) {
+      console.error('Error checking user existence:', error)
+      // If there's an error checking, sign out to be safe
+      await supabase.auth.signOut()
+      
+      const url = request.nextUrl.clone()
+      url.pathname = '/login?error=user_deleted'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Allow access to public pages
   const publicPaths = ['/login', '/register', '/agb', '/datenschutz', '/impressum', '/kontakt', '/']
   const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))

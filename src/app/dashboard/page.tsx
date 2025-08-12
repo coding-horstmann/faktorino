@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -22,7 +23,8 @@ import { cn } from '@/lib/utils';
 export default function DashboardPage() {
 
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, userExists } = useAuth();
+  const router = useRouter();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
@@ -32,14 +34,25 @@ export default function DashboardPage() {
       hasUser: !!user,
       userEmail: user?.email,
       userId: user?.id,
-      emailConfirmed: !!user?.email_confirmed_at
+      emailConfirmed: !!user?.email_confirmed_at,
+      userExists
     });
 
     // Show email confirmation banner if user is not confirmed
     if (user && !user.email_confirmed_at) {
       setShowEmailBanner(true);
     }
-  }, [user]);
+
+    // If user doesn't exist in our table, redirect to login
+    if (user && !userExists) {
+      toast({
+        variant: "destructive",
+        title: "Zugriff verweigert",
+        description: "Ihr Benutzerkonto wurde gelöscht. Sie werden zur Anmeldeseite weitergeleitet.",
+      });
+      router.push('/login?error=user_deleted');
+    }
+  }, [user, userExists, router, toast]);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
