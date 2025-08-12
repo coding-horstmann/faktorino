@@ -220,7 +220,7 @@ function AccountSettingsContent() {
     const startCheckout = async () => {
         try {
             setBillingLoading(true);
-            const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+            const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
             const data = await res.json();
             if (data?.url) {
                 window.location.href = data.url as string;
@@ -237,7 +237,7 @@ function AccountSettingsContent() {
     const openPortal = async () => {
         try {
             setBillingLoading(true);
-            const res = await fetch('/api/stripe/portal', { method: 'POST' });
+            const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
             const data = await res.json();
             if (data?.url) {
                 window.location.href = data.url as string;
@@ -254,7 +254,7 @@ function AccountSettingsContent() {
     const startSetup = async () => {
         try {
             setBillingLoading(true);
-            const res = await fetch('/api/stripe/setup', { method: 'POST' });
+            const res = await fetch('/api/stripe/setup', { method: 'POST', credentials: 'include' });
             const data = await res.json();
             if (data?.url) {
                 window.location.href = data.url as string;

@@ -253,7 +253,7 @@ export default function DashboardPage() {
   const startCheckout = async () => {
     try {
       setBillingLoading(true);
-      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
       const data = await res.json();
       if (data?.url) {
         window.location.href = data.url as string;
