@@ -42,13 +42,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }, [user, loading, userExists])
 
-  // Check if user exists in our users table
-  const checkUserExists = async (userId: string) => {
+  // Ensure user profile exists (create minimal one if missing)
+  const ensureUserProfile = async (userId: string, email?: string | null) => {
     try {
       const profile = await UserService.getUserProfile(userId)
-      return !!profile
+      if (profile) return true
+      const created = await UserService.createUserProfile({
+        id: userId,
+        email: email || '',
+        name: '',
+        address: '',
+        city: '',
+        tax_status: 'regular',
+        subscription_status: 'trialing',
+        trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+      } as any)
+      return !!created
     } catch (error) {
-      console.error('Error checking user existence:', error)
+      console.error('Error ensuring user profile:', error)
       return false
     }
   }
@@ -65,23 +76,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         if (mounted) {
           setUser(session?.user ?? null)
-          
-          // Check if user exists in our users table
           if (session?.user) {
-            const exists = await checkUserExists(session.user.id)
-            setUserExists(exists)
-            
-            // If user doesn't exist in our table, sign them out
-            if (!exists) {
-              console.log('User not found in users table, signing out')
-              await supabase.auth.signOut({ scope: 'local' })
-              setUser(null)
-              setUserExists(false)
-            }
+            const ensured = await ensureUserProfile(session.user.id, session.user.email)
+            setUserExists(ensured)
           } else {
             setUserExists(false)
           }
-          
           setLoading(false)
         }
       } catch (error) {
@@ -103,23 +103,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('Auth state change:', event, session?.user?.email)
       if (mounted) {
         setUser(session?.user ?? null)
-        
-        // Check if user exists in our users table
         if (session?.user) {
-          const exists = await checkUserExists(session.user.id)
-          setUserExists(exists)
-          
-          // If user doesn't exist in our table, sign them out
-          if (!exists) {
-            console.log('User not found in users table, signing out')
-            await supabase.auth.signOut({ scope: 'local' })
-            setUser(null)
-            setUserExists(false)
-          }
+          const ensured = await ensureUserProfile(session.user.id, session.user.email)
+          setUserExists(ensured)
         } else {
           setUserExists(false)
         }
-        
         setLoading(false)
       }
     })

@@ -48,32 +48,44 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // If user is authenticated, check if they exist in our users table
+  // If user is authenticated, ensure they exist in our users table.
   if (user) {
     try {
-      const { data: userProfile, error } = await supabase
+      const { data: userProfile } = await supabase
         .from('users')
         .select('id')
         .eq('id', user.id)
         .single()
 
-      // If user doesn't exist in our table, sign them out and redirect
-      if (error || !userProfile) {
-        console.log('User not found in users table, signing out')
-        await supabase.auth.signOut()
-        
-        const url = request.nextUrl.clone()
-        url.pathname = '/login?error=user_deleted'
-        return NextResponse.redirect(url)
+      if (!userProfile) {
+        // Attempt to create a minimal profile server-side to avoid redirect loops
+        const trialEndIso = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+        const insertRes = await supabase
+          .from('users')
+          .insert({
+            id: user.id,
+            email: user.email || '',
+            name: '',
+            address: '',
+            city: '',
+            tax_status: 'regular',
+            subscription_status: 'trialing',
+            trial_end: trialEndIso,
+          })
+          .select('id')
+          .single()
+
+        if (!insertRes.data) {
+          // If we still cannot ensure a profile, sign out and redirect
+          await supabase.auth.signOut()
+          const url = request.nextUrl.clone()
+          url.pathname = '/login?error=user_deleted'
+          return NextResponse.redirect(url)
+        }
       }
     } catch (error) {
-      console.error('Error checking user existence:', error)
-      // If there's an error checking, sign out to be safe
-      await supabase.auth.signOut()
-      
-      const url = request.nextUrl.clone()
-      url.pathname = '/login?error=user_deleted'
-      return NextResponse.redirect(url)
+      console.error('Error ensuring user existence:', error)
+      // Fail open to avoid blocking legitimate users; do not sign out here
     }
   }
 
