@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle2, Loader2 } from "lucide-react";
@@ -80,7 +79,7 @@ export default function RegisterPage() {
             city: formData.city,
             tax_id: formData.taxId,
           },
-          emailRedirectTo: `https://etsy-tool-ohne-stripe-k9u5.vercel.app/auth/callback`
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
 
@@ -110,10 +109,10 @@ export default function RegisterPage() {
 
         toast({
           title: "Registrierung erfolgreich!",
-          description: "Bitte überprüfen Sie Ihre E-Mail, um Ihr Konto zu bestätigen.",
+          description: "Bitte bestätigen Sie Ihre E-Mail. Prüfen Sie Ihren Posteingang.",
         });
 
-        router.push('/welcome');
+        router.push('/login?registered=1');
       }
     } catch (err: any) {
       setError('Ein unerwarteter Fehler ist aufgetreten.');
@@ -122,27 +121,7 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleRegister = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-      }
-    } catch (err: any) {
-      setError('Ein unerwarteter Fehler ist aufgetreten.');
-      setLoading(false);
-    }
-  };
+  
 
   return (
     <div className="w-full max-w-lg space-y-6">
@@ -305,8 +284,8 @@ export default function RegisterPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-             <div className="text-center text-xs text-muted-foreground p-2 border rounded-md">
-                Zahlungsabwicklung über Stripe. Nach dem 14-tägigen Testzeitraum wird automatisch ein Abo für 4,99€/Monat eingerichtet. Sie können jederzeit kündigen.
+              <div className="text-center text-xs text-muted-foreground p-2 border rounded-md">
+                Zahlungsabwicklung über Stripe. Der 14-tägige Test endet automatisch. Ein kostenpflichtiges Abo für 4,99€/Monat entsteht nur, wenn Sie es aktiv abschließen.
             </div>
             <div className="text-center">
               <Link href="/login" passHref>

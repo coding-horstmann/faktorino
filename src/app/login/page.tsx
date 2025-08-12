@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -26,9 +25,17 @@ export default function LoginPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
+    const registered = urlParams.get('registered');
     
     if (errorParam === 'user_deleted') {
       setError('Ihr Benutzerkonto wurde gelöscht. Bitte kontaktieren Sie den Administrator.');
+    }
+
+    if (registered === '1') {
+      toast({
+        title: 'Bitte E-Mail bestätigen',
+        description: 'Wir haben Ihnen eine Bestätigungs-E-Mail gesendet. Klicken Sie auf den Link, um Ihr Konto zu aktivieren.',
+      });
     }
   }, []);
 
@@ -94,27 +101,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-      }
-    } catch (err: any) {
-      setError('Ein unerwarteter Fehler ist aufgetreten.');
-      setLoading(false);
-    }
-  };
+  
 
   return (
     <div className="w-full max-w-lg space-y-6">
@@ -184,17 +171,7 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <Separator />
-
-          <Button
-            variant="outline"
-            onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full"
-          >
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Mit Google anmelden
-          </Button>
+          
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
