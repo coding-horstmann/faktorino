@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { UserService } from '@/lib/user-service';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function AccountSettingsPage() {
+function AccountSettingsContent() {
     const { toast } = useToast();
     const { user } = useAuth();
     const router = useRouter();
@@ -438,5 +438,17 @@ export default function AccountSettingsPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function AccountSettingsPage() {
+    return (
+        <Suspense fallback={
+            <div className="container mx-auto w-full max-w-xl flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        }>
+            <AccountSettingsContent />
+        </Suspense>
     );
 }
