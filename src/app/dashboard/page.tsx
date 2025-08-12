@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X } from 'lucide-react';
+import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, CreditCard } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
@@ -71,6 +71,8 @@ export default function DashboardPage() {
   const [isTaxIdError, setIsTaxIdError] = useState(false);
   const [showEmailBanner, setShowEmailBanner] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
+  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null } | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -92,6 +94,17 @@ export default function DashboardPage() {
           checkUserInfo(mappedUserInfo, false);
         } else {
           setAccordionValue("item-1"); // Open if no data is saved
+        }
+        // Load billing info
+        try {
+          const { data } = await supabase
+            .from('users')
+            .select('subscription_status, trial_end')
+            .eq('id', user.id)
+            .single();
+          if (data) setBillingInfo({ status: (data as any).subscription_status || null, trial_end: (data as any).trial_end || null });
+        } catch (e) {
+          // ignore
         }
       } catch (error) {
         console.error("Could not load user profile from Supabase", error);
@@ -237,6 +250,23 @@ export default function DashboardPage() {
     }
   };
 
+  const startCheckout = async () => {
+    try {
+      setBillingLoading(true);
+      const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+      const data = await res.json();
+      if (data?.url) {
+        window.location.href = data.url as string;
+        return;
+      }
+      throw new Error(data?.error || 'Checkout fehlgeschlagen');
+    } catch (e) {
+      // noop
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
 
@@ -252,21 +282,41 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center gap-2 ml-4">
                 <Button
-                  variant="outline"
-                  size="sm"
                   onClick={handleResendConfirmation}
                   disabled={resendLoading}
-                  className="border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                  className="h-9 px-3 border border-yellow-300 text-yellow-700 hover:bg-yellow-100"
                 >
                   {resendLoading ? "Wird gesendet..." : "E-Mail erneut senden"}
                 </Button>
                 <Button
-                  variant="ghost"
-                  size="sm"
                   onClick={() => setShowEmailBanner(false)}
-                  className="text-yellow-600 hover:bg-yellow-100"
+                  className="h-9 px-3 text-yellow-600 hover:bg-yellow-100"
                 >
                   <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Billing banner */}
+        {user && billingInfo && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
+          <Alert className="border-blue-200 bg-blue-50">
+            <CreditCard className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="flex items-center justify-between w-full">
+              <div className="flex-1">
+                <span className="text-blue-800 font-medium">Abo erforderlich:</span>
+                <span className="text-blue-700 ml-2">
+                  Starten Sie jetzt Ihr Abo für 4,99 € / Monat, um alle Funktionen zu nutzen.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                <Button
+                  onClick={startCheckout}
+                  disabled={billingLoading}
+                  className="h-9 px-3 border border-blue-300 text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  Jetzt abonnieren
                 </Button>
               </div>
             </AlertDescription>

@@ -2,6 +2,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { UserService } from '@/lib/user-service'
+import { stripe } from '@/lib/stripe'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
         try {
           const { data: existingUser } = await supabase
             .from('users')
-            .select('id')
+            .select('id, email, stripe_customer_id')
             .eq('id', data.user.id)
             .single()
 
@@ -40,6 +41,29 @@ export async function GET(request: NextRequest) {
               tax_number: userMetadata.tax_id || null,
               tax_status: 'regular'
             })
+          }
+
+          // Ensure Stripe customer exists immediately at registration
+          const { data: userRow } = await supabase
+            .from('users')
+            .select('id, email, stripe_customer_id')
+            .eq('id', data.user.id)
+            .single()
+
+          if (userRow && !userRow.stripe_customer_id) {
+            try {
+              const customer = await stripe.customers.create({
+                email: userRow.email || undefined,
+                metadata: { supabaseUserId: userRow.id },
+              })
+              await supabase
+                .from('users')
+                .update({ stripe_customer_id: customer.id })
+                .eq('id', userRow.id)
+            } catch (e) {
+              // Continue without blocking login
+              console.error('Stripe customer creation failed:', e)
+            }
           }
         } catch (profileError) {
           console.error('Error handling user profile:', profileError)

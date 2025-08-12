@@ -105,6 +105,35 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Gatekeep paid features: if user exists but no active subscription and trial expired, redirect to account settings
+  if (user && !isPublicPath) {
+    try {
+      const { data: billing, error } = await supabase
+        .from('users')
+        .select('subscription_status, trial_end')
+        .eq('id', user.id)
+        .single()
+
+      if (!error && billing) {
+        const status = billing.subscription_status as string | null
+        const trialEnd = billing.trial_end ? new Date(billing.trial_end as string) : null
+        const trialActive = trialEnd ? trialEnd.getTime() > Date.now() : false
+        const hasAccess = status === 'active' || status === 'trialing' || trialActive
+
+        const pathIsAccountOrWelcome = request.nextUrl.pathname.startsWith('/account-settings') || request.nextUrl.pathname.startsWith('/welcome')
+
+        if (!hasAccess && !pathIsAccountOrWelcome) {
+          const url = request.nextUrl.clone()
+          url.pathname = '/account-settings'
+          url.searchParams.set('billing', 'required')
+          return NextResponse.redirect(url)
+        }
+      }
+    } catch (e) {
+      // fail open
+    }
+  }
+
   return supabaseResponse
 }
 

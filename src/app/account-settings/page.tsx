@@ -12,14 +12,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
 import { supabase } from '@/lib/supabase';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function AccountSettingsPage() {
     const { toast } = useToast();
     const { user } = useAuth();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [changingPassword, setChangingPassword] = useState(false);
     const [error, setError] = useState('');
+    const [billingLoading, setBillingLoading] = useState(false);
     
     const [formData, setFormData] = useState({
         email: '',
@@ -33,6 +37,13 @@ export default function AccountSettingsPage() {
     });
 
     useEffect(() => {
+        if (searchParams?.get('checkout') === 'success') {
+            toast({ title: 'Danke!', description: 'Ihr Abo wurde eingerichtet.' });
+            router.replace('/account-settings');
+        }
+        if (searchParams?.get('billing') === 'required') {
+            toast({ variant: 'destructive', title: 'Abo erforderlich', description: 'Bitte schließen Sie ein Abo ab, um fortzufahren.' });
+        }
         const loadUserData = async () => {
             if (!user) {
                 setLoading(false);
@@ -150,9 +161,6 @@ export default function AccountSettingsPage() {
         try {
             const { error } = await supabase.auth.updateUser({
                 email: formData.newEmail,
-                options: {
-                    emailRedirectTo: `${window.location.origin}/auth/callback`
-                }
             });
 
             if (error) {
@@ -203,6 +211,40 @@ export default function AccountSettingsPage() {
             setError('Ein Fehler beim Anfordern des Passwort-Resets ist aufgetreten.');
         } finally {
             setChangingPassword(false);
+        }
+    };
+
+    const startCheckout = async () => {
+        try {
+            setBillingLoading(true);
+            const res = await fetch('/api/stripe/checkout', { method: 'POST' });
+            const data = await res.json();
+            if (data?.url) {
+                window.location.href = data.url as string;
+                return;
+            }
+            throw new Error(data?.error || 'Checkout fehlgeschlagen');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Fehler', description: e.message || 'Checkout fehlgeschlagen' });
+        } finally {
+            setBillingLoading(false);
+        }
+    };
+
+    const openPortal = async () => {
+        try {
+            setBillingLoading(true);
+            const res = await fetch('/api/stripe/portal', { method: 'POST' });
+            const data = await res.json();
+            if (data?.url) {
+                window.location.href = data.url as string;
+                return;
+            }
+            throw new Error(data?.error || 'Portal konnte nicht geöffnet werden');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Fehler', description: e.message || 'Portal-Fehler' });
+        } finally {
+            setBillingLoading(false);
         }
     };
 
@@ -370,6 +412,29 @@ export default function AccountSettingsPage() {
                         {changingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Passwort zurücksetzen
                     </Button>
+                </CardContent>
+            </Card>
+
+            {/* Billing */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Abonnement</CardTitle>
+                    <CardDescription>
+                        Schließen Sie ein Abo für 4,99 € / Monat ab. 14 Tage kostenloser Test.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                    <div className="flex gap-2">
+                        <Button onClick={startCheckout} disabled={billingLoading} className="flex-1">
+                            Jetzt abonnieren
+                        </Button>
+                        <Button onClick={openPortal} disabled={billingLoading} className="flex-1 border border-input">
+                            Abo verwalten
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Test endet automatisch nach 14 Tagen. Danach nur mit aktiv abgeschlossenem Abo nutzbar.
+                    </p>
                 </CardContent>
             </Card>
         </div>

@@ -188,7 +188,7 @@ export default function WelcomePage() {
           Haben Sie Fragen? Besuchen Sie unsere <Link href="/kontakt" className="underline hover:text-primary">Kontakt-Seite</Link>.
         </p>
         <p>
-          Nach dem 14-tägigen Testzeitraum wird automatisch ein Abo für 4,99€/Monat eingerichtet. Sie können jederzeit kündigen.
+          Nach dem 14-tägigen Testzeitraum endet der Zugang automatisch, sofern kein aktives Abo abgeschlossen wurde. Das Abo kostet 4,99 € pro Monat und kann jederzeit gekündigt werden.
         </p>
       </div>
     </div>

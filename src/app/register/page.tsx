@@ -25,8 +25,8 @@ export default function RegisterPage() {
     password: '',
     passwordConfirm: '',
   });
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState<boolean | 'indeterminate'>(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState<boolean | 'indeterminate'>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -270,7 +270,7 @@ export default function RegisterPage() {
                   <Checkbox 
                     id="terms" 
                     checked={termsAccepted}
-                    onCheckedChange={setTermsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked)}
                     disabled={loading}
                   />
                   <Label htmlFor="terms" className="text-sm font-normal">
@@ -281,7 +281,7 @@ export default function RegisterPage() {
                   <Checkbox 
                     id="privacy" 
                     checked={privacyAccepted}
-                    onCheckedChange={setPrivacyAccepted}
+                    onCheckedChange={(checked) => setPrivacyAccepted(checked)}
                     disabled={loading}
                   />
                   <Label htmlFor="privacy" className="text-sm font-normal">

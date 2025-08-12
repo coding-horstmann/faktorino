@@ -413,18 +413,16 @@ export async function generateInvoicesAction(
 
 export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; transactions?: BankTransaction[]; foundEtsyTransaction?: boolean; error?: string; }> {
     try {
-        const parseResult = Papa.parse(csvData, {
+        const parseResult = Papa.parse<string[]>(csvData, {
             skipEmptyLines: true,
-            header: false, 
-            error: (error) => {
-                console.warn("CSV parsing warning:", error);
-            }
+            header: false,
+            dynamicTyping: false,
         });
 
         // Ignoriere Parsing-Fehler für Bank Statements, da diese oft verschiedene Formate haben
         console.log("CSV parsing result:", parseResult);
 
-        const data = parseResult.data as string[][];
+        const data = parseResult.data as unknown as string[][];
 
         const headerKeywords = {
             amount: ['betrag', 'amount', 'summe'],
@@ -521,3 +519,526 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
     }
 }
+
+
+      const orderVatTotal = orderGrossTotal - orderNetTotal;
+
+
+
+      rows.forEach(row => {
+
+          const itemName = getColumn(row, ['item name', 'titel', 'title', 'artikelname'], normalizedHeaderMap);
+
+          const itemTotalStr = getColumn(row, ['item total', 'artikelsumme'], normalizedHeaderMap);
+
+          if (itemName && itemTotalStr) {
+
+              const itemGross = parseFloatSafe(itemTotalStr);
+
+              if (itemGross > 0) {
+
+                  const itemNet = orderWideVatRate > 0 ? itemGross / (1 + orderWideVatRate / 100) : itemGross;
+
+                  const itemVat = itemGross - itemNet;
+
+                   items.push({
+
+                      quantity: parseInt(getColumn(row, ['quantity', 'anzahl', 'items'], normalizedHeaderMap) || '1', 10) || 1,
+
+                      name: itemName,
+
+                      netAmount: itemNet,
+
+                      vatRate: orderWideVatRate,
+
+                      vatAmount: itemVat,
+
+                      grossAmount: itemGross,
+
+                  });
+
+              }
+
+          }
+
+      });
+
+      
+
+      if (shippingCost > 0) {
+
+          const shippingNet = orderWideVatRate > 0 ? shippingCost / (1 + orderWideVatRate / 100) : shippingCost;
+
+          const shippingVat = shippingCost - shippingNet;
+
+          items.push({
+
+              quantity: 1,
+
+              name: 'Versandkosten',
+
+              netAmount: shippingNet,
+
+              vatRate: orderWideVatRate,
+
+              vatAmount: shippingVat,
+
+              grossAmount: shippingCost,
+
+          });
+
+      }
+
+
+
+      if (discountAmount > 0) {
+
+          const discountNet = orderWideVatRate > 0 ? discountAmount / (1 + orderWideVatRate / 100) : discountAmount;
+
+          const discountVat = discountAmount - discountNet;
+
+          items.push({
+
+              quantity: 1,
+
+              name: 'Rabatt',
+
+              netAmount: -discountNet,
+
+              vatRate: orderWideVatRate,
+
+              vatAmount: -discountVat,
+
+              grossAmount: -discountAmount,
+
+          });
+
+      }
+
+      
+
+      let buyerName = getColumn(firstRow, ['ship name', 'ship to name', 'full name', 'empfaengername', 'kaeufer', 'buyer'], normalizedHeaderMap);
+
+      let buyerAddress: string;
+
+
+
+      const address1 = getColumn(firstRow, ['ship address1', 'ship to street 1', 'empfaenger adresse 1', 'street 1'], normalizedHeaderMap);
+
+      const address2 = getColumn(firstRow, ['ship address2', 'ship to street 2', 'empfaenger adresse 2', 'street 2'], normalizedHeaderMap);
+
+      const city = getColumn(firstRow, ['ship city', 'ship to city', 'empfaenger stadt', 'city'], normalizedHeaderMap);
+
+      const state = getColumn(firstRow, ['ship state', 'ship to state', 'empfaenger bundesland', 'state'], normalizedHeaderMap);
+
+      const zipcode = getColumn(firstRow, ['ship zipcode', 'ship to zipcode', 'empfaenger plz', 'shipping zipcode', 'zipcode'], normalizedHeaderMap);
+
+      const countryDisplay = getColumn(firstRow, ['ship country', 'versandland', 'ship to country', 'shipping country', 'country'], normalizedHeaderMap);
+
+      
+
+      let addressParts = [address1, address2, `${zipcode} ${city}`];
+
+      if(state && state !== city) {
+
+        addressParts[1] = address2 ? `${address2}, ${state}` : state;
+
+      }
+
+      addressParts.push(countryDisplay);
+
+      
+
+      buyerAddress = addressParts.filter(part => part && part.trim() !== '' && part.trim() !== city).join('\\n');
+
+      
+
+      const orderDateRaw = getColumn(firstRow, ['sale date', 'bestelldatum', 'date', 'datum des kaufs'], normalizedHeaderMap);
+
+      const orderDate = formatDate(orderDateRaw);
+
+      
+
+      const finalOrderDate = orderDate || new Date().toLocaleDateString('de-DE');
+
+
+
+      const invoiceDraft: Omit<Invoice, 'invoiceNumber'> = {
+
+        id: orderId,
+
+        orderDate: finalOrderDate,
+
+        serviceDate: finalOrderDate,
+
+        buyerName: buyerName || 'Unbekannt',
+
+        buyerAddress,
+
+        items,
+
+        netTotal: orderNetTotal,
+
+        vatTotal: orderVatTotal,
+
+        grossTotal: orderGrossTotal,
+
+        taxNote,
+
+        country: countryName || 'Unbekannt',
+
+        countryClassification,
+
+      };
+
+      
+
+      invoiceDrafts.push(invoiceDraft);
+
+      totalNetSales += invoiceDraft.netTotal;
+
+      totalVat += invoiceDraft.vatTotal;
+
+    }
+
+
+
+    if (invoiceDrafts.length === 0) {
+
+        return { data: null, error: "Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen." };
+
+    }
+
+    
+
+    // Sort drafts by date to ensure chronological invoice numbers
+
+    invoiceDrafts.sort((a, b) => {
+
+        const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
+
+        const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
+
+        return dateA - dateB;
+
+    });
+
+
+
+    // Find the highest existing invoice number for each year
+
+    const invoiceCounters: { [year: number]: number } = {};
+
+    for (const inv of existingInvoices) {
+
+      const match = inv.invoiceNumber.match(/RE-(\d{4})-(\d+)/);
+
+      if (match) {
+
+        const year = parseInt(match[1], 10);
+
+        const num = parseInt(match[2], 10);
+
+        if (!invoiceCounters[year] || num > invoiceCounters[year]) {
+
+          invoiceCounters[year] = num;
+
+        }
+
+      }
+
+    }
+
+    
+
+    const invoices: Invoice[] = [];
+
+    for (const draft of invoiceDrafts) {
+
+        const dateObject = new Date(draft.orderDate.split('.').reverse().join('-'));
+
+        const orderYear = !isNaN(dateObject.getTime()) ? dateObject.getFullYear() : new Date().getFullYear();
+
+        
+
+        if (!invoiceCounters[orderYear]) {
+
+            invoiceCounters[orderYear] = 0;
+
+        }
+
+        invoiceCounters[orderYear]++;
+
+        const invoiceNumberForYear = invoiceCounters[orderYear];
+
+
+
+        const finalInvoice: Invoice = {
+
+            ...draft,
+
+            invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
+
+        };
+
+        invoices.push(finalInvoice);
+
+    }
+
+    
+
+    const result: ProcessCsvOutput = {
+
+      invoices,
+
+      summary: {
+
+        totalNetSales,
+
+        totalVat,
+
+      },
+
+    };
+
+    
+
+    return { data: result, error: null };
+
+  } catch (error) {
+
+    console.error("Error in generateInvoicesAction:", error);
+
+    const errorMessage = error instanceof Error ? error.message : "Ein unerwarteter Fehler ist aufgetreten.";
+
+    return { data: null, error: `Ein unerwarteter Fehler ist aufgetreten. Bitte überprüfen Sie die CSV-Datei und versuchen Sie es erneut. Details: ${errorMessage}` };
+
+  }
+
+}
+
+
+
+
+
+export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; transactions?: BankTransaction[]; foundEtsyTransaction?: boolean; error?: string; }> {
+
+    try {
+
+        const parseResult = Papa.parse(csvData, {
+
+            skipEmptyLines: true,
+
+            header: false, 
+
+            error: (error) => {
+
+                console.warn("CSV parsing warning:", error);
+
+            }
+
+        });
+
+
+
+        // Ignoriere Parsing-Fehler für Bank Statements, da diese oft verschiedene Formate haben
+
+        console.log("CSV parsing result:", parseResult);
+
+
+
+        const data = parseResult.data as string[][];
+
+
+
+        const headerKeywords = {
+
+            amount: ['betrag', 'amount', 'summe'],
+
+            description: ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber', 'empfänger', 'beguenstigter/zahlungspflichtiger', 'name', 'auftraggeber / empfänger', 'begünstiger/zahlungspflichtiger'],
+
+            date: ['datum', 'date', 'buchungstag', 'valuta']
+
+        };
+
+
+
+        let headerRowIndex = -1;
+
+        let headers: string[] = [];
+
+        let maxScore = 0;
+
+
+
+        for (let i = 0; i < data.length && i < 15; i++) { 
+
+            const row = data[i];
+
+            if (!Array.isArray(row) || row.length < 2) continue;
+
+            
+
+            let score = 0;
+
+            const lowerCaseRow = row.map(cell => String(cell || '').toLowerCase().trim());
+
+            
+
+            for (const key in headerKeywords) {
+
+                if (lowerCaseRow.some(cell => headerKeywords[key as keyof typeof headerKeywords].some(kw => cell.includes(kw)))) {
+
+                    score++;
+
+                }
+
+            }
+
+            if (score > maxScore && score > 1) { 
+
+                maxScore = score;
+
+                headerRowIndex = i;
+
+                headers = lowerCaseRow;
+
+            }
+
+        }
+
+
+
+
+
+        if (headerRowIndex === -1) {
+
+            return { error: "Konnte keine gültige Header-Zeile mit Spalten wie 'Betrag', 'Datum' oder 'Verwendungszweck' in der CSV-Datei finden. Bitte prüfen Sie die Datei." };
+
+        }
+
+
+
+        const findIndex = (keywords: string[]): number => {
+
+            for (const kw of keywords) {
+
+                const index = headers.findIndex(h => h.includes(kw));
+
+                if (index !== -1) return index;
+
+            }
+
+            return -1;
+
+        };
+
+        
+
+        const amountIndex = findIndex(headerKeywords.amount);
+
+        const dateIndex = findIndex(headerKeywords.date);
+
+        const descriptionIndices = headerKeywords.description
+
+            .map(kw => headers.findIndex(h => h.includes(kw)))
+
+            .filter(index => index !== -1);
+
+        const uniqueDescriptionIndices = [...new Set(descriptionIndices)];
+
+
+
+
+
+        if (amountIndex === -1) return { error: "Konnte die 'Betrag'-Spalte in der CSV nicht finden." };
+
+        if (uniqueDescriptionIndices.length === 0) return { error: "Konnte keine Spalte für den Verwendungszweck oder die Beschreibung in der CSV finden." };
+
+        if (dateIndex === -1) return { error: "Konnte die 'Datum'-Spalte in der CSV nicht finden."};
+
+
+
+        let totalAmount = 0;
+
+        let foundEtsyTransaction = false;
+
+        const transactions: BankTransaction[] = [];
+
+        const dataStartIndex = headerRowIndex + 1;
+
+
+
+        for (let i = dataStartIndex; i < data.length; i++) {
+
+            const row = data[i];
+
+            
+
+            const maxIndex = Math.max(amountIndex, dateIndex, ...uniqueDescriptionIndices);
+
+            if (!Array.isArray(row) || row.length <= maxIndex) {
+
+                 continue;
+
+            }
+
+            
+
+            const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
+
+            const amountStr = row[amountIndex];
+
+            const dateValue = row[dateIndex];
+
+            
+
+            if (!amountStr || !dateValue || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
+
+                continue; 
+
+            }
+
+
+
+            if (fullDescription.includes('etsy')) {
+
+                foundEtsyTransaction = true;
+
+                const amount = parseFloatSafe(amountStr);
+
+                totalAmount += amount;
+
+                
+
+                transactions.push({
+
+                    date: dateValue || 'N/A',
+
+                    description: uniqueDescriptionIndices.map(idx => row[idx] || '').join(' '),
+
+                    amount: amount
+
+                });
+
+            }
+
+        }
+
+        
+
+        return { totalAmount, transactions, foundEtsyTransaction };
+
+
+
+    } catch (error) {
+
+        console.error("Error processing bank statement CSV:", error);
+
+        return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
+
+    }
+
+}
+
+
