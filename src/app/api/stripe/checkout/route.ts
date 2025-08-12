@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { createRouteHandlerClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { stripe } from '@/lib/stripe'
 import type { Database } from '@/lib/supabase'
 
@@ -18,11 +18,18 @@ export async function POST(request: NextRequest) {
     }
     const { origin } = new URL(request.url)
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient<Database>(
-      { cookies: () => cookieStore },
+    const supabase = createServerClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll() {
+            // No-op for route handlers; we do not need to set cookies in this flow
+          },
+        },
       }
     )
 
