@@ -88,6 +88,11 @@ export async function POST(request: NextRequest) {
       mode: 'subscription',
       payment_method_types: ['card'],
       customer: stripeCustomerId,
+      billing_address_collection: 'required',
+      phone_number_collection: { enabled: true },
+      tax_id_collection: { enabled: true },
+      customer_update: { address: 'auto', name: 'auto' },
+      automatic_tax: { enabled: true },
       line_items: [
         { price: priceId, quantity: 1 },
       ],

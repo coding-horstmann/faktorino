@@ -45,25 +45,9 @@ export function SiteHeader() {
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard">Rechnungen erstellen</Link>
                   </DropdownMenuItem>
-                   <DropdownMenuItem asChild>
-                     <Link href="/account-settings">Kontoeinstellungen</Link>
+                  <DropdownMenuItem asChild>
+                    <Link href="/account-settings">Abo & Einstellungen</Link>
                   </DropdownMenuItem>
-                   <DropdownMenuItem
-                     onClick={async (e) => {
-                       e.preventDefault();
-                       try {
-                         const res = await fetch('/api/stripe/portal', { method: 'POST' });
-                         const data = await res.json();
-                         if (data?.url) {
-                           window.location.href = data.url as string;
-                         }
-                       } catch (err) {
-                         // optional: toast
-                       }
-                     }}
-                   >
-                     Abo & Rechnungen
-                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>Abmelden</DropdownMenuItem>
                 </DropdownMenuContent>

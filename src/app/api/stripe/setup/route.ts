@@ -66,6 +66,11 @@ export async function POST(request: NextRequest) {
       mode: 'setup',
       payment_method_types: ['card'],
       customer: stripeCustomerId,
+      billing_address_collection: 'required',
+      phone_number_collection: { enabled: true },
+      tax_id_collection: { enabled: true },
+      customer_update: { address: 'auto', name: 'auto' },
+      automatic_tax: { enabled: true },
       success_url: `${origin}/auth/callback?setup=done`,
       cancel_url: `${origin}/account-settings?setup=cancel`,
     })

@@ -126,16 +126,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserExists(false)
       setLoading(true)
 
-      // Clear the session
-      await supabase.auth.signOut({ scope: 'local' })
+      // Clear the session globally (remove refresh token)
+      await supabase.auth.signOut()
 
-      // Force complete page reload to clear all auth state
-      setTimeout(() => {
-        window.location.replace('/')
-      }, 100)
+      // Redirect to homepage
+      window.location.replace('/')
     } catch (error) {
       console.error('Error signing out:', error)
-      // Force reload even if signout fails
       setUser(null)
       setUserExists(false)
       window.location.replace('/')
