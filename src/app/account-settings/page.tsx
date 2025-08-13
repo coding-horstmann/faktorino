@@ -173,8 +173,11 @@ function AccountSettingsContent() {
                 .select('subscription_status, stripe_subscription_id')
                 .eq('id', user!.id)
                 .single();
-            const hasSubscription = !!(data as any)?.stripe_subscription_id;
-            if (hasSubscription) {
+            const status = (data as any)?.subscription_status as string | null;
+            const hasStripeSub = !!(data as any)?.stripe_subscription_id;
+            const isActiveStatus = ['active','trialing','past_due','paused'].includes(status || '');
+            const hasActiveSubscription = hasStripeSub && isActiveStatus;
+            if (hasActiveSubscription) {
                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                 const d = await res.json();
                 if (d?.url) { window.location.href = d.url as string; return; }
@@ -298,8 +301,8 @@ function AccountSettingsContent() {
                           onClick={async () => {
                             try {
                               setBillingLoading(true);
-                              const hasSubscription = hasStripeSubscription;
-                              if (hasSubscription) {
+                              const hasActiveSubscription = hasStripeSubscription && ['active','trialing','past_due','paused'].includes(subscriptionStatus || '');
+                              if (hasActiveSubscription) {
                                 // Kündigen / verwalten via Portal
                                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
@@ -321,7 +324,7 @@ function AccountSettingsContent() {
                           disabled={billingLoading}
                           className="w-full"
                         >
-                          {hasStripeSubscription ? 'Abo kündigen' : 'Abo abschließen'}
+                          {hasStripeSubscription && ['active','trialing','past_due','paused'].includes(subscriptionStatus || '') ? 'Abo kündigen' : 'Abo abschließen'}
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Rechnungen und Kündigung verwalten Sie direkt im Stripe-Portal.</p>
