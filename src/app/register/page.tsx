@@ -11,18 +11,11 @@ import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from '@/lib/supabase';
-import { UserService } from '@/lib/user-service';
 import { useToast } from "@/hooks/use-toast";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     email: '',
-    name: '',
-    address: '',
-    city: '',
-    taxId: '',
-    password: '',
-    passwordConfirm: '',
   });
   const [termsAccepted, setTermsAccepted] = useState<boolean | 'indeterminate'>(false);
   const [privacyAccepted, setPrivacyAccepted] = useState<boolean | 'indeterminate'>(false);
@@ -44,20 +37,8 @@ export default function RegisterPage() {
     setError('');
 
     // Validation
-    if (!formData.email || !formData.name || !formData.address || !formData.city || !formData.password) {
-      setError('Bitte füllen Sie alle Pflichtfelder aus.');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password !== formData.passwordConfirm) {
-      setError('Die Passwörter stimmen nicht überein.');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.password.length < 8) {
-      setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+    if (!formData.email) {
+      setError('Bitte geben Sie Ihre E-Mail-Adresse ein.');
       setLoading(false);
       return;
     }
@@ -69,16 +50,9 @@ export default function RegisterPage() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signInWithOtp({
         email: formData.email,
-        password: formData.password,
         options: {
-          data: {
-            name: formData.name,
-            address: formData.address,
-            city: formData.city,
-            tax_id: formData.taxId,
-          },
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
@@ -88,32 +62,13 @@ export default function RegisterPage() {
         return;
       }
 
-      if (data.user) {
-        // Create user profile in our users table - but only if the user is confirmed
-        // For email confirmation flow, this will be handled by the trigger
-        if (data.user.email_confirmed_at) {
-          try {
-            await UserService.createUserProfile({
-              id: data.user.id,
-              email: formData.email,
-              name: formData.name,
-              address: formData.address,
-              city: formData.city,
-              tax_number: formData.taxId || null,
-              tax_status: 'regular'
-            });
-          } catch (profileError) {
-            console.error('Error creating user profile:', profileError);
-          }
-        }
+      // Für Magic-Link: Immer Erfolgshinweis zeigen
+      toast({
+        title: "E-Mail gesendet",
+        description: "Bitte bestätigen Sie Ihre E-Mail. Prüfen Sie Ihren Posteingang.",
+      });
 
-        toast({
-          title: "Registrierung erfolgreich!",
-          description: "Bitte bestätigen Sie Ihre E-Mail. Prüfen Sie Ihren Posteingang.",
-        });
-
-        router.push('/login?registered=1');
-      }
+      router.push('/login?registered=1');
     } catch (err: any) {
       setError('Ein unerwarteter Fehler ist aufgetreten.');
     } finally {
@@ -170,80 +125,7 @@ export default function RegisterPage() {
                 disabled={loading}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Name / Firmenname *</Label>
-              <Input 
-                id="name" 
-                name="name"
-                placeholder="Max Mustermann" 
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Straße & Hausnummer *</Label>
-              <Input 
-                id="address" 
-                name="address"
-                placeholder="Musterstraße 123" 
-                value={formData.address}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="city">PLZ & Stadt *</Label>
-              <Input 
-                id="city" 
-                name="city"
-                placeholder="12345 Musterstadt" 
-                value={formData.city}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="taxId">Umsatzsteuer-ID oder Steuer-ID</Label>
-              <Input 
-                id="taxId" 
-                name="taxId"
-                placeholder="DE123456789 oder 123/456/78901" 
-                value={formData.taxId}
-                onChange={handleInputChange}
-                disabled={loading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Passwort *</Label>
-              <Input 
-                id="password" 
-                name="password"
-                type="password" 
-                placeholder="Mindestens 8 Zeichen"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
-             <div className="space-y-2">
-              <Label htmlFor="passwordConfirm">Passwort bestätigen *</Label>
-              <Input 
-                id="passwordConfirm" 
-                name="passwordConfirm"
-                type="password" 
-                placeholder="Passwort wiederholen"
-                value={formData.passwordConfirm}
-                onChange={handleInputChange}
-                required
-                disabled={loading}
-              />
-            </div>
-            
+
             <div className="space-y-3 pt-2">
                <div className="flex items-center space-x-2">
                   <Checkbox 
@@ -278,15 +160,12 @@ export default function RegisterPage() {
             <div className="pt-4">
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                14 Tage kostenlos testen
+                Magic Link senden
               </Button>
             </div>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-              <div className="text-center text-xs text-muted-foreground p-2 border rounded-md">
-                Zahlungsabwicklung über Stripe. Der 14-tägige Test endet automatisch. Ein kostenpflichtiges Abo für 4,99€/Monat entsteht nur, wenn Sie es aktiv abschließen.
-            </div>
             <div className="text-center">
               <Link href="/login" passHref>
                   <Button variant="link" size="sm">Bereits ein Konto? Anmelden</Button>
