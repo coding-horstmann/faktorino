@@ -46,9 +46,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Kein Stripe-Konto verknüpft' }, { status: 400 })
     }
 
+    // Optional vordefinierte Portal-Konfiguration nutzen oder on-the-fly erzeugen
+    let configurationId = process.env.STRIPE_PORTAL_CONFIGURATION_ID
+    if (!configurationId) {
+      try {
+        const cfg = await stripe.billingPortal.configurations.create({
+          business_profile: { headline: 'EtsyBuchhalter' },
+          default_return_url: `${origin}/account-settings`,
+          features: {
+            invoice_history: { enabled: true },
+            payment_method_update: { enabled: true },
+            subscription_cancel: { enabled: true },
+            subscription_update: { enabled: true },
+          },
+        })
+        configurationId = cfg.id
+      } catch (cfgErr) {
+        // continue without configuration; Stripe may still accept if default exists
+        console.warn('Could not create Stripe portal configuration automatically:', cfgErr)
+      }
+    }
+
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
       return_url: `${origin}/account-settings`,
+      ...(configurationId ? { configuration: configurationId } as any : {}),
     })
 
     return NextResponse.json({ url: portalSession.url })

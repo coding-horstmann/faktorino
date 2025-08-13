@@ -290,7 +290,7 @@ function AccountSettingsContent() {
                                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
                                 if (d?.url) { window.location.href = d.url as string; return; }
-                                throw new Error(d?.error || 'Portal konnte nicht geöffnet werden');
+                                throw new Error(d?.error || 'Portal konnte nicht geöffnet werden. Prüfen Sie Ihre Portal-Konfiguration in Stripe (Testmodus).');
                               } else {
                                 // Abo abschließen via Checkout (auch bei trialing)
                                 const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
