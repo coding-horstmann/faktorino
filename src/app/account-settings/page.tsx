@@ -23,6 +23,7 @@ function AccountSettingsContent() {
     const [billingLoading, setBillingLoading] = useState(false);
     const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
     const [hasStripeSubscription, setHasStripeSubscription] = useState(false);
+    const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
     
     const [formData, setFormData] = useState({
         email: '',
@@ -42,12 +43,14 @@ function AccountSettingsContent() {
                 try {
                     const { data } = await supabase
                         .from('users')
-                        .select('subscription_status, stripe_subscription_id')
+                        .select('subscription_status, stripe_subscription_id, cancel_at_period_end')
                         .single();
                     const status = (data as any)?.subscription_status as string | null;
-                    const hasSub = !!(data as any)?.stripe_subscription_id && ['active','trialing','past_due','paused'].includes(status || '');
+                    const willCancel = !!(data as any)?.cancel_at_period_end;
+                    const hasSub = !!(data as any)?.stripe_subscription_id && ['active','trialing','past_due','paused'].includes(status || '') && !willCancel;
                     setSubscriptionStatus(status ?? null);
                     setHasStripeSubscription(!!(data as any)?.stripe_subscription_id);
+                    setCancelAtPeriodEnd(willCancel);
                     // Entferne Query-Param
                     router.replace('/account-settings');
                     if (!hasSub) {
@@ -78,11 +81,12 @@ function AccountSettingsContent() {
             try {
                 const { data } = await supabase
                     .from('users')
-                    .select('subscription_status, stripe_subscription_id')
+                    .select('subscription_status, stripe_subscription_id, cancel_at_period_end')
                     .eq('id', user.id)
                     .single();
                 setSubscriptionStatus((data as any)?.subscription_status ?? null);
                 setHasStripeSubscription(!!(data as any)?.stripe_subscription_id);
+                setCancelAtPeriodEnd(!!(data as any)?.cancel_at_period_end);
             } catch {}
             setLoading(false);
         })();
@@ -193,13 +197,14 @@ function AccountSettingsContent() {
             // Prüfe Abo-Status. Ohne Abo → Checkout; mit Abo/Trial → Portal
             const { data } = await supabase
                 .from('users')
-                .select('subscription_status, stripe_subscription_id')
+                .select('subscription_status, stripe_subscription_id, cancel_at_period_end')
                 .eq('id', user!.id)
                 .single();
             const status = (data as any)?.subscription_status as string | null;
             const hasStripeSub = !!(data as any)?.stripe_subscription_id;
             const isActiveStatus = ['active','trialing','past_due','paused'].includes(status || '');
-            const hasActiveSubscription = hasStripeSub && isActiveStatus;
+            const willCancel = !!(data as any)?.cancel_at_period_end;
+            const hasActiveSubscription = hasStripeSub && isActiveStatus && !willCancel;
             if (hasActiveSubscription) {
                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                 const d = await res.json();
@@ -324,7 +329,7 @@ function AccountSettingsContent() {
                           onClick={async () => {
                             try {
                               setBillingLoading(true);
-                              const hasActiveSubscription = hasStripeSubscription && ['active','trialing','past_due','paused'].includes(subscriptionStatus || '');
+                              const hasActiveSubscription = hasStripeSubscription && ['active','trialing','past_due','paused'].includes(subscriptionStatus || '') && !cancelAtPeriodEnd;
                               if (hasActiveSubscription) {
                                 // Kündigen / verwalten via Portal
                                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
@@ -347,7 +352,7 @@ function AccountSettingsContent() {
                           disabled={billingLoading}
                           className="w-full"
                         >
-                          {hasStripeSubscription && ['active','trialing','past_due','paused'].includes(subscriptionStatus || '') ? 'Abo kündigen' : 'Abo abschließen'}
+                          {hasStripeSubscription && ['active','trialing','past_due','paused'].includes(subscriptionStatus || '') && !cancelAtPeriodEnd ? 'Abo kündigen' : 'Abo abschließen'}
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Rechnungen und Kündigung verwalten Sie direkt im Stripe-Portal.</p>
