@@ -126,16 +126,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserExists(false)
       setLoading(true)
 
-      // Clear the session globally (remove refresh token)
+      // Serverseitig ausloggen, damit Cookies sicher gelöscht werden
+      try {
+        await fetch('/api/auth/signout', { method: 'POST', credentials: 'include' })
+      } catch {}
+
+      // Fallback: clientseitig Session clearen
       await supabase.auth.signOut()
 
       // Redirect to homepage
-      window.location.replace('/')
+      if (typeof window !== 'undefined') {
+        window.location.replace('/')
+      }
     } catch (error) {
       console.error('Error signing out:', error)
       setUser(null)
       setUserExists(false)
-      window.location.replace('/')
+      if (typeof window !== 'undefined') {
+        window.location.replace('/')
+      }
     }
   }
 
