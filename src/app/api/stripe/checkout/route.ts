@@ -71,14 +71,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'STRIPE_PRICE_ID fehlt' }, { status: 500 })
     }
 
-    // If user is still in app-level trial, forward remaining trial to Stripe so the user is charged only after the trial
+    // Wenn App-intern noch Trial aktiv ist, setze in Stripe pauschal 14 Tage Trial,
+    // damit die Anzeige dort ebenfalls "14 Tage" zeigt (nicht abrunden).
+    // Hinweis: Ohne aktives App-Trial wird kein Trial in Stripe gesetzt (sofortige Abrechnung).
     let subscriptionData: Record<string, unknown> | undefined
     if (profile.trial_end) {
       const trialEndTimestamp = Math.floor(new Date(profile.trial_end as string).getTime() / 1000)
       const now = Math.floor(Date.now() / 1000)
       if (trialEndTimestamp > now) {
         subscriptionData = {
-          trial_end: trialEndTimestamp,
+          trial_period_days: 14,
           trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
         }
       }
