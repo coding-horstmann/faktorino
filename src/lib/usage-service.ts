@@ -25,9 +25,18 @@ export class UsageService {
       .eq('month_year', currentMonth)
       .single()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
-      console.error('Error fetching usage:', error)
-      throw error
+    // Treat 406 (no single object) as "no rows" as well
+    if (error) {
+      const code = (error as any).code
+      const status = (error as any).status
+      if (code && code === 'PGRST116') {
+        // no rows -> fine
+      } else if (status && Number(status) === 406) {
+        // PostgREST 406 for single() with no rows
+      } else {
+        console.error('Error fetching usage:', error)
+        throw error
+      }
     }
 
     const invoiceCount = data?.invoice_count || 0

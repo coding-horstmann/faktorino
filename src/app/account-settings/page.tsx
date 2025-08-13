@@ -261,24 +261,51 @@ function AccountSettingsContent() {
                 <CardHeader>
                     <CardTitle>Abonnement</CardTitle>
                     <CardDescription>
-                        Hinterlegen Sie optional schon jetzt eine Zahlungsmethode. 14 Tage kostenlos, keine automatische Belastung.
+                        Verwalten Sie Ihr Abo über Stripe.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <div className="flex gap-2">
-                        <Button onClick={startSetup} disabled={billingLoading} className="flex-1 border border-input">
-                            Zahlungsmethode hinterlegen (kostenlos)
-                        </Button>
-                        <Button onClick={startCheckout} disabled={billingLoading} className="flex-1">
-                            Jetzt abonnieren
-                        </Button>
                         <Button onClick={openPortal} disabled={billingLoading} className="flex-1 border border-input">
                             Abo verwalten
                         </Button>
+                        <Button
+                          onClick={async () => {
+                            // Entscheide dynamisch: abonnieren vs kündigen
+                            try {
+                              setBillingLoading(true);
+                              const { data, error } = await supabase
+                                .from('users')
+                                .select('subscription_status')
+                                .single();
+                              const status = (data as any)?.subscription_status;
+                              if (status === 'active' || status === 'trialing') {
+                                // Kündigen im Portal (Stripe erlaubt Cancel im Portal)
+                                const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
+                                const d = await res.json();
+                                if (d?.url) { window.location.href = d.url as string; return; }
+                                throw new Error(d?.error || 'Portal konnte nicht geöffnet werden');
+                              } else {
+                                // Checkout starten
+                                const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
+                                const d = await res.json();
+                                if (d?.url) { window.location.href = d.url as string; return; }
+                                throw new Error(d?.error || 'Checkout fehlgeschlagen');
+                              }
+                            } catch (e: any) {
+                              toast({ variant: 'destructive', title: 'Fehler', description: e.message || 'Aktion fehlgeschlagen' });
+                            } finally {
+                              setBillingLoading(false);
+                            }
+                          }}
+                          disabled={billingLoading}
+                          className="flex-1"
+                        >
+                          {/* Der Text selbst ist nicht reaktiv hier; Info steht in Beschreibung darüber und UI ist über Portal erreichbar */}
+                          Abo starten / kündigen
+                        </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                        Test endet automatisch nach 14 Tagen. Es erfolgt keine automatische Abbuchung ohne expliziten Abo-Abschluss.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Rechnungen und Kündigung verwalten Sie direkt im Stripe-Portal.</p>
                 </CardContent>
             </Card>
         </div>

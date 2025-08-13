@@ -310,8 +310,8 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Trial banner (Option C) */}
-        {user && billingInfo && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
+        {/* Trial banner (nur wenn kein aktives Abo) */}
+        {user && billingInfo && (billingInfo.status !== 'active') && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
             <AlertDescription className="flex items-center justify-between w-full">
