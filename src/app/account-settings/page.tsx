@@ -32,7 +32,9 @@ function AccountSettingsContent() {
     useEffect(() => {
         if (searchParams?.get('checkout') === 'success') {
             toast({ title: 'Danke!', description: 'Ihr Abo wurde eingerichtet.' });
+            // Entferne Query-Param und erzwinge sofortige Aktualisierung aller Daten
             router.replace('/account-settings');
+            router.refresh();
         }
         if (searchParams?.get('billing') === 'required') {
             toast({ variant: 'destructive', title: 'Abo erforderlich', description: 'Bitte schließen Sie ein Abo ab, um fortzufahren.' });
