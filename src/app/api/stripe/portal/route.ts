@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       try {
         const cfg = await stripe.billingPortal.configurations.create({
           business_profile: { headline: 'EtsyBuchhalter' },
-          default_return_url: `${origin}/account-settings`,
+          default_return_url: `${origin}/account-settings?portal=return`,
           features: {
             invoice_history: { enabled: true },
             payment_method_update: { enabled: true },
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     try {
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: profile.stripe_customer_id,
-        return_url: `${origin}/account-settings`,
+        return_url: `${origin}/account-settings?portal=return`,
         ...(configurationId ? { configuration: configurationId } as any : {}),
       })
       return NextResponse.json({ url: portalSession.url })
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         try {
           const cfg = await stripe.billingPortal.configurations.create({
             business_profile: { headline: 'EtsyBuchhalter' },
-            default_return_url: `${origin}/account-settings`,
+            default_return_url: `${origin}/account-settings?portal=return`,
             features: {
               invoice_history: { enabled: true },
               payment_method_update: { enabled: true },
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
           })
           const retry = await stripe.billingPortal.sessions.create({
             customer: profile.stripe_customer_id,
-            return_url: `${origin}/account-settings`,
+            return_url: `${origin}/account-settings?portal=return`,
             configuration: cfg.id,
           })
           return NextResponse.json({ url: retry.url })

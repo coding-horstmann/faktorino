@@ -36,6 +36,27 @@ function AccountSettingsContent() {
             router.replace('/account-settings');
             router.refresh();
         }
+        if (searchParams?.get('portal') === 'return') {
+            // Nach Rückkehr aus dem Portal frische den Status und UI direkt
+            (async () => {
+                try {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('subscription_status, stripe_subscription_id')
+                        .single();
+                    const status = (data as any)?.subscription_status as string | null;
+                    const hasSub = !!(data as any)?.stripe_subscription_id && ['active','trialing','past_due','paused'].includes(status || '');
+                    setSubscriptionStatus(status ?? null);
+                    setHasStripeSubscription(!!(data as any)?.stripe_subscription_id);
+                    // Entferne Query-Param
+                    router.replace('/account-settings');
+                    if (!hasSub) {
+                        // Sicherheit: bei gekündigtem/fehlendem Abo sofort korrekte Buttons anzeigen
+                        router.refresh();
+                    }
+                } catch {}
+            })();
+        }
         if (searchParams?.get('billing') === 'required') {
             toast({ variant: 'destructive', title: 'Abo erforderlich', description: 'Bitte schließen Sie ein Abo ab, um fortzufahren.' });
         }
