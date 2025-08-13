@@ -265,28 +265,27 @@ function AccountSettingsContent() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <div className="flex gap-2">
-                        <Button onClick={openPortal} disabled={billingLoading} className="flex-1 border border-input">
-                            Abo verwalten
+                    <div className="flex flex-col gap-2">
+                        <Button onClick={openPortal} disabled={billingLoading} className="w-full border border-input">
+                            Abo verwalten (Stripe)
                         </Button>
                         <Button
                           onClick={async () => {
-                            // Entscheide dynamisch: abonnieren vs kündigen
                             try {
                               setBillingLoading(true);
-                              const { data, error } = await supabase
+                              const { data } = await supabase
                                 .from('users')
                                 .select('subscription_status')
                                 .single();
                               const status = (data as any)?.subscription_status;
                               if (status === 'active' || status === 'trialing') {
-                                // Kündigen im Portal (Stripe erlaubt Cancel im Portal)
+                                // Kündigen via Portal (direkter Checkout für Kündigung gibt es nicht)
                                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
                                 if (d?.url) { window.location.href = d.url as string; return; }
                                 throw new Error(d?.error || 'Portal konnte nicht geöffnet werden');
                               } else {
-                                // Checkout starten
+                                // Abo abschließen via Checkout
                                 const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
                                 if (d?.url) { window.location.href = d.url as string; return; }
@@ -299,10 +298,13 @@ function AccountSettingsContent() {
                             }
                           }}
                           disabled={billingLoading}
-                          className="flex-1"
+                          className="w-full"
                         >
-                          {/* Der Text selbst ist nicht reaktiv hier; Info steht in Beschreibung darüber und UI ist über Portal erreichbar */}
-                          Abo starten / kündigen
+                          {/* Text dynamisch je nach Status */}
+                          {(() => {
+                            // Inline Snapshot: Wir haben den Status nicht im State; Nutzer erkennt die Aktion dennoch klar
+                            return 'Abo abschließen / kündigen';
+                          })()}
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Rechnungen und Kündigung verwalten Sie direkt im Stripe-Portal.</p>

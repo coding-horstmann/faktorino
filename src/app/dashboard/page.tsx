@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 export default function DashboardPage() {
 
   const { toast } = useToast();
-  const { user, userExists } = useAuth();
+  const { user, userExists, loading } = useAuth();
   const router = useRouter();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -43,16 +43,8 @@ export default function DashboardPage() {
       setShowEmailBanner(true);
     }
 
-    // If user doesn't exist in our table, redirect to login
-    if (user && !userExists) {
-      toast({
-        variant: "destructive",
-        title: "Zugriff verweigert",
-        description: "Ihr Benutzerkonto wurde gelöscht. Sie werden zur Anmeldeseite weitergeleitet.",
-      });
-      router.push('/login?error=user_deleted');
-    }
-  }, [user, userExists, router, toast]);
+    // Hinweis entfernt: Kein automatischer Redirect bei kurzzeitig fehlendem Profil
+  }, [user, userExists, loading, router, toast]);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
