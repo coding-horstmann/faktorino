@@ -67,13 +67,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: profile.stripe_customer_id,
-      return_url: `${origin}/account-settings`,
-      ...(configurationId ? { configuration: configurationId } as any : {}),
-    })
-
-    return NextResponse.json({ url: portalSession.url })
+    try {
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: profile.stripe_customer_id,
+        return_url: `${origin}/account-settings`,
+        ...(configurationId ? { configuration: configurationId } as any : {}),
+      })
+      return NextResponse.json({ url: portalSession.url })
+    } catch (err: any) {
+      const msg = String(err?.message || '')
+      // Falls keine Default-Konfiguration im Testmodus vorhanden ist, versuchen wir sie zu erzeugen und erneut zu starten
+      if (msg.includes('No configuration provided') && msg.includes('test mode default configuration has not been created')) {
+        try {
+          const cfg = await stripe.billingPortal.configurations.create({
+            business_profile: { headline: 'EtsyBuchhalter' },
+            default_return_url: `${origin}/account-settings`,
+            features: {
+              invoice_history: { enabled: true },
+              payment_method_update: { enabled: true },
+              subscription_cancel: { enabled: true },
+              subscription_update: { enabled: true },
+            },
+          })
+          const retry = await stripe.billingPortal.sessions.create({
+            customer: profile.stripe_customer_id,
+            return_url: `${origin}/account-settings`,
+            configuration: cfg.id,
+          })
+          return NextResponse.json({ url: retry.url })
+        } catch (cfgErr: any) {
+          console.error('Auto-setup of Stripe portal failed', cfgErr)
+          return NextResponse.json({ error: 'Stripe Kundenportal ist im Testmodus nicht konfiguriert. Öffnen Sie in Stripe „Billing > Kundenportal“ und klicken Sie auf „Änderungen speichern“.' }, { status: 500 })
+        }
+      }
+      throw err
+    }
   } catch (error: any) {
     console.error('Portal error', error)
     return NextResponse.json({ error: error.message || 'Unbekannter Fehler' }, { status: 500 })

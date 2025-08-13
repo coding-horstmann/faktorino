@@ -22,6 +22,7 @@ function AccountSettingsContent() {
     const [error, setError] = useState('');
     const [billingLoading, setBillingLoading] = useState(false);
     const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+    const [hasStripeSubscription, setHasStripeSubscription] = useState(false);
     
     const [formData, setFormData] = useState({
         email: '',
@@ -54,10 +55,11 @@ function AccountSettingsContent() {
             try {
                 const { data } = await supabase
                     .from('users')
-                    .select('subscription_status')
+                    .select('subscription_status, stripe_subscription_id')
                     .eq('id', user.id)
                     .single();
                 setSubscriptionStatus((data as any)?.subscription_status ?? null);
+                setHasStripeSubscription(!!(data as any)?.stripe_subscription_id);
             } catch {}
             setLoading(false);
         })();
@@ -168,10 +170,12 @@ function AccountSettingsContent() {
             // Prüfe Abo-Status. Ohne Abo → Checkout; mit Abo/Trial → Portal
             const { data } = await supabase
                 .from('users')
-                .select('subscription_status')
+                .select('subscription_status, stripe_subscription_id')
+                .eq('id', user!.id)
                 .single();
-            const status = (data as any)?.subscription_status;
-            if (status === 'active' || status === 'trialing' || status === 'past_due' || status === 'paused') {
+            const status = (data as any)?.subscription_status as string | null;
+            const hasSubscription = !!(data as any)?.stripe_subscription_id || ['active','trialing','past_due','paused'].includes(status || '');
+            if (hasSubscription) {
                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                 const d = await res.json();
                 if (d?.url) { window.location.href = d.url as string; return; }
@@ -295,14 +299,15 @@ function AccountSettingsContent() {
                           onClick={async () => {
                             try {
                               setBillingLoading(true);
-                              if (subscriptionStatus === 'active') {
-                                // Kündigen via Portal
+                              const hasSubscription = hasStripeSubscription;
+                              if (hasSubscription) {
+                                // Kündigen / verwalten via Portal
                                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
                                 if (d?.url) { window.location.href = d.url as string; return; }
                                 throw new Error(d?.error || 'Portal konnte nicht geöffnet werden. Prüfen Sie Ihre Portal-Konfiguration in Stripe (Testmodus).');
                               } else {
-                                // Abo abschließen via Checkout (auch bei trialing)
+                                // Abo abschließen via Checkout
                                 const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
                                 if (d?.url) { window.location.href = d.url as string; return; }
@@ -317,7 +322,7 @@ function AccountSettingsContent() {
                           disabled={billingLoading}
                           className="w-full"
                         >
-                          {subscriptionStatus === 'active' ? 'Abo kündigen' : 'Abo abschließen'}
+                          {hasStripeSubscription ? 'Abo kündigen' : 'Abo abschließen'}
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Rechnungen und Kündigung verwalten Sie direkt im Stripe-Portal.</p>
