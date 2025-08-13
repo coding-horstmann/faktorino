@@ -165,15 +165,25 @@ function AccountSettingsContent() {
     const openPortal = async () => {
         try {
             setBillingLoading(true);
-            const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
-            const data = await res.json();
-            if (data?.url) {
-                window.location.href = data.url as string;
-                return;
+            // Prüfe Abo-Status. Ohne Abo → Checkout; mit Abo/Trial → Portal
+            const { data } = await supabase
+                .from('users')
+                .select('subscription_status')
+                .single();
+            const status = (data as any)?.subscription_status;
+            if (status === 'active' || status === 'trialing' || status === 'past_due' || status === 'paused') {
+                const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
+                const d = await res.json();
+                if (d?.url) { window.location.href = d.url as string; return; }
+                throw new Error(d?.error || 'Portal konnte nicht geöffnet werden.');
             }
-            throw new Error(data?.error || 'Portal konnte nicht geöffnet werden');
+            // Kein Abo → Checkout
+            const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
+            const d = await res.json();
+            if (d?.url) { window.location.href = d.url as string; return; }
+            throw new Error(d?.error || 'Checkout fehlgeschlagen');
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Fehler', description: e.message || 'Portal-Fehler' });
+            toast({ variant: 'destructive', title: 'Fehler', description: e.message || 'Aktion fehlgeschlagen' });
         } finally {
             setBillingLoading(false);
         }

@@ -64,7 +64,7 @@ export default function DashboardPage() {
   const [showEmailBanner, setShowEmailBanner] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   // Default so Banner erscheint sofort bis echte Daten geladen sind
-  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null } | null>({ status: null, trial_end: null });
+  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null, subscription_id?: string | null } | null>({ status: null, trial_end: null, subscription_id: null });
   const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
@@ -92,10 +92,10 @@ export default function DashboardPage() {
         try {
           const { data } = await supabase
             .from('users')
-            .select('subscription_status, trial_end')
+            .select('subscription_status, trial_end, stripe_subscription_id')
             .eq('id', user.id)
             .single();
-          if (data) setBillingInfo({ status: (data as any).subscription_status || null, trial_end: (data as any).trial_end || null });
+          if (data) setBillingInfo({ status: (data as any).subscription_status || null, trial_end: (data as any).trial_end || null, subscription_id: (data as any).stripe_subscription_id || null });
         } catch (e) {
           // keep default which shows subscribe banner for non-abos
         }
@@ -270,6 +270,13 @@ export default function DashboardPage() {
     return { trialActive, remainingDays } as const;
   })();
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user && typeof window !== 'undefined') {
+      router.replace('/login');
+    }
+  }, [user, router]);
+
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
 
@@ -302,8 +309,8 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Trial banner (nur wenn kein aktives Abo) */}
-        {user && billingInfo && (billingInfo.status !== 'active') && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
+        {/* Trial banner (nur wenn kein aktives Abo und nicht eingeloggt) */}
+        {user && billingInfo && billingInfo.status !== 'active' && !billingInfo.subscription_id && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
             <AlertDescription className="flex items-center justify-between w-full">
@@ -326,7 +333,7 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Billing banner (no access) */}
+        {/* Billing banner (no access) nur ohne aktives Abo */}
         {user && billingInfo && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
