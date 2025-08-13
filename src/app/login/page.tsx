@@ -21,6 +21,14 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  // Prefetch Dashboard für schnellere Navigation nach Login
+  useEffect(() => {
+    try {
+      // @ts-ignore - prefetch ist im App Router verfügbar
+      (router as any).prefetch?.('/dashboard')
+    } catch {}
+  }, [])
+
   // Check for error parameters in URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);

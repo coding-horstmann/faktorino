@@ -144,6 +144,11 @@ export async function middleware(request: NextRequest) {
 
   // Gatekeep paid features: if user exists but no active subscription and trial expired, redirect to account settings
   if (user && !isPublicPath) {
+    // Schneller Pfad: kurzfristiges Cookie zur Zugriffserlaubnis (reduziert DB-Abfragen)
+    const accessCookie = request.cookies.get('billing_access')?.value
+    if (accessCookie === '1') {
+      return supabaseResponse
+    }
     try {
       const { data: billing, error } = await supabase
         .from('users')
@@ -158,6 +163,11 @@ export async function middleware(request: NextRequest) {
         const hasAccess = status === 'active' || status === 'trialing' || trialActive
 
         const pathIsAccountOrWelcome = request.nextUrl.pathname.startsWith('/account-settings') || request.nextUrl.pathname.startsWith('/welcome')
+
+        // Setze Zugriffscookie mit kurzer Laufzeit (5 Minuten)
+        try {
+          supabaseResponse.cookies.set('billing_access', hasAccess ? '1' : '0', { maxAge: 60 * 5, path: '/' })
+        } catch {}
 
         if (!hasAccess && !pathIsAccountOrWelcome) {
           const url = request.nextUrl.clone()

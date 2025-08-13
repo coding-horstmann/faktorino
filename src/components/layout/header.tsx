@@ -25,7 +25,7 @@ export function SiteHeader() {
   return (
     <header className="bg-background/95 backdrop-blur-sm sticky top-0 z-40 w-full border-b">
       <div className="container flex h-16 items-center">
-        <Link href="/" className="flex items-center space-x-2 mr-auto">
+        <Link prefetch href="/" className="flex items-center space-x-2 mr-auto">
             <BookCopy className="h-6 w-6 text-primary" />
             <span className="inline-block font-bold">EtsyBuchhalter</span>
         </Link>
@@ -43,10 +43,10 @@ export function SiteHeader() {
                   <DropdownMenuLabel>Mein Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard">Rechnungen erstellen</Link>
+                    <Link prefetch href="/dashboard">Rechnungen erstellen</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/account-settings">Abo & Einstellungen</Link>
+                    <Link prefetch href="/account-settings">Abo & Einstellungen</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>Abmelden</DropdownMenuItem>
@@ -55,10 +55,10 @@ export function SiteHeader() {
             ) : (
               <>
                 <Button asChild variant="ghost">
-                  <Link href="/login">Anmelden</Link>
+                  <Link prefetch href="/login">Anmelden</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/register">14 Tage kostenlos testen</Link>
+                  <Link prefetch href="/register">14 Tage kostenlos testen</Link>
                 </Button>
               </>
             )}

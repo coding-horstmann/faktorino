@@ -26,7 +26,11 @@ export async function POST(request: NextRequest) {
     })
 
     await supabase.auth.signOut()
-    return NextResponse.json({ ok: true })
+    const res = NextResponse.json({ ok: true })
+    try {
+      res.cookies.set('billing_access', '', { maxAge: 0, path: '/' })
+    } catch {}
+    return res
   } catch (error: any) {
     return NextResponse.json({ ok: false, error: error?.message || 'Signout failed' }, { status: 500 })
   }
