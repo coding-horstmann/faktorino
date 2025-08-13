@@ -173,8 +173,7 @@ function AccountSettingsContent() {
                 .select('subscription_status, stripe_subscription_id')
                 .eq('id', user!.id)
                 .single();
-            const status = (data as any)?.subscription_status as string | null;
-            const hasSubscription = !!(data as any)?.stripe_subscription_id || ['active','trialing','past_due','paused'].includes(status || '');
+            const hasSubscription = !!(data as any)?.stripe_subscription_id;
             if (hasSubscription) {
                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                 const d = await res.json();
