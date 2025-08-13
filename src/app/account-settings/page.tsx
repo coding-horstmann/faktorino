@@ -21,6 +21,7 @@ function AccountSettingsContent() {
     const [changingPassword, setChangingPassword] = useState(false);
     const [error, setError] = useState('');
     const [billingLoading, setBillingLoading] = useState(false);
+    const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
     
     const [formData, setFormData] = useState({
         email: '',
@@ -48,7 +49,18 @@ function AccountSettingsContent() {
             email: user.email || '',
             newEmail: user.email || ''
         }));
-        setLoading(false);
+        // Lade Abo-Status
+        (async () => {
+            try {
+                const { data } = await supabase
+                    .from('users')
+                    .select('subscription_status')
+                    .eq('id', user.id)
+                    .single();
+                setSubscriptionStatus((data as any)?.subscription_status ?? null);
+            } catch {}
+            setLoading(false);
+        })();
     }, [user]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -273,19 +285,14 @@ function AccountSettingsContent() {
                           onClick={async () => {
                             try {
                               setBillingLoading(true);
-                              const { data } = await supabase
-                                .from('users')
-                                .select('subscription_status')
-                                .single();
-                              const status = (data as any)?.subscription_status;
-                              if (status === 'active' || status === 'trialing') {
-                                // Kündigen via Portal (direkter Checkout für Kündigung gibt es nicht)
+                              if (subscriptionStatus === 'active') {
+                                // Kündigen via Portal
                                 const res = await fetch('/api/stripe/portal', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
                                 if (d?.url) { window.location.href = d.url as string; return; }
                                 throw new Error(d?.error || 'Portal konnte nicht geöffnet werden');
                               } else {
-                                // Abo abschließen via Checkout
+                                // Abo abschließen via Checkout (auch bei trialing)
                                 const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
                                 const d = await res.json();
                                 if (d?.url) { window.location.href = d.url as string; return; }
@@ -300,11 +307,7 @@ function AccountSettingsContent() {
                           disabled={billingLoading}
                           className="w-full"
                         >
-                          {/* Text dynamisch je nach Status */}
-                          {(() => {
-                            // Inline Snapshot: Wir haben den Status nicht im State; Nutzer erkennt die Aktion dennoch klar
-                            return 'Abo abschließen / kündigen';
-                          })()}
+                          {subscriptionStatus === 'active' ? 'Abo kündigen' : 'Abo abschließen'}
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">Rechnungen und Kündigung verwalten Sie direkt im Stripe-Portal.</p>
