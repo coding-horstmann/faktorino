@@ -63,8 +63,8 @@ export default function DashboardPage() {
   const [isTaxIdError, setIsTaxIdError] = useState(false);
   const [showEmailBanner, setShowEmailBanner] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  // Default so Banner erscheint sofort bis echte Daten geladen sind
-  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null, subscription_id?: string | null } | null>({ status: null, trial_end: null, subscription_id: null });
+  // Billing-Infos erst nach Ladevorgang rendern, um Banner-Flickern zu vermeiden
+  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null, subscription_id?: string | null } | null>(null);
   const [billingLoading, setBillingLoading] = useState(false);
 
   useEffect(() => {
@@ -106,6 +106,30 @@ export default function DashboardPage() {
     };
 
     loadUserProfile();
+
+    // Realtime-Updates der Billing-Infos (z.B. nach Webhook-Änderungen)
+    if (user) {
+      const channel = supabase
+        .channel('billing-updates')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'users',
+          filter: `id=eq.${user.id}`,
+        }, (payload: any) => {
+          const row = payload.new || {};
+          setBillingInfo({
+            status: row.subscription_status || null,
+            trial_end: row.trial_end || null,
+            subscription_id: row.stripe_subscription_id || null,
+          });
+        })
+        .subscribe();
+
+      return () => {
+        try { supabase.removeChannel(channel); } catch {}
+      }
+    }
   }, [user]);
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -309,8 +333,8 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Trial banner (nur wenn kein aktives Abo und nicht eingeloggt) */}
-        {user && billingInfo && billingInfo.status !== 'active' && !billingInfo.subscription_id && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
+        {/* Trial banner (nur wenn geladen, kein aktives Abo und keine Stripe-Subscription) */}
+        {user && billingInfo !== null && billingInfo.status !== 'active' && !billingInfo.subscription_id && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
             <AlertDescription className="flex items-center justify-between w-full">
@@ -333,8 +357,8 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Billing banner (no access) nur ohne aktives Abo */}
-        {user && billingInfo && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
+        {/* Billing banner (no access) nur ohne aktives Abo; erst nach Ladedaten */}
+        {user && billingInfo !== null && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
             <AlertDescription className="flex items-center justify-between w-full">
