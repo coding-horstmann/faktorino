@@ -26,6 +26,7 @@ export default function LoginPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const errorParam = urlParams.get('error');
     const registered = urlParams.get('registered');
+    const reason = urlParams.get('reason');
     
     if (errorParam === 'user_deleted') {
       setError('Ihr Benutzerkonto wurde gelöscht. Bitte kontaktieren Sie den Administrator.');
@@ -36,6 +37,10 @@ export default function LoginPage() {
         title: 'Bitte E-Mail bestätigen',
         description: 'Wir haben Ihnen eine Bestätigungs-E-Mail gesendet. Klicken Sie auf den Link, um Ihr Konto zu aktivieren.',
       });
+    }
+
+    if (reason === 'already_registered') {
+      setError('Diese E-Mail-Adresse ist bereits registriert. Bitte melden Sie sich an.');
     }
   }, []);
 

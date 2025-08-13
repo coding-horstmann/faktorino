@@ -76,7 +76,12 @@ export default function RegisterPage() {
       });
 
       if (error) {
-        setError(error.message);
+        const msg = (error as any)?.message?.toLowerCase?.() || '';
+        if (msg.includes('already') || msg.includes('exist')) {
+          setError('Diese E-Mail-Adresse ist bereits registriert. Bitte melden Sie sich stattdessen an.');
+        } else {
+          setError(error.message);
+        }
         return;
       }
 
