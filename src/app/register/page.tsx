@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     email: '',
+    password: '',
+    passwordConfirm: '',
   });
   const [termsAccepted, setTermsAccepted] = useState<boolean | 'indeterminate'>(false);
   const [privacyAccepted, setPrivacyAccepted] = useState<boolean | 'indeterminate'>(false);
@@ -42,6 +44,21 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
+    if (!formData.password || !formData.passwordConfirm) {
+      setError('Bitte vergeben Sie ein Passwort und bestätigen Sie es.');
+      setLoading(false);
+      return;
+    }
+    if (formData.password.length < 8) {
+      setError('Das Passwort muss mindestens 8 Zeichen lang sein.');
+      setLoading(false);
+      return;
+    }
+    if (formData.password !== formData.passwordConfirm) {
+      setError('Die Passwörter stimmen nicht überein.');
+      setLoading(false);
+      return;
+    }
 
     if (!termsAccepted || !privacyAccepted) {
       setError('Bitte stimmen Sie den AGB und der Datenschutzerklärung zu.');
@@ -50,8 +67,9 @@ export default function RegisterPage() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signUp({
         email: formData.email,
+        password: formData.password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
@@ -62,9 +80,8 @@ export default function RegisterPage() {
         return;
       }
 
-      // Für Magic-Link: Immer Erfolgshinweis zeigen
       toast({
-        title: "E-Mail gesendet",
+        title: "Registrierung gestartet",
         description: "Bitte bestätigen Sie Ihre E-Mail. Prüfen Sie Ihren Posteingang.",
       });
 
@@ -125,6 +142,32 @@ export default function RegisterPage() {
                 disabled={loading}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Passwort *</Label>
+              <Input 
+                id="password" 
+                name="password"
+                type="password" 
+                placeholder="Mindestens 8 Zeichen" 
+                value={formData.password}
+                onChange={handleInputChange}
+                required
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="passwordConfirm">Passwort bestätigen *</Label>
+              <Input 
+                id="passwordConfirm" 
+                name="passwordConfirm"
+                type="password" 
+                placeholder="Passwort wiederholen" 
+                value={formData.passwordConfirm}
+                onChange={handleInputChange}
+                required
+                disabled={loading}
+              />
+            </div>
 
             <div className="space-y-3 pt-2">
                <div className="flex items-center space-x-2">
@@ -160,7 +203,7 @@ export default function RegisterPage() {
             <div className="pt-4">
               <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Magic Link senden
+                Registrieren
               </Button>
             </div>
           </form>
