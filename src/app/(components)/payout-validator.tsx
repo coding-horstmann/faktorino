@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Scale, Banknote, AlertCircle, CheckCircle2, Loader2, Upload, AlertTriangle, List } from 'lucide-react';
+import { Scale, Banknote, AlertCircle, CheckCircle2, Loader2, Upload, AlertTriangle, List, FileText, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { processBankStatementAction, type BankTransaction } from '@/app/actions';
 
@@ -35,10 +36,40 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  // Funktionen für Dateiverwaltung
+  const handleFileChange = (files: FileList | null) => {
+    if (files) {
+      const fileArray = Array.from(files);
+      setSelectedFiles(fileArray);
+      form.setValue('csvFiles', files);
+    }
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    const newFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
+    setSelectedFiles(newFiles);
+    
+    // Erstelle eine neue FileList für das Form
+    const dataTransfer = new DataTransfer();
+    newFiles.forEach(file => dataTransfer.items.add(file));
+    
+    if (newFiles.length === 0) {
+      form.setValue('csvFiles', null);
+    } else {
+      form.setValue('csvFiles', dataTransfer.files);
+    }
+  };
+
+  const clearAllFiles = () => {
+    setSelectedFiles([]);
+    form.setValue('csvFiles', null);
+  };
   
   const validatePayout = useCallback((payout: number | null, allTransactions: BankTransaction[]) => {
     const gross = grossInvoices ?? 0;
@@ -75,6 +106,26 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
         setIsLoading(false);
         return;
     }
+
+    // Validierung der hochgeladenen Dateien
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.name.toLowerCase().endsWith('.csv')) {
+            setError(`Die Datei "${file.name}" ist keine CSV-Datei. Bitte wählen Sie nur CSV-Dateien aus.`);
+            setIsLoading(false);
+            return;
+        }
+        if (file.size === 0) {
+            setError(`Die Datei "${file.name}" ist leer. Bitte wählen Sie eine gültige CSV-Datei aus.`);
+            setIsLoading(false);
+            return;
+        }
+        if (file.size > 10 * 1024 * 1024) { // 10MB Limit
+            setError(`Die Datei "${file.name}" ist zu groß (max. 10MB). Bitte wählen Sie eine kleinere Datei aus.`);
+            setIsLoading(false);
+            return;
+        }
+    }
     
     let cumulativeAmount = 0;
     let cumulativeTransactions: BankTransaction[] = [];
@@ -83,7 +134,18 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
 
     try {
       for (const file of files) {
-          const fileContent = await file.text();
+          let fileContent: string;
+          try {
+              fileContent = await file.text();
+              if (!fileContent || fileContent.trim().length === 0) {
+                  processingError = `Die Datei "${file.name}" enthält keine gültigen Daten.`;
+                  break;
+              }
+          } catch (readError) {
+              processingError = `Die Datei "${file.name}" konnte nicht gelesen werden. Möglicherweise ist die Datei beschädigt.`;
+              break;
+          }
+
           const result = await processBankStatementAction(fileContent);
 
           if (result.error) {
@@ -107,6 +169,7 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
           setBankStatementTotal(null);
           setTransactions([]);
           validatePayout(null, []);
+          clearAllFiles();
       } else {
           if (!cumulativeFoundEtsy) {
               setError("Keine Transaktionen mit dem Stichwort 'Etsy' in den hochgeladenen CSV-Dateien gefunden.");
@@ -117,12 +180,23 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
               setBankStatementTotal(cumulativeAmount);
               setTransactions(cumulativeTransactions);
               validatePayout(cumulativeAmount, cumulativeTransactions);
+              clearAllFiles();
           }
       }
 
     } catch(err: any) {
-        console.error("Error processing CSVs:", err);
-        setError(err.message || "Fehler beim Verarbeiten der CSV-Dateien.");
+        console.error("Error processing CSV files:", err);
+        let errorMessage = "Ein unerwarteter Fehler ist beim Verarbeiten der Kontoauszug-Dateien aufgetreten.";
+        
+        if (err.name === 'NotReadableError') {
+            errorMessage = "Die ausgewählten Dateien konnten nicht gelesen werden. Bitte überprüfen Sie, ob die Dateien nicht beschädigt sind.";
+        } else if (err.message && err.message.includes('parse')) {
+            errorMessage = "Die Kontoauszug-Dateien haben ein ungültiges Format und konnten nicht verarbeitet werden.";
+        } else if (err.message) {
+            errorMessage = `Fehler beim Verarbeiten der Kontoauszug-Dateien: ${err.message}`;
+        }
+        
+        setError(errorMessage);
     } finally {
         setIsLoading(false);
     }
@@ -150,9 +224,58 @@ export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }:
                     <FormItem>
                         <FormLabel>Kontoauszug (CSV-Datei(en))</FormLabel>
                         <FormControl>
-                            <Input type="file" accept=".csv" multiple onChange={(e) => field.onChange(e.target.files)} />
+                            <Input 
+                                type="file" 
+                                accept=".csv" 
+                                multiple 
+                                onChange={(e) => {
+                                    field.onChange(e.target.files);
+                                    handleFileChange(e.target.files);
+                                }} 
+                            />
                         </FormControl>
                         <FormMessage />
+                        
+                        {/* Anzeige der ausgewählten Dateien */}
+                        {selectedFiles.length > 0 && (
+                          <div className="mt-4 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</Label>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={clearAllFiles}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Alle entfernen
+                              </Button>
+                            </div>
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                              {selectedFiles.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-gray-500" />
+                                    <span className="text-sm font-medium text-gray-700">{file.name}</span>
+                                    <span className="text-xs text-gray-500">
+                                      ({(file.size / 1024).toFixed(1)} KB)
+                                    </span>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeFile(index)}
+                                    className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                     </FormItem>
                     )}
                 />

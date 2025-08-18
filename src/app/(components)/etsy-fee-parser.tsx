@@ -9,9 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Wallet, Upload } from 'lucide-react';
+import { Loader2, AlertTriangle, Wallet, Upload, FileText, X } from 'lucide-react';
 import * as pdfjs from 'pdfjs-dist';
 
 // Configure the worker for pdfjs
@@ -62,10 +63,40 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
   const [result, setResult] = useState<FeeResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  // Funktionen für Dateiverwaltung
+  const handleFileChange = (files: FileList | null) => {
+    if (files) {
+      const fileArray = Array.from(files);
+      setSelectedFiles(fileArray);
+      form.setValue('pdfFiles', files);
+    }
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    const newFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
+    setSelectedFiles(newFiles);
+    
+    // Erstelle eine neue FileList für das Form
+    const dataTransfer = new DataTransfer();
+    newFiles.forEach(file => dataTransfer.items.add(file));
+    
+    if (newFiles.length === 0) {
+      form.setValue('pdfFiles', null);
+    } else {
+      form.setValue('pdfFiles', dataTransfer.files);
+    }
+  };
+
+  const clearAllFiles = () => {
+    setSelectedFiles([]);
+    form.setValue('pdfFiles', null);
+  };
 
   async function onSubmit(values: FormValues) {
     setIsLoading(true);
@@ -124,11 +155,13 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
       } else {
           setResult({ total: grandTotal, sources });
           onFeesParsed(grandTotal);
+          clearAllFiles();
       }
 
     } catch(err: any) {
         console.error("Error processing PDF in browser:", err);
         setError(err.message || "Fehler beim Verarbeiten der PDF-Datei(en) im Browser.");
+        clearAllFiles();
     } finally {
         setIsLoading(false);
     }
@@ -160,10 +193,54 @@ export function EtsyFeeParser({ onFeesParsed }: EtsyFeeParserProps) {
                           type="file"
                           accept=".pdf"
                           multiple
-                          onChange={(e) => field.onChange(e.target.files)}
+                          onChange={(e) => {
+                            field.onChange(e.target.files);
+                            handleFileChange(e.target.files);
+                          }}
                         />
                     </FormControl>
                     <FormMessage />
+                    
+                    {/* Anzeige der ausgewählten Dateien */}
+                    {selectedFiles.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={clearAllFiles}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Alle entfernen
+                          </Button>
+                        </div>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {selectedFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm font-medium text-gray-700">{file.name}</span>
+                                <span className="text-xs text-gray-500">
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeFile(index)}
+                                className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </FormItem>
                 )}
               />

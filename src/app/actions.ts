@@ -209,6 +209,11 @@ export async function generateInvoicesAction(
       items: dbInvoice.items
     }));
 
+    // Validierung der CSV-Daten vor dem Parsen
+    if (!csvData || csvData.trim().length === 0) {
+        return { data: null, error: "Die CSV-Datei ist leer oder enthält keine gültigen Daten." };
+    }
+
     const parseResult = Papa.parse(csvData, {
       header: true,
       skipEmptyLines: true,
@@ -217,7 +222,24 @@ export async function generateInvoicesAction(
 
     if (parseResult.errors.length > 0) {
         console.error("CSV Parsing Errors:", parseResult.errors);
-        return { data: null, error: `Fehler beim Parsen der CSV-Datei: ${parseResult.errors[0].message}` };
+        const errorMessage = parseResult.errors[0].message;
+        let userFriendlyError = "Fehler beim Verarbeiten der CSV-Datei.";
+        
+        // Benutzerfreundlichere Fehlermeldungen
+        if (errorMessage.includes("Missing") || errorMessage.includes("Expected")) {
+            userFriendlyError = "Die CSV-Datei hat ein ungültiges Format. Bitte überprüfen Sie, dass alle Spalten korrekt benannt und die Daten vollständig sind.";
+        } else if (errorMessage.includes("delimiter") || errorMessage.includes("parse")) {
+            userFriendlyError = "Die CSV-Datei konnte nicht richtig gelesen werden. Bitte stellen Sie sicher, dass es sich um eine gültige CSV-Datei handelt.";
+        } else if (errorMessage.includes("quote") || errorMessage.includes("escape")) {
+            userFriendlyError = "Die CSV-Datei enthält ungültige Zeichen oder Formatierungen. Bitte überprüfen Sie die Datei auf Sonderzeichen.";
+        }
+        
+        return { data: null, error: `${userFriendlyError} Details: ${errorMessage}` };
+    }
+
+    // Prüfe ob überhaupt Daten geparst wurden
+    if (!parseResult.data || parseResult.data.length === 0) {
+        return { data: null, error: "Die CSV-Datei enthält keine verarbeitbaren Daten. Bitte überprüfen Sie den Inhalt der Datei." };
     }
 
     const normalizedHeaderMap: { [key: string]: string } = {};
@@ -463,13 +485,27 @@ export async function generateInvoicesAction(
 
 export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; transactions?: BankTransaction[]; foundEtsyTransaction?: boolean; error?: string; }> {
     try {
+        // Validierung der CSV-Daten
+        if (!csvData || csvData.trim().length === 0) {
+            return { error: "Die Kontoauszug-Datei ist leer oder enthält keine gültigen Daten." };
+        }
+
         const parseResult = Papa.parse<string[]>(csvData, {
             skipEmptyLines: true,
             header: false,
             dynamicTyping: false,
         });
 
-        // Ignoriere Parsing-Fehler für Bank Statements, da diese oft verschiedene Formate haben
+        // Prüfe auf kritische Parsing-Fehler
+        if (parseResult.errors.length > 0) {
+            const criticalErrors = parseResult.errors.filter(error => 
+                error.type === 'Delimiter' || error.type === 'FieldMismatch'
+            );
+            if (criticalErrors.length > 0) {
+                return { error: "Die Kontoauszug-Datei hat ein ungültiges CSV-Format und kann nicht verarbeitet werden." };
+            }
+        }
+
         console.log("CSV parsing result:", parseResult);
 
         const data = parseResult.data as unknown as string[][];
@@ -504,7 +540,12 @@ export async function processBankStatementAction(csvData: string): Promise<{ tot
         }
 
         if (headerRowIndex === -1) {
-            return { error: "Konnte keine gültige Header-Zeile mit Spalten wie 'Betrag', 'Datum' oder 'Verwendungszweck' in der CSV-Datei finden. Bitte prüfen Sie die Datei." };
+            return { error: "Die Kontoauszug-Datei hat ein unbekanntes Format. Es konnten keine Spalten für 'Betrag', 'Datum' oder 'Verwendungszweck' gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Kontoauszug-CSV-Datei handelt." };
+        }
+
+        // Prüfe ob ausreichend Daten vorhanden sind
+        if (data.length <= headerRowIndex + 1) {
+            return { error: 'Die Kontoauszug-Datei enthält keine Transaktionsdaten. Bitte überprüfen Sie, ob die Datei vollständig ist.' };
         }
 
         const findIndex = (keywords: string[]): number => {

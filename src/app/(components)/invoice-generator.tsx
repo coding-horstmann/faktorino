@@ -69,6 +69,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsage | null>(null);
   const [sortField, setSortField] = useState<'orderDate' | 'invoiceNumber'>('orderDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +142,42 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
   });
+
+  // Funktionen für Dateiverwaltung
+  const handleFileChange = (files: FileList | null) => {
+    if (files) {
+      const fileArray = Array.from(files);
+      setSelectedFiles(fileArray);
+      form.setValue('csvFiles', files);
+    }
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    const newFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
+    setSelectedFiles(newFiles);
+    
+    // Erstelle eine neue FileList für das Form
+    const dataTransfer = new DataTransfer();
+    newFiles.forEach(file => dataTransfer.items.add(file));
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.files = dataTransfer.files;
+    }
+    
+    if (newFiles.length === 0) {
+      form.setValue('csvFiles', null);
+    } else {
+      form.setValue('csvFiles', dataTransfer.files);
+    }
+  };
+
+  const clearAllFiles = () => {
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    form.setValue('csvFiles', null);
+  };
 
   const handleSort = useCallback((field: 'orderDate' | 'invoiceNumber') => {
     if (sortField === field) {
@@ -411,7 +448,44 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     const fileReadPromises = files.map(file => file.text());
 
     try {
+        // Validierung der hochgeladenen Dateien
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                setError(`Die Datei "${file.name}" ist keine CSV-Datei. Bitte wählen Sie nur CSV-Dateien aus.`);
+                setIsLoading(false);
+                return;
+            }
+            if (file.size === 0) {
+                setError(`Die Datei "${file.name}" ist leer. Bitte wählen Sie eine gültige CSV-Datei aus.`);
+                setIsLoading(false);
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) { // 10MB Limit
+                setError(`Die Datei "${file.name}" ist zu groß (max. 10MB). Bitte wählen Sie eine kleinere Datei aus.`);
+                setIsLoading(false);
+                return;
+            }
+        }
+
         const allCsvContents = await Promise.all(fileReadPromises);
+        
+        // Prüfe jede Datei auf gültigen Inhalt
+        for (let i = 0; i < allCsvContents.length; i++) {
+            const content = allCsvContents[i];
+            if (!content || content.trim().length === 0) {
+                setError(`Die Datei "${files[i].name}" enthält keine gültigen Daten.`);
+                setIsLoading(false);
+                return;
+            }
+            
+            const lines = content.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                setError(`Die Datei "${files[i].name}" enthält zu wenige Daten. Eine gültige CSV-Datei benötigt mindestens eine Header-Zeile und eine Datenzeile.`);
+                setIsLoading(false);
+                return;
+            }
+        }
         
         const header = allCsvContents[0].split('\n')[0];
         const rowsFromAllFiles = allCsvContents.flatMap((content, index) => {
@@ -424,7 +498,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         const combinedCsvData = [header.trim(), ...rowsFromAllFiles].join('\n');
         
         if (!combinedCsvData.trim() || rowsFromAllFiles.length === 0) {
-            setError("Die ausgewählten Dateien sind leer oder ungültig.");
+            setError("Die verarbeiteten CSV-Dateien enthalten keine gültigen Datenzeilen. Bitte überprüfen Sie den Inhalt der Dateien.");
             setIsLoading(false);
             return;
         }
@@ -441,7 +515,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             if (uniqueNewInvoices.length === 0 && newInvoices.length > 0) {
                 setError("Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen.");
                 setIsLoading(false);
-                if (fileInputRef.current) fileInputRef.current.value = "";
+                clearAllFiles();
                 form.reset();
                 return;
             }
@@ -531,13 +605,22 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 setError('Fehler beim Speichern der Rechnungen.');
             }
 
-            if (fileInputRef.current) {
-                fileInputRef.current.value = "";
-            }
+            clearAllFiles();
             form.reset();
         }
     } catch (err: any) {
-         setError(err.message || "Fehler beim Lesen oder Verarbeiten der Dateien.");
+        console.error("Error processing CSV files:", err);
+        let errorMessage = "Fehler beim Verarbeiten der CSV-Dateien.";
+        
+        if (err.name === 'NotReadableError') {
+            errorMessage = "Die ausgewählten Dateien konnten nicht gelesen werden. Bitte überprüfen Sie, ob die Dateien nicht beschädigt sind.";
+        } else if (err.message && err.message.includes('parse')) {
+            errorMessage = "Die CSV-Dateien haben ein ungültiges Format und konnten nicht verarbeitet werden.";
+        } else if (err.message) {
+            errorMessage = `Fehler beim Verarbeiten der CSV-Dateien: ${err.message}`;
+        }
+        
+        setError(errorMessage);
     } finally {
         setIsLoading(false);
     }
@@ -606,10 +689,54 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                           accept=".csv"
                           multiple
                           ref={fileInputRef}
-                          onChange={(e) => field.onChange(e.target.files)}
+                          onChange={(e) => {
+                            field.onChange(e.target.files);
+                            handleFileChange(e.target.files);
+                          }}
                       />
                     </FormControl>
                     <FormMessage />
+                    
+                    {/* Anzeige der ausgewählten Dateien */}
+                    {selectedFiles.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Ausgewählte Dateien ({selectedFiles.length})</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={clearAllFiles}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Alle entfernen
+                          </Button>
+                        </div>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {selectedFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded-md">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm font-medium text-gray-700">{file.name}</span>
+                                <span className="text-xs text-gray-500">
+                                  ({(file.size / 1024).toFixed(1)} KB)
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeFile(index)}
+                                className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </FormItem>
                 )}
               />
