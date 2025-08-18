@@ -178,7 +178,15 @@ CREATE TABLE IF NOT EXISTS public.invoice_counters (
 -- Enable RLS on invoice_counters table
 ALTER TABLE public.invoice_counters ENABLE ROW LEVEL SECURITY;
 
--- Create policies for invoice_counters table
+-- Drop any existing policies to avoid conflicts
+DROP POLICY IF EXISTS "Users can view own invoice counters" ON public.invoice_counters;
+DROP POLICY IF EXISTS "Users can insert own invoice counters" ON public.invoice_counters;
+DROP POLICY IF EXISTS "Users can update own invoice counters" ON public.invoice_counters;
+DROP POLICY IF EXISTS "Users can view own counters" ON public.invoice_counters;
+DROP POLICY IF EXISTS "Users can insert own counters" ON public.invoice_counters;
+DROP POLICY IF EXISTS "Users can update own counters" ON public.invoice_counters;
+
+-- Create correct policies for invoice_counters table
 CREATE POLICY "Users can view own invoice counters" ON public.invoice_counters
     FOR SELECT USING (auth.uid() = user_id);
 
