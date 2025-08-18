@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { BookCopy, UserCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,11 +16,13 @@ import {
 
 export function SiteHeader() {
   const { user, signOut } = useAuth();
+  const router = useRouter();
 
   const handleSignOut = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     await signOut();
+    router.push('/');
   };
 
   return (

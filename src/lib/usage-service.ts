@@ -16,7 +16,10 @@ export class UsageService {
    * Get current month's usage for a user
    */
   static async getCurrentMonthUsage(userId: string): Promise<MonthlyUsage> {
-    const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM format
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const currentMonth = `${year}-${month}`;
     
     const { data, error } = await supabase
       .from('user_monthly_usage')

@@ -407,6 +407,14 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             const newInvoices = response.data.invoices;
             const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
 
+            if (uniqueNewInvoices.length === 0 && newInvoices.length > 0) {
+                setError("Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen.");
+                setIsLoading(false);
+                if (fileInputRef.current) fileInputRef.current.value = "";
+                form.reset();
+                return;
+            }
+
             // Check usage limit and create as many as possible
             const usageCheck = await UsageService.canCreateInvoices(user.id, uniqueNewInvoices.length);
             let invoicesToCreate = uniqueNewInvoices;
@@ -422,6 +430,12 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     invoicesToCreate = uniqueNewInvoices.slice(0, usageCheck.usage.remaining);
                     limitWarning = `Nur ${usageCheck.usage.remaining} von ${uniqueNewInvoices.length} Rechnungen erstellt (Monatslimit erreicht).`;
                 }
+            }
+            
+            if (invoicesToCreate.length === 0 && uniqueNewInvoices.length > 0) {
+                 setError('Sie haben Ihr monatliches Limit von 10.000 Rechnungen erreicht. Das Limit wird am 1. des nächsten Monats zurückgesetzt.');
+                 setIsLoading(false);
+                 return;
             }
 
             console.log('InvoiceGenerator: Saving', invoicesToCreate.length, 'new invoices to Supabase');
