@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info, Check, X, Search } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info, Check, X, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,6 +67,8 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsage | null>(null);
+  const [sortField, setSortField] = useState<'orderDate' | 'invoiceNumber'>('orderDate');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,13 +142,42 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     resolver: zodResolver(formSchema),
   });
 
+  const handleSort = useCallback((field: 'orderDate' | 'invoiceNumber') => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  }, [sortField]);
+
   const filteredInvoices = useMemo(() => {
-    if (!searchTerm) return invoices;
-    return invoices.filter(invoice => 
+    let filtered = invoices;
+    
+    // Zuerst filtern
+    if (searchTerm) {
+      filtered = invoices.filter(invoice => 
         invoice.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [invoices, searchTerm]);
+      );
+    }
+    
+    // Dann sortieren
+    return filtered.sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === 'orderDate') {
+        // Datum von DD.MM.YYYY zu Date konvertieren für korrekten Vergleich
+        const dateA = new Date(a.orderDate.split('.').reverse().join('-'));
+        const dateB = new Date(b.orderDate.split('.').reverse().join('-'));
+        comparison = dateA.getTime() - dateB.getTime();
+      } else if (sortField === 'invoiceNumber') {
+        comparison = a.invoiceNumber.localeCompare(b.invoiceNumber, 'de', { numeric: true });
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [invoices, searchTerm, sortField, sortDirection]);
   
   const summary = useMemo(() => {
     const totalNetSales = invoices.reduce((sum, inv) => sum + inv.netTotal, 0);
@@ -699,8 +730,32 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                         <Table>
                             <TableHeader className="sticky top-0 bg-background z-10">
                                 <TableRow>
-                                    <TableHead className="w-[140px] min-w-[140px] bg-background">Rechnungsnr.</TableHead>
-                                    <TableHead className="w-[80px] min-w-[80px] bg-background">Datum</TableHead>
+                                    <TableHead 
+                                        className="w-[140px] min-w-[140px] bg-background cursor-pointer hover:bg-muted/50 select-none"
+                                        onClick={() => handleSort('invoiceNumber')}
+                                    >
+                                        <div className="flex items-center gap-1">
+                                            Rechnungsnr.
+                                            {sortField === 'invoiceNumber' ? (
+                                                sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                                            ) : (
+                                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                                            )}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead 
+                                        className="w-[80px] min-w-[80px] bg-background cursor-pointer hover:bg-muted/50 select-none"
+                                        onClick={() => handleSort('orderDate')}
+                                    >
+                                        <div className="flex items-center gap-1">
+                                            Datum
+                                            {sortField === 'orderDate' ? (
+                                                sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+                                            ) : (
+                                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                                            )}
+                                        </div>
+                                    </TableHead>
                                     <TableHead className="min-w-[120px] bg-background">Kunde</TableHead>
                                     <TableHead className="w-[60px] min-w-[60px] bg-background">Land</TableHead>
                                     <TableHead className="w-[90px] min-w-[90px] bg-background">Klassifizierung</TableHead>
