@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, CreditCard } from 'lucide-react';
+import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, CreditCard, Loader } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
@@ -313,7 +313,10 @@ export default function DashboardPage() {
     return (
       <div className="w-full max-w-4xl mx-auto space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Lädt...</h1>
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <Loader className="h-12 w-12 text-primary animate-spin" />
+            <h1 className="text-2xl font-bold text-primary">Lädt...</h1>
+          </div>
         </div>
       </div>
     )

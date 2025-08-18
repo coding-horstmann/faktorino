@@ -1,0 +1,25 @@
+[1mdiff --git a/src/app/dashboard/page.tsx b/src/app/dashboard/page.tsx[m
+[1mindex c9052f2..1df98ef 100644[m
+[1m--- a/src/app/dashboard/page.tsx[m
+[1m+++ b/src/app/dashboard/page.tsx[m
+[36m@@ -9,7 +9,7 @@[m [mimport { Input } from "@/components/ui/input"[m
+ import { Label } from "@/components/ui/label"[m
+ import { Button } from "@/components/ui/button"[m
+ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"[m
+[31m-import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, CreditCard } from 'lucide-react';[m
+[32m+[m[32mimport { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, CreditCard, Loader } from 'lucide-react';[m
+ import { useToast } from "@/hooks/use-toast";[m
+ import { useAuth } from '@/contexts/AuthContext';[m
+ import { UserService } from '@/lib/user-service';[m
+[36m@@ -313,7 +313,10 @@[m [mexport default function DashboardPage() {[m
+     return ([m
+       <div className="w-full max-w-4xl mx-auto space-y-6">[m
+         <div className="text-center">[m
+[31m-          <h1 className="text-2xl font-bold mb-4">Lädt...</h1>[m
+[32m+[m[32m          <div className="flex flex-col items-center justify-center space-y-4">[m
+[32m+[m[32m            <Loader className="h-12 w-12 text-primary animate-spin" />[m
+[32m+[m[32m            <h1 className="text-2xl font-bold text-primary">Lädt...</h1>[m
+[32m+[m[32m          </div>[m
+         </div>[m
+       </div>[m
+     )[m
