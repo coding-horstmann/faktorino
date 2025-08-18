@@ -420,13 +420,20 @@ export async function generateInvoicesAction(
 
       // Sort drafts and numbers to ensure chronological assignment
       draftsForYear.sort((a, b) => new Date(a.orderDate.split('.').reverse().join('-')).getTime() - new Date(b.orderDate.split('.').reverse().join('-')).getTime());
-      const sortedNumbers = reservedNumbers.sort((a, b) => a.number - b.number);
+      const sortedNumbers = reservedNumbers.sort((a, b) => {
+        const aNum = a.result_number || a.number;
+        const bNum = b.result_number || b.number;
+        return aNum - bNum;
+      });
       
       draftsForYear.forEach((draft, index) => {
         const numInfo = sortedNumbers[index];
+        // Handle both old and new RPC function response formats
+        const invoiceYear = numInfo.result_year || numInfo.year;
+        const invoiceNumber = numInfo.result_number || numInfo.number;
         finalInvoices.push({
           ...draft,
-          invoiceNumber: `RE-${numInfo.year}-${String(numInfo.number).padStart(4, '0')}`,
+          invoiceNumber: `RE-${invoiceYear}-${String(invoiceNumber).padStart(4, '0')}`,
         });
       });
     }
