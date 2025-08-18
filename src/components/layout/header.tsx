@@ -22,7 +22,7 @@ export function SiteHeader() {
     e.preventDefault();
     e.stopPropagation();
     await signOut();
-    router.push('/');
+    // router.push('/') entfernt - wird in AuthContext mit window.location.replace gehandhabt
   };
 
   return (

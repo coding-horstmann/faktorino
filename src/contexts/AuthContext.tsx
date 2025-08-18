@@ -122,9 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       console.log('Signing out user:', user?.email)
-      setUser(null)
-      setUserExists(false)
-      setLoading(true)
+      setLoading(true) // Loading-State zuerst setzen für UI-Feedback
 
       // Serverseitig ausloggen, damit Cookies sicher gelöscht werden
       try {
@@ -133,6 +131,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Fallback: clientseitig Session clearen
       await supabase.auth.signOut()
+
+      // State erst nach dem Ausloggen clearen
+      setUser(null)
+      setUserExists(false)
 
       // Redirect to homepage
       if (typeof window !== 'undefined') {
@@ -145,6 +147,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         window.location.replace('/')
       }
+    } finally {
+      setLoading(false)
     }
   }
 

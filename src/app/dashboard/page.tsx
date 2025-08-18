@@ -28,6 +28,15 @@ export default function DashboardPage() {
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
+  // Auth Guard: Sofortige Umleitung bei fehlendem User
+  useEffect(() => {
+    if (!loading && !user) {
+      console.log('Dashboard: User not authenticated, redirecting to home')
+      router.replace('/')
+      return
+    }
+  }, [user, loading, router])
+
   // Debug auth state and check email confirmation
   useEffect(() => {
     console.log('Dashboard: user state changed:', {
@@ -299,12 +308,21 @@ export default function DashboardPage() {
     return { trialActive, remainingDays } as const;
   })();
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!loading && !user && typeof window !== 'undefined') {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
+  // Zeige Loading während Authentifizierung oder Ausloggen
+  if (loading) {
+    return (
+      <div className="w-full max-w-4xl mx-auto space-y-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Lädt...</h1>
+        </div>
+      </div>
+    )
+  }
+
+  // Früher Return wenn nicht authentifiziert (zusätzliche Sicherheit)
+  if (!user) {
+    return null
+  }
 
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
