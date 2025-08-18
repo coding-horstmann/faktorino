@@ -389,15 +389,33 @@ export async function generateInvoicesAction(
       const year = parseInt(yearStr, 10);
       const draftsForYear = draftsByYear[year];
       
+      console.log(`Attempting to reserve ${draftsForYear.length} invoice numbers for year ${year}, user ${userId}`);
+      
       const { data: reservedNumbers, error: rpcError } = await supabase.rpc('reserve_invoice_numbers', {
         p_user_id: userId,
         p_year: year,
         p_count: draftsForYear.length,
       });
 
-      if (rpcError || !reservedNumbers || reservedNumbers.length !== draftsForYear.length) {
-        console.error('Failed to reserve invoice numbers:', rpcError);
-        return { data: null, error: 'Fehler bei der Reservierung der Rechnungsnummern.' };
+      console.log('RPC response:', { reservedNumbers, rpcError });
+
+      if (rpcError) {
+        console.error('RPC Error details:', {
+          message: rpcError.message,
+          details: rpcError.details,
+          hint: rpcError.hint,
+          code: rpcError.code
+        });
+        return { data: null, error: `Fehler bei der Reservierung der Rechnungsnummern: ${rpcError.message}` };
+      }
+
+      if (!reservedNumbers || reservedNumbers.length !== draftsForYear.length) {
+        console.error('Invalid response:', { 
+          expectedCount: draftsForYear.length, 
+          actualCount: reservedNumbers?.length || 0,
+          reservedNumbers 
+        });
+        return { data: null, error: `Fehler bei der Reservierung der Rechnungsnummern: Erwartete ${draftsForYear.length} Nummern, aber erhielt ${reservedNumbers?.length || 0}.` };
       }
 
       // Sort drafts and numbers to ensure chronological assignment
