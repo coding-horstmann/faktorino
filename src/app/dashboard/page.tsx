@@ -71,6 +71,7 @@ export default function DashboardPage() {
     const loadUserProfile = async () => {
       if (!user) return;
 
+      setBillingLoading(true);
       try {
         const profile = await UserService.getUserProfile(user.id);
         if (profile) {
@@ -102,10 +103,14 @@ export default function DashboardPage() {
       } catch (error) {
         console.error("Could not load user profile from Supabase", error);
         setAccordionValue("item-1");
+      } finally {
+        setBillingLoading(false);
       }
     };
 
-    loadUserProfile();
+    if (userExists) {
+      loadUserProfile();
+    }
 
     // Realtime-Updates der Billing-Infos (z.B. nach Webhook-Änderungen)
     if (user) {
@@ -130,7 +135,7 @@ export default function DashboardPage() {
         try { supabase.removeChannel(channel); } catch {}
       }
     }
-  }, [user]);
+  }, [user, userExists]);
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });
@@ -280,7 +285,7 @@ export default function DashboardPage() {
     } catch (e) {
       toast({ variant: 'destructive', title: 'Fehler', description: e instanceof Error ? e.message : 'Checkout fehlgeschlagen' });
     } finally {
-      setBillingLoading(false);
+      // setBillingLoading(false); // Already handled in loadUserProfile
     }
   };
 
@@ -296,10 +301,10 @@ export default function DashboardPage() {
 
   // Redirect to login if not authenticated
   useEffect(() => {
-    if (!user && typeof window !== 'undefined') {
+    if (!loading && !user && typeof window !== 'undefined') {
       router.replace('/login');
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
   return (
     <div className="container mx-auto w-full max-w-6xl space-y-8">
@@ -334,7 +339,7 @@ export default function DashboardPage() {
         )}
 
         {/* Trial banner (nur wenn geladen, kein aktives Abo und keine Stripe-Subscription) */}
-        {user && billingInfo !== null && billingInfo.status !== 'active' && !billingInfo.subscription_id && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
+        {user && !billingLoading && billingInfo !== null && billingInfo.status !== 'active' && !billingInfo.subscription_id && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
             <AlertDescription className="flex items-center justify-between w-full">
@@ -358,7 +363,7 @@ export default function DashboardPage() {
         )}
 
         {/* Billing banner (no access) nur ohne aktives Abo; erst nach Ladedaten */}
-        {user && billingInfo !== null && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
+        {user && !billingLoading && billingInfo !== null && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
           <Alert className="border-blue-200 bg-blue-50">
             <CreditCard className="h-4 w-4 text-blue-600" />
             <AlertDescription className="flex items-center justify-between w-full">

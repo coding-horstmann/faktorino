@@ -4,6 +4,7 @@
 import Papa from 'papaparse';
 import { z } from 'zod';
 import type { UserInfo } from '@/lib/pdf-generator';
+import { InvoiceService } from '@/lib/invoice-service';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -187,9 +188,26 @@ function formatDate(dateStr: string): string {
 export async function generateInvoicesAction(
     csvData: string, 
     taxStatus: UserInfo['taxStatus'],
-    existingInvoices: Invoice[]
+    userId: string
 ): Promise<{ data: ProcessCsvOutput | null; error: string | null; }> {
   try {
+    const existingInvoicesRaw = await InvoiceService.getUserInvoices(userId);
+    const existingInvoices: Invoice[] = existingInvoicesRaw.map(dbInvoice => ({
+      id: dbInvoice.id,
+      invoiceNumber: dbInvoice.invoice_number,
+      orderDate: dbInvoice.order_date,
+      serviceDate: dbInvoice.service_date,
+      buyerName: dbInvoice.buyer_name,
+      buyerAddress: dbInvoice.buyer_address,
+      country: dbInvoice.country,
+      countryClassification: dbInvoice.country_classification,
+      netTotal: dbInvoice.net_total,
+      vatTotal: dbInvoice.vat_total,
+      grossTotal: dbInvoice.gross_total,
+      taxNote: dbInvoice.tax_note,
+      items: dbInvoice.items
+    }));
+
     const parseResult = Papa.parse(csvData, {
       header: true,
       skipEmptyLines: true,

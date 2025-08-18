@@ -398,7 +398,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
             return;
         }
         
-        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, invoices);
+        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, user.id);
 
         if (response.error) {
             setError(response.error);
