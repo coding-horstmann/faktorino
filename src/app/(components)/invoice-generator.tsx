@@ -452,7 +452,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     return {
                         // Don't include id - let database generate it
                         user_id: user.id,
-                        invoice_number: null, // Explizit null setzen, damit der DB-Trigger greift
+                        invoice_number: invoice.invoiceNumber,
                         order_date: formatDateForDB(invoice.orderDate),
                         service_date: formatDateForDB(invoice.serviceDate),
                         buyer_name: invoice.buyerName,
