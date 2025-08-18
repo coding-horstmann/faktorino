@@ -72,7 +72,8 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     const title = 'Rechnung';
-    doc.text(title, 20, infoBlockY);
+    // Ändere die Position von "Rechnung" auf oben rechts
+    doc.text(title, 190, infoBlockY, { align: 'right' });
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
