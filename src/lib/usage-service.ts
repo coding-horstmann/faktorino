@@ -21,25 +21,17 @@ export class UsageService {
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const currentMonth = `${year}-${month}`;
     
+    // Use maybeSingle() instead of single() to avoid 406 errors when no rows exist
     const { data, error } = await supabase
       .from('user_monthly_usage')
       .select('*')
       .eq('user_id', userId)
       .eq('month_year', currentMonth)
-      .single()
+      .maybeSingle()
 
-    // Treat 406 (no single object) as "no rows" as well
     if (error) {
-      const code = (error as any).code
-      const status = (error as any).status
-      if (code && code === 'PGRST116') {
-        // no rows -> fine
-      } else if (status && Number(status) === 406) {
-        // PostgREST 406 for single() with no rows
-      } else {
-        console.error('Error fetching usage:', error)
-        throw error
-      }
+      console.error('Error fetching usage:', error)
+      throw error
     }
 
     const invoiceCount = data?.invoice_count || 0

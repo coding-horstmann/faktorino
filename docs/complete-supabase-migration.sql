@@ -114,4 +114,138 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- Create user_monthly_usage table for tracking monthly invoice limits
+CREATE TABLE IF NOT EXISTS public.user_monthly_usage (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    month_year TEXT NOT NULL, -- Format: YYYY-MM
+    invoice_count INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(user_id, month_year)
+);
+
+-- Enable RLS on user_monthly_usage table
+ALTER TABLE public.user_monthly_usage ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for user_monthly_usage table
+CREATE POLICY "Users can view own usage" ON public.user_monthly_usage
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own usage" ON public.user_monthly_usage
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own usage" ON public.user_monthly_usage
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Create indexes for user_monthly_usage
+CREATE INDEX IF NOT EXISTS idx_user_monthly_usage_user_id ON public.user_monthly_usage(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_monthly_usage_month_year ON public.user_monthly_usage(month_year);
+
+-- Create trigger for user_monthly_usage
+CREATE TRIGGER update_user_monthly_usage_updated_at 
+    BEFORE UPDATE ON public.user_monthly_usage 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Create function to increment monthly usage
+CREATE OR REPLACE FUNCTION increment_monthly_usage(p_user_id UUID, p_count INTEGER DEFAULT 1)
+RETURNS void AS $$
+BEGIN
+    INSERT INTO public.user_monthly_usage (user_id, month_year, invoice_count)
+    VALUES (p_user_id, to_char(current_date, 'YYYY-MM'), p_count)
+    ON CONFLICT (user_id, month_year)
+    DO UPDATE SET 
+        invoice_count = user_monthly_usage.invoice_count + p_count,
+        updated_at = timezone('utc'::text, now());
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant permissions for the increment function
+GRANT EXECUTE ON FUNCTION public.increment_monthly_usage(UUID, INTEGER) TO authenticated;
+
+-- Create invoice_counters table for tracking invoice numbers per user and year
+CREATE TABLE IF NOT EXISTS public.invoice_counters (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
+    year INTEGER NOT NULL,
+    last_number INTEGER DEFAULT 0 NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE(user_id, year)
+);
+
+-- Enable RLS on invoice_counters table
+ALTER TABLE public.invoice_counters ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for invoice_counters table
+CREATE POLICY "Users can view own invoice counters" ON public.invoice_counters
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own invoice counters" ON public.invoice_counters
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own invoice counters" ON public.invoice_counters
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Create indexes for invoice_counters
+CREATE INDEX IF NOT EXISTS idx_invoice_counters_user_id ON public.invoice_counters(user_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_counters_year ON public.invoice_counters(year);
+CREATE INDEX IF NOT EXISTS idx_invoice_counters_user_year ON public.invoice_counters(user_id, year);
+
+-- Create trigger for invoice_counters
+CREATE TRIGGER update_invoice_counters_updated_at 
+    BEFORE UPDATE ON public.invoice_counters 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Create RPC function to reserve invoice numbers
+CREATE OR REPLACE FUNCTION public.reserve_invoice_numbers(p_user_id UUID, p_year INT, p_count INT)
+RETURNS TABLE(year INT, number INT) AS $$
+DECLARE
+    v_new_last_number INT;
+    v_current_number INT;
+BEGIN
+    -- Sperrt die Zeile für den Benutzer und das Jahr, um Race Conditions zu verhindern.
+    -- Fügt eine neue Zeile ein oder aktualisiert die bestehende.
+    INSERT INTO public.invoice_counters (user_id, year, last_number)
+    VALUES (p_user_id, p_year, p_count)
+    ON CONFLICT (user_id, year)
+    DO UPDATE SET last_number = invoice_counters.last_number + p_count
+    RETURNING last_number INTO v_new_last_number;
+
+    -- Generiert eine Serie von Nummern von der vorherigen letzten Nummer+1 bis zur neuen letzten Nummer.
+    RETURN QUERY
+    SELECT p_year, s.number
+    FROM generate_series(v_new_last_number - p_count + 1, v_new_last_number) AS s(number);
+END;
+$$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
+
+-- Grant permissions for the reserve function
+GRANT EXECUTE ON FUNCTION public.reserve_invoice_numbers(UUID, INT, INT) TO authenticated;
+
+-- Add Stripe-related fields to users table if they don't exist
+DO $$
+BEGIN
+    -- Add stripe_customer_id column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'stripe_customer_id') THEN
+        ALTER TABLE public.users ADD COLUMN stripe_customer_id TEXT;
+    END IF;
+    
+    -- Add subscription_status column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'subscription_status') THEN
+        ALTER TABLE public.users ADD COLUMN subscription_status TEXT DEFAULT 'trial';
+    END IF;
+    
+    -- Add trial_end column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'trial_end') THEN
+        ALTER TABLE public.users ADD COLUMN trial_end TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '14 days');
+    END IF;
+    
+    -- Add subscription_end column if it doesn't exist
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'subscription_end') THEN
+        ALTER TABLE public.users ADD COLUMN subscription_end TIMESTAMP WITH TIME ZONE;
+    END IF;
+END $$;
+
 -- Setup complete! Your database is now ready for the EtsyBuchhalter application.
