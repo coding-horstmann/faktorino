@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 export default function DashboardPage() {
 
   const { toast } = useToast();
-  const { user, userExists, loading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
@@ -53,7 +53,7 @@ export default function DashboardPage() {
     }
 
     // Hinweis entfernt: Kein automatischer Redirect bei kurzzeitig fehlendem Profil
-  }, [user, userExists, loading, router, toast]);
+  }, [user, loading, router, toast]);
   
   const [userInfo, setUserInfo] = useState<UserInfo>({
     name: '',
@@ -117,7 +117,7 @@ export default function DashboardPage() {
       }
     };
 
-    if (userExists) {
+    if (user) {
       loadUserProfile();
     }
 
@@ -144,7 +144,7 @@ export default function DashboardPage() {
         try { supabase.removeChannel(channel); } catch {}
       }
     }
-  }, [user, userExists]);
+  }, [user, loading]);
 
   const handleUserInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserInfo({ ...userInfo, [e.target.name]: e.target.value });

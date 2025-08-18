@@ -41,8 +41,8 @@ export class InvoiceService {
     try {
       console.log('Creating invoices batch of:', invoices.length);
 
-      // Insert in smaller batches to avoid issues
-      const batchSize = 10;
+      // Use larger batch size for better performance
+      const batchSize = 50;
       const results: InvoiceRow[] = [];
 
       for (let i = 0; i < invoices.length; i += batchSize) {
@@ -56,7 +56,6 @@ export class InvoiceService {
 
         if (error) {
           console.error('Error creating invoice batch:', error);
-          console.error('Error details:', error.message, error.details, error.hint);
           throw error;
         }
 
