@@ -44,7 +44,6 @@ export default function DashboardPage() {
       userEmail: user?.email,
       userId: user?.id,
       emailConfirmed: !!user?.email_confirmed_at,
-      userExists
     });
 
     // Show email confirmation banner if user is not confirmed
