@@ -214,17 +214,31 @@ DECLARE
     v_new_last_number INT;
     v_current_number INT;
 BEGIN
-    -- Sperrt die Zeile für den Benutzer und das Jahr, um Race Conditions zu verhindern.
-    -- Fügt eine neue Zeile ein oder aktualisiert die bestehende.
+    -- Validate input parameters
+    IF p_user_id IS NULL THEN
+        RAISE EXCEPTION 'User ID cannot be null';
+    END IF;
+    
+    IF p_year IS NULL OR p_year < 1900 OR p_year > 2100 THEN
+        RAISE EXCEPTION 'Invalid year: %', p_year;
+    END IF;
+    
+    IF p_count IS NULL OR p_count <= 0 OR p_count > 10000 THEN
+        RAISE EXCEPTION 'Invalid count: %, must be between 1 and 10000', p_count;
+    END IF;
+
+    -- Insert or update the counter with explicit table reference
     INSERT INTO public.invoice_counters (user_id, year, last_number)
     VALUES (p_user_id, p_year, p_count)
     ON CONFLICT (user_id, year)
-    DO UPDATE SET last_number = invoice_counters.last_number + p_count
+    DO UPDATE SET 
+        last_number = invoice_counters.last_number + p_count,
+        updated_at = timezone('utc'::text, now())
     RETURNING last_number INTO v_new_last_number;
 
-    -- Generiert eine Serie von Nummern von der vorherigen letzten Nummer+1 bis zur neuen letzten Nummer.
+    -- Generate the series of numbers with explicit column aliases
     RETURN QUERY
-    SELECT p_year, s.number
+    SELECT p_year AS year, s.number AS number
     FROM generate_series(v_new_last_number - p_count + 1, v_new_last_number) AS s(number);
 END;
 $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
