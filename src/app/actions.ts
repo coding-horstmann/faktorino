@@ -370,43 +370,19 @@ export async function generateInvoicesAction(
         return { data: null, error: "Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen." };
     }
     
-    // Sort drafts by date to ensure chronological invoice numbers
+    // Sort drafts by date to ensure chronological processing
     invoiceDrafts.sort((a, b) => {
         const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
         const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
         return dateA - dateB;
     });
 
-    // Find the highest existing invoice number for each year
-    const invoiceCounters: { [year: number]: number } = {};
-    for (const inv of existingInvoices) {
-      const match = inv.invoiceNumber.match(/RE-(\d{4})-(\d+)/);
-      if (match) {
-        const year = parseInt(match[1], 10);
-        const num = parseInt(match[2], 10);
-        if (!invoiceCounters[year] || num > invoiceCounters[year]) {
-          invoiceCounters[year] = num;
-        }
-      }
-    }
-    
-    const invoices: Invoice[] = [];
-    for (const draft of invoiceDrafts) {
-        const dateObject = new Date(draft.orderDate.split('.').reverse().join('-'));
-        const orderYear = !isNaN(dateObject.getTime()) ? dateObject.getFullYear() : new Date().getFullYear();
-        
-        if (!invoiceCounters[orderYear]) {
-            invoiceCounters[orderYear] = 0;
-        }
-        invoiceCounters[orderYear]++;
-        const invoiceNumberForYear = invoiceCounters[orderYear];
-
-        const finalInvoice: Invoice = {
-            ...draft,
-            invoiceNumber: `RE-${orderYear}-${String(invoiceNumberForYear).padStart(4, '0')}`,
-        };
-        invoices.push(finalInvoice);
-    }
+    // Invoice number generation is now handled by the database trigger.
+    // We just need to ensure the invoice number field is not set here.
+    const invoices: Invoice[] = invoiceDrafts.map(draft => ({
+      ...draft,
+      invoiceNumber: '', // Wird von der DB gesetzt
+    }));
     
     const result: ProcessCsvOutput = {
       invoices,
