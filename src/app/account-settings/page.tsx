@@ -41,9 +41,11 @@ function AccountSettingsContent() {
             // Nach Rückkehr aus dem Portal frische den Status und UI direkt
             (async () => {
                 try {
+                    // Korrektur: user_id für die Abfrage hinzufügen
                     const { data } = await supabase
                         .from('users')
                         .select('subscription_status, stripe_subscription_id, cancel_at_period_end')
+                        .eq('id', user?.id)
                         .single();
                     const status = (data as any)?.subscription_status as string | null;
                     const willCancel = !!(data as any)?.cancel_at_period_end;
@@ -82,7 +84,7 @@ function AccountSettingsContent() {
                 const { data } = await supabase
                     .from('users')
                     .select('subscription_status, stripe_subscription_id, cancel_at_period_end')
-                    .eq('id', user.id)
+                    .eq('id', user.id) // Korrektur: user.id verwenden
                     .single();
                 setSubscriptionStatus((data as any)?.subscription_status ?? null);
                 setHasStripeSubscription(!!(data as any)?.stripe_subscription_id);
