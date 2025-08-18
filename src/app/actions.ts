@@ -5,6 +5,7 @@ import Papa from 'papaparse';
 import { z } from 'zod';
 import type { UserInfo } from '@/lib/pdf-generator';
 import { InvoiceService } from '@/lib/invoice-service';
+import { supabase } from '@/lib/supabase';
 
 const invoiceItemSchema = z.object({
   quantity: z.number(),
@@ -370,22 +371,57 @@ export async function generateInvoicesAction(
         return { data: null, error: "Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen." };
     }
     
-    // Sort drafts by date to ensure chronological processing
-    invoiceDrafts.sort((a, b) => {
+    // Group invoices by year
+    const draftsByYear: { [year: number]: Omit<Invoice, 'invoiceNumber'>[] } = {};
+    invoiceDrafts.forEach(draft => {
+      const dateObject = new Date(draft.orderDate.split('.').reverse().join('-'));
+      const year = !isNaN(dateObject.getTime()) ? dateObject.getFullYear() : new Date().getFullYear();
+      if (!draftsByYear[year]) {
+        draftsByYear[year] = [];
+      }
+      draftsByYear[year].push(draft);
+    });
+
+    const finalInvoices: Invoice[] = [];
+
+    // Reserve numbers for each year
+    for (const yearStr in draftsByYear) {
+      const year = parseInt(yearStr, 10);
+      const draftsForYear = draftsByYear[year];
+      
+      const { data: reservedNumbers, error: rpcError } = await supabase.rpc('reserve_invoice_numbers', {
+        p_user_id: userId,
+        p_year: year,
+        p_count: draftsForYear.length,
+      });
+
+      if (rpcError || !reservedNumbers || reservedNumbers.length !== draftsForYear.length) {
+        console.error('Failed to reserve invoice numbers:', rpcError);
+        return { data: null, error: 'Fehler bei der Reservierung der Rechnungsnummern.' };
+      }
+
+      // Sort drafts and numbers to ensure chronological assignment
+      draftsForYear.sort((a, b) => new Date(a.orderDate.split('.').reverse().join('-')).getTime() - new Date(b.orderDate.split('.').reverse().join('-')).getTime());
+      const sortedNumbers = reservedNumbers.sort((a, b) => a.number - b.number);
+      
+      draftsForYear.forEach((draft, index) => {
+        const numInfo = sortedNumbers[index];
+        finalInvoices.push({
+          ...draft,
+          invoiceNumber: `RE-${numInfo.year}-${String(numInfo.number).padStart(4, '0')}`,
+        });
+      });
+    }
+
+    // Sort all invoices by date before returning
+    finalInvoices.sort((a, b) => {
         const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
         const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
         return dateA - dateB;
     });
-
-    // Invoice number generation is now handled by the database trigger.
-    // We just need to ensure the invoice number field is not set here.
-    const invoices: Invoice[] = invoiceDrafts.map(draft => ({
-      ...draft,
-      invoiceNumber: '', // Wird von der DB gesetzt
-    }));
     
     const result: ProcessCsvOutput = {
-      invoices,
+      invoices: finalInvoices,
       summary: {
         totalNetSales,
         totalVat,
