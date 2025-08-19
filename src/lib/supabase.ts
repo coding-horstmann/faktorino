@@ -16,6 +16,18 @@ export const supabase = typeof window !== 'undefined'
       },
     })
 
+// Server-seitiger Client für Server Actions mit Service Role
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseKey,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
+
 export type Database = {
   public: {
     Tables: {

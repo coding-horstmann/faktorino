@@ -398,7 +398,7 @@ export async function generateInvoicesAction(
     // **NEUE CREDIT-VALIDIERUNG**
     // Prüfe Credits und begrenze Rechnungen entsprechend
     console.log('generateInvoicesAction: Checking credits for user:', userId);
-    const userCredits = await CreditService.getUserCredits(userId);
+    const userCredits = await CreditService.getUserCreditsServer(userId);
     console.log('generateInvoicesAction: userCredits result:', userCredits);
     const currentCredits = userCredits?.credits || 0;
     console.log('generateInvoicesAction: currentCredits:', currentCredits);

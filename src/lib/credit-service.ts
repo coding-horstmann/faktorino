@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, supabaseAdmin } from './supabase'
 
 export interface UserCredits {
   user_id: string
@@ -46,7 +46,7 @@ export interface CreditPurchase {
 export class CreditService {
   
   /**
-   * Benutzer-Credits abrufen
+   * Benutzer-Credits abrufen (für Frontend)
    */
   static async getUserCredits(userId: string): Promise<UserCredits | null> {
     console.log('CreditService.getUserCredits called for user:', userId);
@@ -63,6 +63,30 @@ export class CreditService {
 
     if (error) {
       console.error('Error fetching user credits:', error)
+      throw error
+    }
+
+    return data
+  }
+
+  /**
+   * Benutzer-Credits abrufen (für Server Actions)
+   */
+  static async getUserCreditsServer(userId: string): Promise<UserCredits | null> {
+    console.log('CreditService.getUserCreditsServer called for user:', userId);
+    
+    const { data, error } = await supabaseAdmin
+      .from('user_credits')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    console.log('CreditService.getUserCreditsServer result:', { data, error });
+    console.log('CreditService.getUserCreditsServer - data details:', data);
+    console.log('CreditService.getUserCreditsServer - credits value:', data?.credits);
+
+    if (error) {
+      console.error('Error fetching user credits (server):', error)
       throw error
     }
 
