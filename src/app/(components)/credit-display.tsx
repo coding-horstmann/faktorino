@@ -7,11 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CreditCard, Zap } from 'lucide-react';
 
 interface CreditDisplayProps {
-  maxCredits?: number; // Für die Fortschrittsleiste (Standard: 100)
   showPurchaseButton?: boolean;
 }
 
-export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: CreditDisplayProps) {
+export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps) {
   const { user } = useAuth();
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,18 +41,29 @@ export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: C
     
     // Custom Event Listener für sofortige Updates
     const handleCreditUpdate = () => {
+      console.log('Credit update event received, reloading data...');
       loadCreditData();
     };
     
-    window.addEventListener('creditUpdated', handleCreditUpdate);
+    const handleCreditChange = (event: CustomEvent) => {
+      console.log('Credit change event received:', event.detail);
+      // Nur aktualisieren wenn es für den aktuellen User ist
+      if (event.detail?.userId === user.id) {
+        loadCreditData();
+      }
+    };
     
-    // Polling als Fallback für Echtzeit-Updates alle 30 Sekunden
+    window.addEventListener('creditUpdated', handleCreditUpdate);
+    window.addEventListener('creditChanged', handleCreditChange as EventListener);
+    
+    // Polling als Fallback für Echtzeit-Updates alle 10 Sekunden (statt 30)
     const interval = setInterval(() => {
       loadCreditData();
-    }, 30000);
+    }, 10000);
 
     return () => {
       window.removeEventListener('creditUpdated', handleCreditUpdate);
+      window.removeEventListener('creditChanged', handleCreditChange as EventListener);
       clearInterval(interval);
     };
   }, [user]);
@@ -69,7 +79,6 @@ export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: C
   }
 
   const currentCredits = credits?.credits || 0;
-  const progressPercentage = Math.min((currentCredits / maxCredits) * 100, 100);
 
   return (
     <div className="bg-gradient-to-r from-blue-50 via-blue-100 to-blue-200 border-blue-300 rounded-lg p-6 border shadow-sm">
@@ -95,15 +104,7 @@ export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: C
           </p>
         </div>
 
-        {/* Fortschrittsleiste */}
-        <div className="space-y-2">
-          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div 
-              className="h-full rounded-full transition-all duration-500 ease-out bg-blue-900"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-        </div>
+
 
         {/* Warnung bei niedrigen Credits */}
         {currentCredits < 10 && (

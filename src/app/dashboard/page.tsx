@@ -297,7 +297,7 @@ export default function DashboardPage() {
         )}
 
         {/* Credit-Übersicht */}
-        <CreditDisplay maxCredits={200} showPurchaseButton={true} />
+        <CreditDisplay showPurchaseButton={true} />
         
         <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
           <AccordionItem value="item-1">
