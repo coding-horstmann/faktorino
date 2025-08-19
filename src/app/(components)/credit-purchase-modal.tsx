@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { X, CreditCard } from 'lucide-react';
@@ -24,7 +24,9 @@ interface PurchaseFormData {
   firstName: string;
   lastName: string;
   email: string;
-  address: string;
+  street: string;
+  postalCode: string;
+  city: string;
   vatId: string;
 }
 
@@ -63,7 +65,9 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
     firstName: '',
     lastName: '',
     email: '',
-    address: '',
+    street: '',
+    postalCode: '',
+    city: '',
     vatId: '',
   });
   const [errors, setErrors] = useState<Partial<PurchaseFormData>>({});
@@ -92,8 +96,14 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = 'Ungültige E-Mail-Adresse';
     }
-    if (!formData.address.trim()) {
-      newErrors.address = 'Rechnungsadresse ist erforderlich';
+    if (!formData.street.trim()) {
+      newErrors.street = 'Straße und Hausnummer sind erforderlich';
+    }
+    if (!formData.postalCode.trim()) {
+      newErrors.postalCode = 'PLZ ist erforderlich';
+    }
+    if (!formData.city.trim()) {
+      newErrors.city = 'Stadt ist erforderlich';
     }
 
     setErrors(newErrors);
@@ -252,19 +262,49 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               </div>
 
               <div>
-                <Label htmlFor="address">Rechnungsadresse *</Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  value={formData.address}
+                <Label htmlFor="street">Straße & Hausnummer *</Label>
+                <Input
+                  id="street"
+                  name="street"
+                  value={formData.street}
                   onChange={handleInputChange}
-                  className={cn(errors.address && "border-red-500")}
-                  placeholder="Straße, Hausnummer PLZ, Ort Land"
-                  rows={3}
+                  className={cn(errors.street && "border-red-500")}
+                  placeholder="Musterstraße 123"
                 />
-                {errors.address && (
-                  <p className="text-sm text-red-500 mt-1">{errors.address}</p>
+                {errors.street && (
+                  <p className="text-sm text-red-500 mt-1">{errors.street}</p>
                 )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="postalCode">PLZ *</Label>
+                  <Input
+                    id="postalCode"
+                    name="postalCode"
+                    value={formData.postalCode}
+                    onChange={handleInputChange}
+                    className={cn(errors.postalCode && "border-red-500")}
+                    placeholder="12345"
+                  />
+                  {errors.postalCode && (
+                    <p className="text-sm text-red-500 mt-1">{errors.postalCode}</p>
+                  )}
+                </div>
+                <div>
+                  <Label htmlFor="city">Stadt *</Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className={cn(errors.city && "border-red-500")}
+                    placeholder="Musterstadt"
+                  />
+                  {errors.city && (
+                    <p className="text-sm text-red-500 mt-1">{errors.city}</p>
+                  )}
+                </div>
               </div>
 
               <div>
