@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { CreditDashboard } from '@/app/(components)/credit-dashboard';
 import { CreditDisplay } from '@/app/(components)/credit-display';
@@ -28,8 +28,76 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+
+  // PayPal Callback Handling
+  useEffect(() => {
+    const paymentStatus = searchParams.get('payment');
+    const credits = searchParams.get('credits');
+    const amount = searchParams.get('amount');
+    const message = searchParams.get('message');
+
+    if (paymentStatus === 'success' && credits && amount) {
+      toast({
+        title: "Zahlung erfolgreich!",
+        description: `Sie haben ${credits} Credits für ${amount}€ gekauft. Die Credits wurden Ihrem Account gutgeschrieben.`,
+        duration: 6000,
+      });
+      
+      // URL ohne Query-Parameter aktualisieren
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+      
+      // Credit-Display aktualisieren
+      window.location.reload();
+    } else if (paymentStatus === 'cancelled') {
+      toast({
+        title: "Zahlung abgebrochen",
+        description: "Die PayPal-Zahlung wurde abgebrochen. Sie können es jederzeit erneut versuchen.",
+        variant: "destructive",
+      });
+      
+      // URL bereinigen
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    } else if (paymentStatus === 'error') {
+      let errorMessage = "Es ist ein Fehler bei der Zahlung aufgetreten.";
+      
+      switch (message) {
+        case 'missing_token':
+          errorMessage = "Ungültige Zahlungsanfrage. Bitte versuchen Sie es erneut.";
+          break;
+        case 'purchase_not_found':
+          errorMessage = "Kauf-Datensatz nicht gefunden. Bitte kontaktieren Sie den Support.";
+          break;
+        case 'order_details_failed':
+          errorMessage = "PayPal-Bestelldetails konnten nicht abgerufen werden.";
+          break;
+        case 'capture_failed':
+          errorMessage = "PayPal-Zahlung konnte nicht erfasst werden. Bitte versuchen Sie es erneut.";
+          break;
+        case 'database_update_failed':
+          errorMessage = "Datenbankfehler beim Verarbeiten der Zahlung. Bitte kontaktieren Sie den Support.";
+          break;
+        case 'unexpected_error':
+          errorMessage = "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es später erneut.";
+          break;
+      }
+      
+      toast({
+        title: "Zahlungsfehler",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 8000,
+      });
+      
+      // URL bereinigen
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, toast]);
 
   // Auth Guard: Sofortige Umleitung bei fehlendem User
   useEffect(() => {
