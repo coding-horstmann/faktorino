@@ -58,6 +58,8 @@ export class CreditService {
       .maybeSingle()
 
     console.log('CreditService.getUserCredits result:', { data, error });
+    console.log('CreditService.getUserCredits - data details:', data);
+    console.log('CreditService.getUserCredits - credits value:', data?.credits);
 
     if (error) {
       console.error('Error fetching user credits:', error)
