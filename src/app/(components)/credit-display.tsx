@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CreditService, type UserCredits } from '@/lib/credit-service';
 import { Button } from '@/components/ui/button';
 import { Loader2, CreditCard, Zap } from 'lucide-react';
+import { CreditPurchaseModal } from './credit-purchase-modal';
 
 interface CreditDisplayProps {
   showPurchaseButton?: boolean;
@@ -15,6 +16,7 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [loading, setLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -135,15 +137,22 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
         {showPurchaseButton && (
           <Button 
             className="w-full bg-blue-950 hover:bg-blue-900 text-white"
-            onClick={() => {
-              // TODO: Hier kommt später der direkte Checkout
-              alert('Direkter Checkout wird bald implementiert');
-            }}
+            onClick={() => setShowPurchaseModal(true)}
           >
             Credits kaufen
           </Button>
         )}
       </div>
+      
+      {/* Credit Purchase Modal */}
+      <CreditPurchaseModal
+        isOpen={showPurchaseModal}
+        onClose={() => setShowPurchaseModal(false)}
+        onPurchaseComplete={() => {
+          loadCreditData(true);
+          setShowPurchaseModal(false);
+        }}
+      />
     </div>
   );
 }
