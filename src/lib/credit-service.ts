@@ -1,4 +1,5 @@
 import { supabase, supabaseAdmin } from './supabase'
+import { CreditEvents } from './credit-events'
 
 export interface UserCredits {
   user_id: string
@@ -131,6 +132,14 @@ export class CreditService {
 
     // Neue Balance abrufen
     const updatedCredits = await this.getUserCredits(userId)
+    
+    // Event für Echtzeit-Update auslösen
+    CreditEvents.triggerCreditChange({
+      userId,
+      newCredits: updatedCredits?.credits || 0,
+      change: -creditsToUse
+    })
+    
     return { 
       success: true, 
       newBalance: updatedCredits?.credits 
@@ -160,6 +169,14 @@ export class CreditService {
 
     // Neue Balance abrufen
     const updatedCredits = await this.getUserCredits(userId)
+    
+    // Event für Echtzeit-Update auslösen
+    CreditEvents.triggerCreditChange({
+      userId,
+      newCredits: updatedCredits?.credits || 0,
+      change: creditsToAdd
+    })
+    
     return { 
       success: true, 
       newBalance: updatedCredits?.credits 

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { CreditDashboard } from '@/app/(components)/credit-dashboard';
+import { CreditDisplay } from '@/app/(components)/credit-display';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -296,27 +297,7 @@ export default function DashboardPage() {
         )}
 
         {/* Credit-Übersicht */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard className="text-primary"/>
-                Credit-Übersicht
-              </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/credits">
-                  Verwalten
-                </Link>
-              </Button>
-            </CardTitle>
-            <CardDescription>
-              Ihr aktuelles Credit-Guthaben für die Rechnungserstellung
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CreditDashboard showPurchaseOption={false} />
-          </CardContent>
-        </Card>
+        <CreditDisplay maxCredits={200} showPurchaseButton={true} />
         
         <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
           <AccordionItem value="item-1">
