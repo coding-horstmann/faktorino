@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { CreditDisplay } from '@/app/(components)/credit-display';
 
 function AccountSettingsContent() {
     const { toast } = useToast();
@@ -95,33 +96,7 @@ function AccountSettingsContent() {
         }
     };
 
-    const handleRequestPasswordReset = async () => {
-        if (!user?.email) return;
 
-        setChangingPassword(true);
-        setError('');
-
-        try {
-            const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-                redirectTo: `${window.location.origin}/reset-password`
-            });
-
-            if (error) {
-                setError(error.message);
-                return;
-            }
-
-            toast({
-                title: "E-Mail gesendet!",
-                description: "Prüfen Sie Ihren Posteingang für den Passwort-Reset-Link.",
-            });
-        } catch (error) {
-            console.error('Error requesting password reset:', error);
-            setError('Ein Fehler beim Anfordern des Passwort-Resets ist aufgetreten.');
-        } finally {
-            setChangingPassword(false);
-        }
-    };
 
 
 
@@ -135,6 +110,9 @@ function AccountSettingsContent() {
 
     return (
         <div className="container mx-auto w-full max-w-xl space-y-6">
+            {/* Credit-Anzeige */}
+            <CreditDisplay showPurchaseButton={true} />
+            
             {/* E-Mail ändern */}
             <Card>
                 <CardHeader>
@@ -177,27 +155,12 @@ function AccountSettingsContent() {
                 </CardContent>
             </Card>
 
-            {/* Passwort zurücksetzen */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Passwort zurücksetzen</CardTitle>
-                    <CardDescription>
-                        Fordern Sie eine "Passwort zurücksetzen" E-Mail an, um Ihr Passwort zu ändern.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Button
-                        onClick={handleRequestPasswordReset}
-                        className="w-full"
-                        disabled={changingPassword}
-                    >
-                        {changingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Passwort zurücksetzen
-                    </Button>
-                </CardContent>
-            </Card>
-
-
+            {/* Fehlerbehandlung */}
+            {error && (
+                <Alert>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
         </div>
     );
 }
