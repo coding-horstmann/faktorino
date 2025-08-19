@@ -74,24 +74,14 @@ export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: C
 
   return (
     <div className="bg-gradient-to-r from-blue-50 via-blue-100 to-blue-200 border-blue-300 rounded-lg p-6 border shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white rounded-lg shadow-sm">
-            <Zap className="h-5 w-5 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">Verbleibende Rechnungen</h3>
-            <p className="text-sm text-gray-600">Ihr aktuelles Credit-Guthaben für die Rechnungserstellung</p>
-          </div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-white rounded-lg shadow-sm">
+          <Zap className="h-5 w-5 text-blue-600" />
         </div>
-        
-        {showPurchaseButton && (
-          <Button asChild variant="outline" size="sm" className="bg-white hover:bg-gray-50">
-            <Link href="/credits">
-              Credits kaufen
-            </Link>
-          </Button>
-        )}
+        <div>
+          <h3 className="font-semibold text-gray-900">Verbleibende Rechnungen</h3>
+          <p className="text-sm text-gray-600">Ihr aktuelles Credit-Guthaben für die Rechnungserstellung</p>
+        </div>
       </div>
 
       {/* Hauptanzeige */}
@@ -108,7 +98,7 @@ export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: C
 
         {/* Fortschrittsleiste */}
         <div className="space-y-2">
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
             <div 
               className="h-full rounded-full transition-all duration-500 ease-out bg-blue-900"
               style={{ width: `${progressPercentage}%` }}
@@ -126,6 +116,15 @@ export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: C
               </span>
             </div>
           </div>
+        )}
+
+        {/* Credits kaufen Button - breit wie Rechnungen generieren Button */}
+        {showPurchaseButton && (
+          <Button asChild className="w-full bg-blue-950 hover:bg-blue-900 text-white">
+            <Link href="/credits">
+              Credits kaufen
+            </Link>
+          </Button>
         )}
       </div>
     </div>
