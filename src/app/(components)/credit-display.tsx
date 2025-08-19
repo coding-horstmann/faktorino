@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { CreditService, type UserCredits } from '@/lib/credit-service';
 import { Button } from '@/components/ui/button';
 import { Loader2, CreditCard, Zap } from 'lucide-react';
-import Link from 'next/link';
 
 interface CreditDisplayProps {
   maxCredits?: number; // Für die Fortschrittsleiste (Standard: 100)
@@ -120,10 +119,14 @@ export function CreditDisplay({ maxCredits = 100, showPurchaseButton = true }: C
 
         {/* Credits kaufen Button - breit wie Rechnungen generieren Button */}
         {showPurchaseButton && (
-          <Button asChild className="w-full bg-blue-950 hover:bg-blue-900 text-white">
-            <Link href="/credits">
-              Credits kaufen
-            </Link>
+          <Button 
+            className="w-full bg-blue-950 hover:bg-blue-900 text-white"
+            onClick={() => {
+              // TODO: Hier kommt später der direkte Checkout
+              alert('Direkter Checkout wird bald implementiert');
+            }}
+          >
+            Credits kaufen
           </Button>
         )}
       </div>
