@@ -42,6 +42,7 @@ const summarySchema = z.object({
 const processCsvOutputSchema = z.object({
   invoices: z.array(invoiceSchema),
   summary: summarySchema,
+  warning: z.string().optional(),
 });
 
 export type Invoice = z.infer<typeof invoiceSchema>;
@@ -395,25 +396,29 @@ export async function generateInvoicesAction(
     }
 
     // **NEUE CREDIT-VALIDIERUNG**
-    // Prüfe ob Benutzer genügend Credits hat
-    const hasEnoughCredits = await CreditService.hasEnoughCredits(userId, invoiceDrafts.length);
+    // Prüfe Credits und begrenze Rechnungen entsprechend
+    const userCredits = await CreditService.getUserCredits(userId);
+    const currentCredits = userCredits?.credits || 0;
     
-    if (!hasEnoughCredits) {
-      const userCredits = await CreditService.getUserCredits(userId);
-      const currentCredits = userCredits?.credits || 0;
-      
-      if (currentCredits === 0) {
-        return { 
-          data: null, 
-          error: `Sie haben keine Credits mehr verfügbar. Sie benötigen ${invoiceDrafts.length} Credits, aber haben ${currentCredits} Credits. Bitte kaufen Sie Credits, um Rechnungen zu erstellen.` 
-        };
-      } else {
-        return { 
-          data: null, 
-          error: `Nicht genügend Credits verfügbar. Sie benötigen ${invoiceDrafts.length} Credits, aber haben nur ${currentCredits} Credits. Bitte kaufen Sie Credits, um alle Rechnungen zu erstellen.` 
-        };
-      }
+    if (currentCredits === 0) {
+      return { 
+        data: null, 
+        error: `Sie haben keine Credits mehr verfügbar. Sie benötigen ${invoiceDrafts.length} Credits, aber haben ${currentCredits} Credits. Bitte kaufen Sie Credits, um Rechnungen zu erstellen.` 
+      };
     }
+    
+    // Begrenze Rechnungen auf verfügbare Credits
+    let limitedInvoiceDrafts = invoiceDrafts;
+    let limitWarning = '';
+    
+    if (invoiceDrafts.length > currentCredits) {
+      limitedInvoiceDrafts = invoiceDrafts.slice(0, currentCredits);
+      limitWarning = `Nur ${currentCredits} von ${invoiceDrafts.length} Rechnungen erstellt (nicht genügend Credits verfügbar).`;
+      console.log(`Credit-Limitierung: ${limitedInvoiceDrafts.length} von ${invoiceDrafts.length} Rechnungen werden erstellt`);
+    }
+    
+    // Verwende die begrenzten Rechnungen für die weitere Verarbeitung
+    invoiceDrafts = limitedInvoiceDrafts;
     
     // Group invoices by year
     const draftsByYear: { [year: number]: Omit<Invoice, 'invoiceNumber'>[] } = {};
@@ -495,6 +500,7 @@ export async function generateInvoicesAction(
         totalNetSales,
         totalVat,
       },
+      warning: limitWarning || undefined,
     };
     
     return { data: result, error: null };

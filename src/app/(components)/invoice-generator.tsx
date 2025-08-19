@@ -25,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UsageService, type MonthlyUsage } from '@/lib/usage-service';
+// UsageService entfernt - jetzt Credit-System
 
 const formSchema = z.object({
   csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
@@ -67,7 +67,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [monthlyUsage, setMonthlyUsage] = useState<MonthlyUsage | null>(null);
+  // monthlyUsage entfernt - jetzt Credit-System
   const [sortField, setSortField] = useState<'orderDate' | 'invoiceNumber'>('orderDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -125,12 +125,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     const loadUsage = async () => {
       if (!user) return;
 
-      try {
-        const usage = await UsageService.getCurrentMonthUsage(user.id);
-        setMonthlyUsage(usage);
-      } catch (error) {
-        console.error('Error loading usage:', error);
-      }
+      // UsageService entfernt - Credits werden jetzt im Dashboard angezeigt
     };
 
     loadUsage();
@@ -521,11 +516,10 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 return;
             }
 
-            // **ERSETZT DURCH CREDIT-SYSTEM**
+            // **CREDIT-SYSTEM**
             // Die Credit-Validierung erfolgt bereits in generateInvoicesAction()
-            // Hier erstellen wir einfach alle verfügbaren Rechnungen
             let invoicesToCreate = uniqueNewInvoices;
-            let limitWarning = '';
+            let limitWarning = response.data.warning || '';
 
             console.log('InvoiceGenerator: Saving', invoicesToCreate.length, 'new invoices to Supabase');
 
@@ -756,11 +750,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                   'Rechnungen generieren'
                 )}
               </Button>
-               {monthlyUsage && (
-                 <div className="w-full text-center text-sm text-muted-foreground">
-                     Erstellte Rechnungen in diesem Monat: {monthlyUsage.invoice_count.toLocaleString()} / {monthlyUsage.limit.toLocaleString()}
-                 </div>
-               )}
+               {/* monthlyUsage entfernt - Credits werden im Dashboard angezeigt */}
             </CardFooter>
           </form>
         </Form>
