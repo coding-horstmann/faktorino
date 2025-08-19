@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
 import { CreditDashboard } from '@/app/(components)/credit-dashboard';
@@ -23,8 +23,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 
-export default function DashboardPage() {
-
+function DashboardContent() {
   const { toast } = useToast();
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -453,5 +452,22 @@ export default function DashboardPage() {
             </AlertDialogContent>
         </AlertDialog>
       </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-4xl mx-auto space-y-6">
+        <div className="text-center">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <Loader className="h-12 w-12 text-primary animate-spin" />
+            <h1 className="text-2xl font-bold text-primary">Lädt...</h1>
+          </div>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
