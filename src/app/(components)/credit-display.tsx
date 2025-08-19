@@ -14,24 +14,36 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
   const { user } = useAuth();
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     if (user) {
-      loadCreditData();
+      loadCreditData(true); // Nur beim ersten Laden das Ladezeichen zeigen
     }
   }, [user]);
 
-  const loadCreditData = async () => {
+  const loadCreditData = async (showLoader = false) => {
     if (!user) return;
     
-    setLoading(true);
+    // Nur beim ersten Laden oder wenn explizit gewünscht das Ladezeichen anzeigen
+    if (showLoader) {
+      setLoading(true);
+    }
+    
     try {
       const userCredits = await CreditService.getUserCredits(user.id);
       setCredits(userCredits);
+      
+      // Nach dem ersten erfolgreichen Laden ist die Komponente initialisiert
+      if (!isInitialized) {
+        setIsInitialized(true);
+      }
     } catch (error) {
       console.error('Error loading credit data:', error);
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   };
 
@@ -42,14 +54,14 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
     // Custom Event Listener für sofortige Updates
     const handleCreditUpdate = () => {
       console.log('Credit update event received, reloading data...');
-      loadCreditData();
+      loadCreditData(false); // Kein Ladezeichen bei Event-Updates
     };
     
     const handleCreditChange = (event: CustomEvent) => {
       console.log('Credit change event received:', event.detail);
       // Nur aktualisieren wenn es für den aktuellen User ist
       if (event.detail?.userId === user.id) {
-        loadCreditData();
+        loadCreditData(false); // Kein Ladezeichen bei Event-Updates
       }
     };
     
@@ -58,7 +70,7 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
     
     // Polling als Fallback für Echtzeit-Updates alle 10 Sekunden (statt 30)
     const interval = setInterval(() => {
-      loadCreditData();
+      loadCreditData(false); // Kein Ladezeichen bei Polling-Updates
     }, 10000);
 
     return () => {
@@ -68,7 +80,8 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
     };
   }, [user]);
 
-  if (loading) {
+  // Nur beim allerersten Laden das Ladezeichen anzeigen
+  if (loading && !isInitialized) {
     return (
       <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
         <div className="flex items-center justify-center">
