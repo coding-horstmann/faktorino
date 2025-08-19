@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { X, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { EmailService, type OrderConfirmationData } from '@/lib/email-service';
 
 interface CreditPackage {
   id: string;
@@ -127,45 +126,9 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
     setIsProcessing(true);
 
     try {
-      // Bestell-ID generieren
-      const orderId = `ORDER-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Bestelldaten für E-Mail vorbereiten
-      const orderData: OrderConfirmationData = {
-        orderId,
-        customerEmail: formData.email,
-        customerName: `${formData.firstName} ${formData.lastName}`,
-        packageName: `${selectedPkg.credits} Credits`,
-        credits: selectedPkg.credits,
-        price: selectedPkg.price,
-        orderDate: new Date().toISOString(),
-        customerAddress: {
-          street: formData.street,
-          postalCode: formData.postalCode,
-          city: formData.city,
-        },
-        vatId: formData.vatId || undefined,
-      };
-
-      // E-Mail-Bestätigung versenden
-      const emailSent = await EmailService.sendOrderConfirmation(orderData);
-      
-      if (emailSent) {
-        toast({
-          title: "Bestellbestätigung gesendet",
-          description: `Eine Bestellbestätigung wurde an ${formData.email} gesendet.`,
-        });
-      } else {
-        toast({
-          title: "E-Mail konnte nicht gesendet werden",
-          description: "Ihre Bestellung wurde aufgenommen, aber die Bestätigungs-E-Mail konnte nicht versendet werden.",
-          variant: "destructive"
-        });
-      }
-
       // TODO: Hier würde die echte PayPal-Integration kommen
       // Simulation der PayPal-Weiterleitung
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       toast({
         title: "Weiterleitung zu PayPal",
