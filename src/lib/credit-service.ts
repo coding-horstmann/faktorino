@@ -49,11 +49,15 @@ export class CreditService {
    * Benutzer-Credits abrufen
    */
   static async getUserCredits(userId: string): Promise<UserCredits | null> {
+    console.log('CreditService.getUserCredits called for user:', userId);
+    
     const { data, error } = await supabase
       .from('user_credits')
       .select('*')
       .eq('user_id', userId)
       .maybeSingle()
+
+    console.log('CreditService.getUserCredits result:', { data, error });
 
     if (error) {
       console.error('Error fetching user credits:', error)
