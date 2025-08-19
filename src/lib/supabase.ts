@@ -148,6 +148,155 @@ export type Database = {
           updated_at?: string
         }
       }
+      user_credits: {
+        Row: {
+          id: string
+          user_id: string
+          credits: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          credits?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          credits?: number
+          updated_at?: string
+        }
+      }
+      credit_packages: {
+        Row: {
+          id: string
+          name: string
+          credits: number
+          price_euros: number
+          description: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          credits: number
+          price_euros: number
+          description?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          credits?: number
+          price_euros?: number
+          description?: string | null
+          is_active?: boolean
+          updated_at?: string
+        }
+      }
+      credit_transactions: {
+        Row: {
+          id: string
+          user_id: string
+          transaction_type: 'purchase' | 'usage' | 'refund' | 'bonus'
+          credits_change: number
+          credits_balance_after: number
+          description: string | null
+          purchase_id: string | null
+          invoice_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          transaction_type: 'purchase' | 'usage' | 'refund' | 'bonus'
+          credits_change: number
+          credits_balance_after: number
+          description?: string | null
+          purchase_id?: string | null
+          invoice_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          transaction_type?: 'purchase' | 'usage' | 'refund' | 'bonus'
+          credits_change?: number
+          credits_balance_after?: number
+          description?: string | null
+          purchase_id?: string | null
+          invoice_id?: string | null
+        }
+      }
+      credit_purchases: {
+        Row: {
+          id: string
+          user_id: string
+          package_id: string | null
+          credits_purchased: number
+          price_paid: number
+          payment_status: 'pending' | 'completed' | 'failed' | 'refunded'
+          paypal_transaction_id: string | null
+          paypal_payment_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          package_id?: string | null
+          credits_purchased: number
+          price_paid: number
+          payment_status?: 'pending' | 'completed' | 'failed' | 'refunded'
+          paypal_transaction_id?: string | null
+          paypal_payment_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          package_id?: string | null
+          credits_purchased?: number
+          price_paid?: number
+          payment_status?: 'pending' | 'completed' | 'failed' | 'refunded'
+          paypal_transaction_id?: string | null
+          paypal_payment_id?: string | null
+          updated_at?: string
+        }
+      }
+      invoice_counters: {
+        Row: {
+          id: string
+          user_id: string
+          year: number
+          last_number: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          year: number
+          last_number?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          year?: number
+          last_number?: number
+          updated_at?: string
+        }
+      }
     }
   }
 }

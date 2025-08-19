@@ -5,6 +5,7 @@ import Papa from 'papaparse';
 import { z } from 'zod';
 import type { UserInfo } from '@/lib/pdf-generator';
 import { InvoiceService } from '@/lib/invoice-service';
+import { CreditService } from '@/lib/credit-service';
 import { supabase } from '@/lib/supabase';
 
 const invoiceItemSchema = z.object({
@@ -391,6 +392,27 @@ export async function generateInvoicesAction(
 
     if (invoiceDrafts.length === 0) {
         return { data: null, error: "Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen." };
+    }
+
+    // **NEUE CREDIT-VALIDIERUNG**
+    // Prüfe ob Benutzer genügend Credits hat
+    const hasEnoughCredits = await CreditService.hasEnoughCredits(userId, invoiceDrafts.length);
+    
+    if (!hasEnoughCredits) {
+      const userCredits = await CreditService.getUserCredits(userId);
+      const currentCredits = userCredits?.credits || 0;
+      
+      if (currentCredits === 0) {
+        return { 
+          data: null, 
+          error: `Sie haben keine Credits mehr verfügbar. Sie benötigen ${invoiceDrafts.length} Credits, aber haben ${currentCredits} Credits. Bitte kaufen Sie Credits, um Rechnungen zu erstellen.` 
+        };
+      } else {
+        return { 
+          data: null, 
+          error: `Nicht genügend Credits verfügbar. Sie benötigen ${invoiceDrafts.length} Credits, aber haben nur ${currentCredits} Credits. Bitte kaufen Sie Credits, um alle Rechnungen zu erstellen.` 
+        };
+      }
     }
     
     // Group invoices by year

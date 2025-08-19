@@ -8,6 +8,7 @@ import { generateInvoicesAction, type Invoice } from '@/app/actions';
 import { generatePdf, type UserInfo } from '@/lib/pdf-generator';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoiceService } from '@/lib/invoice-service';
+import { CreditService } from '@/lib/credit-service';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -520,28 +521,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 return;
             }
 
-            // Check usage limit and create as many as possible
-            const usageCheck = await UsageService.canCreateInvoices(user.id, uniqueNewInvoices.length);
+            // **ERSETZT DURCH CREDIT-SYSTEM**
+            // Die Credit-Validierung erfolgt bereits in generateInvoicesAction()
+            // Hier erstellen wir einfach alle verfügbaren Rechnungen
             let invoicesToCreate = uniqueNewInvoices;
             let limitWarning = '';
-
-            if (!usageCheck.canCreate) {
-                if (usageCheck.usage.remaining === 0) {
-                    setError('Sie haben Ihr monatliches Limit von 10.000 Rechnungen erreicht. Das Limit wird am 1. des nächsten Monats zurückgesetzt.');
-                    setIsLoading(false);
-                    return;
-                } else {
-                    // Create only as many as possible
-                    invoicesToCreate = uniqueNewInvoices.slice(0, usageCheck.usage.remaining);
-                    limitWarning = `Nur ${usageCheck.usage.remaining} von ${uniqueNewInvoices.length} Rechnungen erstellt (Monatslimit erreicht).`;
-                }
-            }
-            
-            if (invoicesToCreate.length === 0 && uniqueNewInvoices.length > 0) {
-                 setError('Sie haben Ihr monatliches Limit von 10.000 Rechnungen erreicht. Das Limit wird am 1. des nächsten Monats zurückgesetzt.');
-                 setIsLoading(false);
-                 return;
-            }
 
             console.log('InvoiceGenerator: Saving', invoicesToCreate.length, 'new invoices to Supabase');
 
@@ -576,13 +560,26 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                 console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
 
                 if (savedInvoices.length > 0) {
-                    // Update usage tracking
+                    // **NEUE CREDIT-DEKREMENTIERUNG**
                     try {
-                        const updatedUsage = await UsageService.incrementUsage(user.id, savedInvoices.length);
-                        setMonthlyUsage(updatedUsage);
-                    } catch (usageError) {
-                        console.error('Error updating usage:', usageError);
-                        // Don't fail the whole process if usage tracking fails
+                        const creditResult = await CreditService.useCredits(
+                            user.id, 
+                            savedInvoices.length, 
+                            `${savedInvoices.length} Rechnungen erstellt`
+                        );
+                        
+                        if (!creditResult.success) {
+                            console.error('Error using credits:', creditResult.error);
+                            // Don't fail the whole process if credit tracking fails, but warn user
+                            toast({
+                                title: "Credits-Update Fehler",
+                                description: "Rechnungen wurden erstellt, aber Credits konnten nicht aktualisiert werden.",
+                                variant: "destructive"
+                            });
+                        }
+                    } catch (creditError) {
+                        console.error('Error updating credits:', creditError);
+                        // Don't fail the whole process if credit tracking fails
                     }
 
                     updateInvoices([...invoices, ...invoicesToCreate].sort((a, b) => {

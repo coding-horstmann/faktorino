@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { InvoiceGenerator } from '@/app/(components)/invoice-generator';
+import { CreditDashboard } from '@/app/(components)/credit-dashboard';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, Loader } from 'lucide-react';
+import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, Loader, CreditCard } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
@@ -18,6 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 
 export default function DashboardPage() {
@@ -293,7 +295,28 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-
+        {/* Credit-Übersicht */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 justify-between">
+              <div className="flex items-center gap-2">
+                <CreditCard className="text-primary"/>
+                Credit-Übersicht
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/credits">
+                  Verwalten
+                </Link>
+              </Button>
+            </CardTitle>
+            <CardDescription>
+              Ihr aktuelles Credit-Guthaben für die Rechnungserstellung
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <CreditDashboard showPurchaseOption={false} />
+          </CardContent>
+        </Card>
         
         <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
           <AccordionItem value="item-1">
