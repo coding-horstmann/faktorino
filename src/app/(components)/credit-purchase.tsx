@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CreditCard, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PayPalButton } from '@/components/paypal/PayPalButton';
+import { PayPalFallback } from '@/components/paypal/PayPalFallback';
 
 interface CreditPurchaseProps {
   onPurchaseComplete?: () => void;
@@ -22,6 +23,11 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null);
+  
+  // Check if PayPal is configured
+  const isPayPalConfigured = !!process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
+  
+  console.log('CreditPurchase - PayPal configured:', isPayPalConfigured);
 
   useEffect(() => {
     loadPackages();
@@ -156,11 +162,18 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <PayPalButton
-                  creditPackage={selectedPackage}
-                  onSuccess={handlePayPalSuccess}
-                  onError={handlePayPalError}
-                />
+                {isPayPalConfigured ? (
+                  <PayPalButton
+                    creditPackage={selectedPackage}
+                    onSuccess={handlePayPalSuccess}
+                    onError={handlePayPalError}
+                  />
+                ) : (
+                  <PayPalFallback
+                    creditPackage={selectedPackage}
+                    onError={handlePayPalError}
+                  />
+                )}
                 <Button 
                   variant="outline" 
                   className="w-full"

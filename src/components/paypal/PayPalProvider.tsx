@@ -10,8 +10,10 @@ interface PayPalProviderProps {
 export function PayPalProvider({ children }: PayPalProviderProps) {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 
+  console.log('PayPalProvider - Client ID:', clientId ? 'SET' : 'MISSING');
+
   if (!clientId) {
-    // In development/build ohne PayPal-Credentials: Silent fallback
+    console.warn('PayPal Client ID not configured, falling back to children only');
     return <>{children}</>;
   }
 

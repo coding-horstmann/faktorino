@@ -17,6 +17,8 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
+  console.log('PayPalButton - State:', { isPending, isRejected, creditPackage: creditPackage.name });
+
   if (isPending) {
     return (
       <div className="flex items-center justify-center py-4">
@@ -28,8 +30,22 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
 
   if (isRejected) {
     return (
-      <div className="text-center py-4 text-red-600">
-        Fehler beim Laden von PayPal. Bitte versuchen Sie es später erneut.
+      <div className="text-center py-4">
+        <div className="text-red-600 mb-4">
+          PayPal konnte nicht geladen werden.
+        </div>
+        <button 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+          onClick={() => {
+            toast({
+              title: "PayPal-Integration",
+              description: "PayPal-Service ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut oder kontaktieren Sie den Support.",
+              variant: "destructive",
+            });
+          }}
+        >
+          Jetzt mit PayPal bezahlen (Service nicht verfügbar)
+        </button>
       </div>
     );
   }
