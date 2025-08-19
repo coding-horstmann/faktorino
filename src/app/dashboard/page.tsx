@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, CreditCard, Loader } from 'lucide-react';
+import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, Loader } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
@@ -71,15 +71,12 @@ export default function DashboardPage() {
   const [isTaxIdError, setIsTaxIdError] = useState(false);
   const [showEmailBanner, setShowEmailBanner] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  // Billing-Infos erst nach Ladevorgang rendern, um Banner-Flickern zu vermeiden
-  const [billingInfo, setBillingInfo] = useState<{ status: string | null, trial_end: string | null, subscription_id?: string | null } | null>(null);
-  const [billingLoading, setBillingLoading] = useState(false);
+
 
   useEffect(() => {
     const loadUserProfile = async () => {
       if (!user) return;
 
-      setBillingLoading(true);
       try {
         const profile = await UserService.getUserProfile(user.id);
         if (profile) {
@@ -97,51 +94,14 @@ export default function DashboardPage() {
         } else {
           setAccordionValue("item-1"); // Open if no data is saved
         }
-        // Load billing info
-        try {
-          const { data } = await supabase
-            .from('users')
-            .select('subscription_status, trial_end, stripe_subscription_id')
-            .eq('id', user.id)
-            .single();
-          if (data) setBillingInfo({ status: (data as any).subscription_status || null, trial_end: (data as any).trial_end || null, subscription_id: (data as any).stripe_subscription_id || null });
-        } catch (e) {
-          // keep default which shows subscribe banner for non-abos
-        }
       } catch (error) {
         console.error("Could not load user profile from Supabase", error);
         setAccordionValue("item-1");
-      } finally {
-        setBillingLoading(false);
       }
     };
 
     if (user) {
       loadUserProfile();
-    }
-
-    // Realtime-Updates der Billing-Infos (z.B. nach Webhook-Änderungen)
-    if (user) {
-      const channel = supabase
-        .channel('billing-updates')
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'users',
-          filter: `id=eq.${user.id}`,
-        }, (payload: any) => {
-          const row = payload.new || {};
-          setBillingInfo({
-            status: row.subscription_status || null,
-            trial_end: row.trial_end || null,
-            subscription_id: row.stripe_subscription_id || null,
-          });
-        })
-        .subscribe();
-
-      return () => {
-        try { supabase.removeChannel(channel); } catch {}
-      }
     }
   }, [user, loading]);
 
@@ -280,32 +240,7 @@ export default function DashboardPage() {
     }
   };
 
-  const startCheckout = async () => {
-    try {
-      setBillingLoading(true);
-      const res = await fetch('/api/stripe/checkout', { method: 'POST', credentials: 'include' });
-      const data = await res.json();
-      if (data?.url) {
-        window.location.href = data.url as string;
-        return;
-      }
-      throw new Error(data?.error || 'Checkout fehlgeschlagen');
-    } catch (e) {
-      toast({ variant: 'destructive', title: 'Fehler', description: e instanceof Error ? e.message : 'Checkout fehlgeschlagen' });
-    } finally {
-      // setBillingLoading(false); // Already handled in loadUserProfile
-    }
-  };
 
-  // Compute trial state and remaining days
-  const trialInfo = (() => {
-    if (!billingInfo?.trial_end) return { trialActive: false, remainingDays: 0 } as const;
-    const end = new Date(billingInfo.trial_end);
-    const now = Date.now();
-    const trialActive = end.getTime() > now;
-    const remainingDays = trialActive ? Math.ceil((end.getTime() - now) / (1000 * 60 * 60 * 24)) : 0;
-    return { trialActive, remainingDays } as const;
-  })();
 
   // Zeige Loading während Authentifizierung oder Ausloggen
   if (loading) {
@@ -358,53 +293,7 @@ export default function DashboardPage() {
           </Alert>
         )}
 
-        {/* Trial banner (nur wenn geladen, kein aktives Abo und keine Stripe-Subscription) */}
-        {user && !billingLoading && billingInfo !== null && billingInfo.status !== 'active' && !billingInfo.subscription_id && (billingInfo.status === 'trialing' || trialInfo.trialActive) && (
-          <Alert className="border-blue-200 bg-blue-50">
-            <CreditCard className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="flex items-center justify-between w-full">
-              <div className="flex-1">
-                <span className="text-blue-800 font-medium">Kostenloser Test aktiv</span>
-                <span className="text-blue-700 ml-2">
-                  Noch {trialInfo.remainingDays} Tag{trialInfo.remainingDays === 1 ? '' : 'e'} verbleibend. Sichern Sie sich nahtlosen Zugang, indem Sie jetzt Ihr Abo starten.
-                </span>
-              </div>
-              <div className="flex items-center gap-2 ml-4">
-                <Button
-                  onClick={startCheckout}
-                  disabled={billingLoading}
-                  className="h-9 px-3 border border-blue-300 text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  Jetzt abonnieren
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
 
-        {/* Billing banner (no access) nur ohne aktives Abo; erst nach Ladedaten */}
-        {user && !billingLoading && billingInfo !== null && (!billingInfo.status || (billingInfo.status !== 'active' && billingInfo.status !== 'trialing')) && (
-          <Alert className="border-blue-200 bg-blue-50">
-            <CreditCard className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="flex items-center justify-between w-full">
-              <div className="flex-1">
-                <span className="text-blue-800 font-medium">Abo erforderlich:</span>
-                <span className="text-blue-700 ml-2">
-                  Starten Sie jetzt Ihr Abo für 4,99 € / Monat, um alle Funktionen zu nutzen.
-                </span>
-              </div>
-              <div className="flex items-center gap-2 ml-4">
-                <Button
-                  onClick={startCheckout}
-                  disabled={billingLoading}
-                  className="h-9 px-3 border border-blue-300 text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  Jetzt abonnieren
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
         
         <Accordion type="single" collapsible className="w-full" value={accordionValue} onValueChange={setAccordionValue}>
           <AccordionItem value="item-1">

@@ -5,7 +5,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://demo.supaba
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'demo_key'
 
 // In der Browser-Umgebung schreiben wir die Auth-Session zusätzlich in Cookies,
-// damit Server-Routen (z. B. /api/stripe/checkout) den Benutzer authentifizieren können.
+// damit Server-Routen den Benutzer authentifizieren können.
 export const supabase = typeof window !== 'undefined'
   ? createBrowserClient(supabaseUrl, supabaseKey)
   : createClient(supabaseUrl, supabaseKey, {
@@ -30,10 +30,7 @@ export type Database = {
           vat_id: string | null
           tax_status: 'regular' | 'small_business'
           logo_url: string | null
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'paused' | null
-          trial_end?: string | null
+
           current_period_end?: string | null
           cancel_at_period_end?: boolean | null
           created_at: string
@@ -49,10 +46,7 @@ export type Database = {
           vat_id?: string | null
           tax_status: 'regular' | 'small_business'
           logo_url?: string | null
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'paused' | null
-          trial_end?: string | null
+
           current_period_end?: string | null
           cancel_at_period_end?: boolean | null
           created_at?: string
@@ -68,10 +62,7 @@ export type Database = {
           vat_id?: string | null
           tax_status?: 'regular' | 'small_business'
           logo_url?: string | null
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          subscription_status?: 'trialing' | 'active' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'paused' | null
-          trial_end?: string | null
+
           current_period_end?: string | null
           cancel_at_period_end?: boolean | null
           updated_at?: string

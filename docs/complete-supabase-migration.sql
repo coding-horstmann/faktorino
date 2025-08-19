@@ -246,28 +246,6 @@ $$ LANGUAGE plpgsql VOLATILE SECURITY DEFINER;
 -- Grant permissions for the reserve function
 GRANT EXECUTE ON FUNCTION public.reserve_invoice_numbers(UUID, INT, INT) TO authenticated;
 
--- Add Stripe-related fields to users table if they don't exist
-DO $$
-BEGIN
-    -- Add stripe_customer_id column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'stripe_customer_id') THEN
-        ALTER TABLE public.users ADD COLUMN stripe_customer_id TEXT;
-    END IF;
-    
-    -- Add subscription_status column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'subscription_status') THEN
-        ALTER TABLE public.users ADD COLUMN subscription_status TEXT DEFAULT 'trial';
-    END IF;
-    
-    -- Add trial_end column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'trial_end') THEN
-        ALTER TABLE public.users ADD COLUMN trial_end TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '14 days');
-    END IF;
-    
-    -- Add subscription_end column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'subscription_end') THEN
-        ALTER TABLE public.users ADD COLUMN subscription_end TIMESTAMP WITH TIME ZONE;
-    END IF;
-END $$;
+
 
 -- Setup complete! Your database is now ready for the EtsyBuchhalter application.
