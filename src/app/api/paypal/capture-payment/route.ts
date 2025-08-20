@@ -92,10 +92,10 @@ export async function POST(request: NextRequest) {
 
     // Credits hinzufügen
     const { data: creditResult, error: creditError } = await supabase.rpc('add_credits', {
-      user_id: user.id,
-      credits_to_add: purchaseData.credits_purchased,
-      transaction_type: 'purchase',
-      transaction_reference: `paypal_${orderID}`
+      p_user_id: user.id,
+      p_credits_to_add: purchaseData.credits_purchased,
+      p_description: `PayPal Purchase ${orderID}`,
+      p_purchase_id: purchaseId
     });
 
     if (creditError) {

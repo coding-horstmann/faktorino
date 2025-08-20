@@ -33,6 +33,10 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
     initialOptions.debug = true;
   }
 
+  // FALLBACK: Explizite Umgebung setzen, falls Client ID nicht korrekt erkannt wird
+  // Entfernen Sie diese Zeile, wenn Sie eine echte Live-Client ID verwenden
+  // initialOptions.env = 'production'; // Für Live-Umgebung
+
   console.log('PayPalProvider - Final Options:', {
     clientId: clientId.substring(0, 8) + '...',
     debug: process.env.NODE_ENV !== 'production'
