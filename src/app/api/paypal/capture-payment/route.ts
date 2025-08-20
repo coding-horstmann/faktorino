@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { EmailService } from '@/lib/email-service';
 import { redirect } from 'next/navigation';
 
 interface PayPalCaptureRequest {
@@ -104,6 +105,40 @@ export async function POST(request: NextRequest) {
         { error: 'Fehler beim Hinzufügen der Credits' },
         { status: 500 }
       );
+    }
+
+    // E-Mail-Bestätigung senden
+    try {
+      const emailResult = await EmailService.sendCreditPurchaseConfirmation({
+        to: {
+          email: user.email!,
+          name: user.user_metadata?.full_name || user.email!
+        },
+        templateData: {
+          userName: user.user_metadata?.full_name || user.email!,
+          creditsAdded: purchaseData.credits_purchased,
+          newBalance: creditResult,
+          purchaseAmount: `€${purchaseData.price_paid.toFixed(2)}`,
+          transactionId: orderID,
+          date: new Date().toLocaleDateString('de-DE', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        }
+      });
+
+      if (!emailResult.success) {
+        console.error('Fehler beim Senden der Bestätigungs-E-Mail:', emailResult.error);
+        // E-Mail-Fehler soll den Kaufprozess nicht unterbrechen
+      } else {
+        console.log('Bestätigungs-E-Mail erfolgreich gesendet an:', user.email);
+      }
+    } catch (emailError) {
+      console.error('Unerwarteter Fehler beim E-Mail-Versand:', emailError);
+      // E-Mail-Fehler soll den Kaufprozess nicht unterbrechen
     }
 
     // Erfolgreiche Antwort
