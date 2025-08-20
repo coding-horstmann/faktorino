@@ -14,6 +14,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=AYour_PayPal_Client_ID_Here
 PAYPAL_CLIENT_SECRET=EYour_PayPal_Client_Secret_Here
+PAYPAL_ENVIRONMENT=live  # oder 'sandbox' für Tests
 ```
 
 ### 3. App-Konfiguration (NEU)
@@ -50,6 +51,10 @@ Name: PAYPAL_CLIENT_SECRET
 Value: EYour_PayPal_Live_Client_Secret
 Environment: Production ✅
 
+Name: PAYPAL_ENVIRONMENT
+Value: live
+Environment: Production ✅
+
 Name: NEXT_PUBLIC_BASE_URL
 Value: https://yourapp.vercel.app
 Environment: Production ✅
@@ -63,6 +68,10 @@ Environment: Development ✅
 
 Name: PAYPAL_CLIENT_SECRET
 Value: EYour_PayPal_Sandbox_Client_Secret  
+Environment: Development ✅
+
+Name: PAYPAL_ENVIRONMENT
+Value: sandbox
 Environment: Development ✅
 
 Name: NEXT_PUBLIC_BASE_URL

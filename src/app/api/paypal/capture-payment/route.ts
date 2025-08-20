@@ -5,9 +5,24 @@ import { redirect } from 'next/navigation';
 
 const PAYPAL_CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
-const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://api-m.paypal.com' 
-  : 'https://api-m.sandbox.paypal.com';
+
+// Flexiblere PayPal-Umgebungskonfiguration
+const getPayPalBaseUrl = () => {
+  // Neue Umgebungsvariable hat Vorrang
+  if (process.env.PAYPAL_ENVIRONMENT === 'live') {
+    return 'https://api-m.paypal.com';
+  }
+  if (process.env.PAYPAL_ENVIRONMENT === 'sandbox') {
+    return 'https://api-m.sandbox.paypal.com';
+  }
+  
+  // Fallback auf NODE_ENV-basierte Logik
+  return process.env.NODE_ENV === 'production' 
+    ? 'https://api-m.paypal.com' 
+    : 'https://api-m.sandbox.paypal.com';
+};
+
+const PAYPAL_BASE_URL = getPayPalBaseUrl();
 
 async function getPayPalAccessToken(): Promise<string> {
   if (!PAYPAL_CLIENT_ID || !PAYPAL_CLIENT_SECRET) {

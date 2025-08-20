@@ -12,6 +12,7 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
 
   console.log('PayPalProvider - Client ID:', clientId ? `SET (${clientId.substring(0, 8)}...)` : 'MISSING');
   console.log('PayPalProvider - Environment:', process.env.NODE_ENV);
+  console.log('PayPalProvider - PayPal Environment:', process.env.PAYPAL_ENVIRONMENT || 'auto-detected');
 
   if (!clientId) {
     console.warn('PayPal Client ID not configured, falling back to children only');
