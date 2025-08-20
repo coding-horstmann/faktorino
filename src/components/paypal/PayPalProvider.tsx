@@ -12,33 +12,51 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
 
   console.log('PayPalProvider - Client ID:', clientId ? `SET (${clientId.substring(0, 8)}...)` : 'MISSING');
   console.log('PayPalProvider - Environment:', process.env.NODE_ENV);
-  console.log('PayPalProvider - PayPal Environment:', process.env.PAYPAL_ENVIRONMENT || 'auto-detected');
+  console.log('PayPalProvider - PayPal Environment:', process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT || 'auto-detected');
 
   if (!clientId) {
     console.warn('PayPal Client ID not configured, falling back to children only');
     return <>{children}</>;
   }
 
-  // Bestimme automatisch die richtige Umgebung basierend auf der Client ID
-  // Sandbox Client IDs beginnen meist mit "AQ", "AB", "Ae" usw.
-  // Live Client IDs beginnen meist mit "AV", "AR", "AS" usw.
-  const isLiveEnvironment = clientId.startsWith('AV') || clientId.startsWith('AR') || clientId.startsWith('AS');
-  
-  console.log('PayPalProvider - Detected environment:', isLiveEnvironment ? 'live' : 'sandbox');
+  // Bestimme die PayPal-Umgebung basierend auf der NEXT_PUBLIC_PAYPAL_ENVIRONMENT-Variable
+  const getPayPalEnvironment = () => {
+    // Neue Umgebungsvariable hat Vorrang
+    if (process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live') {
+      return 'production';
+    }
+    if (process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'sandbox') {
+      return 'sandbox';
+    }
+    
+    // Fallback auf Client ID-basierte Erkennung
+    const isLiveEnvironment = clientId.startsWith('AV') || clientId.startsWith('AR') || clientId.startsWith('AS');
+    return isLiveEnvironment ? 'production' : 'sandbox';
+  };
 
-  const initialOptions = {
+  const paypalEnvironment = getPayPalEnvironment();
+  
+  console.log('PayPalProvider - Final PayPal Environment:', paypalEnvironment);
+
+  const initialOptions: any = {
     clientId: clientId,
     currency: 'EUR',
     intent: 'capture',
     components: 'buttons',
-    // Setze die richtige Umgebung
+    env: paypalEnvironment, // Wichtig: Setze die PayPal-Umgebung
     'data-sdk-integration-source': 'react-paypal-js'
   };
 
-  // Für Live-Umgebung explizit setzen
-  if (isLiveEnvironment) {
-    initialOptions.debug = false;
+  // Debug-Modus nur für Sandbox
+  if (paypalEnvironment === 'sandbox') {
+    initialOptions.debug = true;
   }
+
+  console.log('PayPalProvider - Final Options:', {
+    clientId: clientId.substring(0, 8) + '...',
+    env: paypalEnvironment,
+    debug: paypalEnvironment === 'sandbox'
+  });
 
   return (
     <PayPalScriptProvider options={initialOptions}>
