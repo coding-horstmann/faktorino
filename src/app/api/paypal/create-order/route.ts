@@ -99,8 +99,8 @@ export async function POST(request: NextRequest) {
       package_id: packageId,
       credits_purchased: credits,
       price_paid: price,
-      payment_status: 'pending',
-      payment_method: 'paypal'
+      payment_status: 'pending'
+      // payment_method entfernt, da Spalte nicht existiert
     };
 
     console.log('create-order: Purchase data to insert:', purchaseData);
