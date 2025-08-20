@@ -2,27 +2,26 @@
 
 ## 🎯 Übersicht
 
-Die PayPal-Integration wurde so erweitert, dass Sie flexibel zwischen Sandbox und Live-Umgebung wechseln können, unabhängig von der NODE_ENV-Einstellung.
+Die PayPal-Integration wurde so erweitert, dass Sie flexibel zwischen Sandbox und Live-Umgebung wechseln können, unabhängig von der NODE_ENV-Einstellung. **Nur die PayPal Client ID ist erforderlich - kein Secret Key nötig!**
 
-## 🔧 Neue Umgebungsvariablen
+## 🔧 Erforderliche Umgebungsvariable
 
-### NEXT_PUBLIC_PAYPAL_ENVIRONMENT (Frontend)
+### NEXT_PUBLIC_PAYPAL_CLIENT_ID
 Fügen Sie diese Variable in Ihr Vercel-Dashboard hinzu:
+
+```bash
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=Ihre_PayPal_Client_ID_hier
+```
+
+### NEXT_PUBLIC_PAYPAL_ENVIRONMENT (Optional)
+Für explizite Umgebungskontrolle:
 
 ```bash
 NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live    # Für Live-Umgebung
 NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox # Für Sandbox-Umgebung
 ```
 
-### PAYPAL_ENVIRONMENT (Backend)
-Für die API-Routen:
-
-```bash
-PAYPAL_ENVIRONMENT=live    # Für Live-Umgebung
-PAYPAL_ENVIRONMENT=sandbox # Für Sandbox-Umgebung
-```
-
-**Wichtig:** Beide Variablen müssen gesetzt werden für vollständige Funktionalität!
+**Wichtig:** Ohne `NEXT_PUBLIC_PAYPAL_ENVIRONMENT` wird automatisch erkannt!
 
 ## 📋 Konfigurationsoptionen
 
@@ -30,28 +29,21 @@ PAYPAL_ENVIRONMENT=sandbox # Für Sandbox-Umgebung
 
 ```bash
 # Für Live-Tests
-NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live
-PAYPAL_ENVIRONMENT=live
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=Ihre_Live_Client_ID
-PAYPAL_CLIENT_SECRET=Ihr_Live_Client_Secret
+NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live
 
 # Für Sandbox-Tests  
-NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox
-PAYPAL_ENVIRONMENT=sandbox
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=Ihre_Sandbox_Client_ID
-PAYPAL_CLIENT_SECRET=Ihr_Sandbox_Client_Secret
+NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox
 ```
 
 ### Option 2: Automatische Erkennung (Fallback)
 
-Wenn die Umgebungsvariablen nicht gesetzt sind, wird automatisch erkannt:
+Wenn `NEXT_PUBLIC_PAYPAL_ENVIRONMENT` nicht gesetzt ist, wird automatisch erkannt:
 
 ```bash
-# Production Environment → Live
-NODE_ENV=production → https://api-m.paypal.com
-
-# Development/Preview → Sandbox  
-NODE_ENV=development → https://api-m.sandbox.paypal.com
+# Live Client IDs beginnen mit "AV", "AR", "AS" → Live-Umgebung
+# Sandbox Client IDs beginnen mit "AQ", "AB", "Ae" → Sandbox-Umgebung
 ```
 
 ## 🚀 Vercel-Konfiguration
@@ -60,10 +52,8 @@ NODE_ENV=development → https://api-m.sandbox.paypal.com
 
 ```bash
 # Vercel Environment Variables (Production)
-NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live
-PAYPAL_ENVIRONMENT=live
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=AYour_Live_Client_ID
-PAYPAL_CLIENT_SECRET=EYour_Live_Client_Secret
+NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live
 NEXT_PUBLIC_BASE_URL=https://yourapp.vercel.app
 ```
 
@@ -71,10 +61,8 @@ NEXT_PUBLIC_BASE_URL=https://yourapp.vercel.app
 
 ```bash
 # Vercel Environment Variables (Production)
-NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox
-PAYPAL_ENVIRONMENT=sandbox
 NEXT_PUBLIC_PAYPAL_CLIENT_ID=AYour_Sandbox_Client_ID
-PAYPAL_CLIENT_SECRET=EYour_Sandbox_Client_Secret
+NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox
 NEXT_PUBLIC_BASE_URL=https://yourapp.vercel.app
 ```
 
@@ -122,50 +110,25 @@ PayPalProvider - Final Options: {
 ### Umgebung prüfen
 
 ```bash
-# In Vercel Function Logs
-vercel logs --follow
-
 # Browser Console
 console.log('PayPal Environment:', process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT);
 ```
 
 ## 📊 Migration von alter Konfiguration
 
-### Vorher (NODE_ENV-basiert)
+### Vorher (Mit Secret Key)
 ```typescript
-const PAYPAL_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://api-m.paypal.com' 
-  : 'https://api-m.sandbox.paypal.com';
+// Backend API-Routen benötigten Secret Key
+const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET;
 ```
 
-### Nachher (Flexibel)
+### Nachher (Nur Client ID)
 ```typescript
-// Backend (API Routes)
-const getPayPalBaseUrl = () => {
-  if (process.env.PAYPAL_ENVIRONMENT === 'live') {
-    return 'https://api-m.paypal.com';
-  }
-  if (process.env.PAYPAL_ENVIRONMENT === 'sandbox') {
-    return 'https://api-m.sandbox.paypal.com';
-  }
-  
-  // Fallback auf NODE_ENV
-  return process.env.NODE_ENV === 'production' 
-    ? 'https://api-m.paypal.com' 
-    : 'https://api-m.sandbox.paypal.com';
-};
-
-// Frontend (PayPalProvider)
-const getPayPalEnvironment = () => {
-  if (process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'live') {
-    return 'production';
-  }
-  if (process.env.NEXT_PUBLIC_PAYPAL_ENVIRONMENT === 'sandbox') {
-    return 'sandbox';
-  }
-  
-  // Fallback auf Client ID-basierte Erkennung
-  return isLiveEnvironment ? 'production' : 'sandbox';
+// Frontend PayPal SDK verwendet nur Client ID
+const initialOptions = {
+  clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID,
+  env: paypalEnvironment,
+  // Kein Secret Key nötig!
 };
 ```
 
@@ -173,22 +136,22 @@ const getPayPalEnvironment = () => {
 
 ### 1. Development
 ```bash
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=Ihre_Sandbox_Client_ID
 NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox
-PAYPAL_ENVIRONMENT=sandbox
 # Testen mit Sandbox-Accounts
 ```
 
 ### 2. Production-Tests
 ```bash
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=Ihre_Live_Client_ID
 NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live
-PAYPAL_ENVIRONMENT=live
 # Testen mit echten Accounts und kleinen Beträgen
 ```
 
 ### 3. Production-Live
 ```bash
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=Ihre_Live_Client_ID
 NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live
-PAYPAL_ENVIRONMENT=live
 # Vollständiger Live-Betrieb
 ```
 
@@ -198,16 +161,14 @@ PAYPAL_ENVIRONMENT=live
 2. **Testing**: Verwenden Sie immer kleine Beträge zum Testen
 3. **Monitoring**: Überwachen Sie alle Transaktionen im PayPal-Dashboard
 4. **Rückerstattung**: PayPal bietet oft sofortige Rückerstattungen für Test-Transaktionen
-5. **Beide Variablen**: Sowohl `NEXT_PUBLIC_PAYPAL_ENVIRONMENT` als auch `PAYPAL_ENVIRONMENT` müssen gesetzt werden
+5. **Kein Secret Key**: Die Integration funktioniert vollständig ohne Secret Key!
 
 ## 🔄 Schneller Umgebungswechsel
 
 Um schnell zwischen Sandbox und Live zu wechseln:
 
 1. **Vercel Dashboard** → Settings → Environment Variables
-2. **Beide Variablen** ändern: `sandbox` ↔ `live`
-   - `NEXT_PUBLIC_PAYPAL_ENVIRONMENT`
-   - `PAYPAL_ENVIRONMENT`
+2. **NEXT_PUBLIC_PAYPAL_ENVIRONMENT** ändern: `sandbox` ↔ `live`
 3. **Redeploy** triggern
 4. **Testen** mit entsprechenden Accounts
 
@@ -217,15 +178,21 @@ Um schnell zwischen Sandbox und Live zu wechseln:
 
 **Lösung:**
 1. Überprüfen Sie `NEXT_PUBLIC_PAYPAL_ENVIRONMENT=live` in Vercel
-2. Stellen Sie sicher, dass beide Variablen gesetzt sind
-3. Browser-Cache leeren
-4. Redeploy triggern
-
-### Problem: API-Routen verwenden falsche Umgebung
-
-**Lösung:**
-1. Überprüfen Sie `PAYPAL_ENVIRONMENT=live` in Vercel
-2. Vercel Function Logs prüfen
+2. Browser-Cache leeren
 3. Redeploy triggern
 
-Diese Konfiguration gibt Ihnen maximale Flexibilität für Tests und Entwicklung! 🎉
+### Problem: "PayPal Client ID not configured"
+
+**Lösung:**
+1. Überprüfen Sie `NEXT_PUBLIC_PAYPAL_CLIENT_ID` in Vercel
+2. Stellen Sie sicher, dass die Variable korrekt gesetzt ist
+3. Redeploy triggern
+
+### Vorteile der vereinfachten Konfiguration
+
+- ✅ **Sicherheit**: Kein Secret Key in Vercel gespeichert
+- ✅ **Einfachheit**: Nur eine Umgebungsvariable nötig
+- ✅ **Flexibilität**: Schneller Wechsel zwischen Sandbox/Live
+- ✅ **Wartung**: Weniger Konfigurationsaufwand
+
+Diese Konfiguration gibt Ihnen maximale Flexibilität für Tests und Entwicklung mit minimalem Setup! 🎉

@@ -50,20 +50,50 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
         label: 'paypal',
         height: 40,
       }}
-      createOrder={(data, actions) => {
+      createOrder={async (data, actions) => {
         console.log('PayPal createOrder called for package:', creditPackage.name);
         
-        return actions.order.create({
-          purchase_units: [
-            {
-              description: 'EtsyBuchhalter - Credits',
-              amount: {
-                currency_code: 'EUR',
-                value: creditPackage.price_euros.toFixed(2),
+        try {
+          // Purchase Record in unserer Datenbank erstellen
+          const response = await fetch('/api/paypal/create-order', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              packageId: creditPackage.id,
+              credits: creditPackage.credits,
+              price: creditPackage.price_euros,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Fehler beim Erstellen des Kauf-Records');
+          }
+
+          const result = await response.json();
+          console.log('Purchase record created:', result);
+
+          // PayPal Order erstellen
+          const order = await actions.order.create({
+            purchase_units: [
+              {
+                description: `EtsyBuchhalter - ${creditPackage.credits} Credits`,
+                amount: {
+                  currency_code: 'EUR',
+                  value: creditPackage.price_euros.toFixed(2),
+                },
+                custom_id: result.purchaseId, // Purchase ID für Referenz
               }
-            }
-          ]
-        });
+            ]
+          });
+
+          return order;
+        } catch (error) {
+          console.error('Error creating order:', error);
+          throw error;
+        }
       }}
       onApprove={async (data, actions) => {
         console.log('PayPal onApprove called with data:', data);
@@ -78,23 +108,20 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
           const details = await actions.order.capture();
           console.log('PayPal payment captured:', details);
           
-          const transactionId = details.purchase_units[0].payments.captures[0].id;
-          const payerId = details.payer.payer_id;
+          const orderID = data.orderID;
+          const payerID = details.payer.payer_id;
+          const purchaseId = details.purchase_units[0].custom_id;
           
           // Credits über unsere API hinzufügen
-          const response = await fetch('/api/add-credits', {
+          const response = await fetch('/api/paypal/capture-payment', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              packageId: creditPackage.id,
-              credits: creditPackage.credits,
-              price: creditPackage.price_euros,
-              paypalOrderId: data.orderID,
-              transactionId: transactionId,
-              payerId: payerId,
-              paymentDetails: details,
+              orderID,
+              payerID,
+              purchaseId,
             }),
           });
 
