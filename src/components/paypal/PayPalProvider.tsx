@@ -18,16 +18,26 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
     return <>{children}</>;
   }
 
+  // Bestimme automatisch die richtige Umgebung basierend auf der Client ID
+  // Sandbox Client IDs beginnen meist mit "AQ", "AB", "Ae" usw.
+  // Live Client IDs beginnen meist mit "AV", "AR", "AS" usw.
+  const isLiveEnvironment = clientId.startsWith('AV') || clientId.startsWith('AR') || clientId.startsWith('AS');
+  
+  console.log('PayPalProvider - Detected environment:', isLiveEnvironment ? 'live' : 'sandbox');
+
   const initialOptions = {
-    'clientId': clientId,
-    'currency': 'EUR',
-    'intent': 'capture',
-    'locale': 'de-DE',
-    'components': 'buttons,funding-eligibility',
-    'enable-funding': 'venmo,paylater,card',
-    'disable-funding': '',
-    'buyer-country': 'DE',
+    clientId: clientId,
+    currency: 'EUR',
+    intent: 'capture',
+    components: 'buttons',
+    // Setze die richtige Umgebung
+    'data-sdk-integration-source': 'react-paypal-js'
   };
+
+  // Für Live-Umgebung explizit setzen
+  if (isLiveEnvironment) {
+    initialOptions.debug = false;
+  }
 
   return (
     <PayPalScriptProvider options={initialOptions}>

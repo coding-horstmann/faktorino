@@ -56,20 +56,13 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
         return actions.order.create({
           purchase_units: [
             {
+              description: 'EtsyBuchhalter - Credits',
               amount: {
                 currency_code: 'EUR',
                 value: creditPackage.price_euros.toFixed(2),
-              },
-              description: `${creditPackage.credits} Credits - ${creditPackage.name}`,
-              custom_id: `credit_package_${creditPackage.id}`,
-            },
-          ],
-          application_context: {
-            brand_name: 'EtsyBuchhalter',
-            locale: 'de-DE',
-            user_action: 'PAY_NOW',
-            shipping_preference: 'NO_SHIPPING',
-          },
+              }
+            }
+          ]
         });
       }}
       onApprove={async (data, actions) => {
