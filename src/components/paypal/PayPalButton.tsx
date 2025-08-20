@@ -66,7 +66,7 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
           ],
           application_context: {
             brand_name: 'EtsyBuchhalter',
-            locale: 'de_DE',
+            locale: 'de-DE',
             user_action: 'PAY_NOW',
             shipping_preference: 'NO_SHIPPING',
           },

@@ -22,7 +22,7 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
     'clientId': clientId,
     'currency': 'EUR',
     'intent': 'capture',
-    'locale': 'de_DE',
+    'locale': 'de-DE',
     'components': 'buttons,funding-eligibility',
     'enable-funding': 'venmo,paylater,card',
     'disable-funding': '',
