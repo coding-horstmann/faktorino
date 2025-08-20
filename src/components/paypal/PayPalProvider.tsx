@@ -10,7 +10,8 @@ interface PayPalProviderProps {
 export function PayPalProvider({ children }: PayPalProviderProps) {
   const clientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
 
-  console.log('PayPalProvider - Client ID:', clientId ? 'SET' : 'MISSING');
+  console.log('PayPalProvider - Client ID:', clientId ? `SET (${clientId.substring(0, 8)}...)` : 'MISSING');
+  console.log('PayPalProvider - Environment:', process.env.NODE_ENV);
 
   if (!clientId) {
     console.warn('PayPal Client ID not configured, falling back to children only');

@@ -33,6 +33,154 @@ async function getPayPalAccessToken(): Promise<string> {
   return data.access_token;
 }
 
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { orderID, payerID } = body;
+
+    if (!orderID) {
+      return NextResponse.json(
+        { error: 'Fehlende Parameter: orderID' },
+        { status: 400 }
+      );
+    }
+
+    // Supabase Client erstellen
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {
+              // Ignore errors in server components
+            }
+          },
+        },
+      }
+    );
+
+    // Benutzer-Authentifizierung prüfen
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Nicht autorisiert' },
+        { status: 401 }
+      );
+    }
+
+    // Purchase Record finden
+    const { data: purchaseData, error: purchaseError } = await supabase
+      .from('credit_purchases')
+      .select('*')
+      .eq('paypal_order_id', orderID)
+      .eq('payment_status', 'pending')
+      .eq('user_id', user.id)
+      .single();
+
+    if (purchaseError || !purchaseData) {
+      console.error('Purchase not found:', purchaseError);
+      return NextResponse.json(
+        { error: 'Kauf nicht gefunden oder bereits verarbeitet' },
+        { status: 404 }
+      );
+    }
+
+    // PayPal Access Token abrufen
+    const accessToken = await getPayPalAccessToken();
+
+    // PayPal Payment capture
+    const captureResponse = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders/${orderID}/capture`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!captureResponse.ok) {
+      const errorText = await captureResponse.text();
+      console.error('PayPal Capture Error:', errorText);
+      
+      // Purchase als failed markieren
+      await supabase
+        .from('credit_purchases')
+        .update({
+          payment_status: 'failed',
+          paypal_transaction_id: 'capture_failed',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', purchaseData.id);
+
+      return NextResponse.json(
+        { error: 'Fehler beim Erfassen der Zahlung' },
+        { status: 500 }
+      );
+    }
+
+    const captureData = await captureResponse.json();
+    const transactionId = captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id;
+
+    // Purchase Record aktualisieren
+    const { error: updateError } = await supabase
+      .from('credit_purchases')
+      .update({
+        payment_status: 'completed',
+        paypal_transaction_id: transactionId,
+        paypal_payer_id: payerID,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', purchaseData.id);
+
+    if (updateError) {
+      console.error('Failed to update purchase record:', updateError);
+      return NextResponse.json(
+        { error: 'Fehler beim Aktualisieren des Kaufdatensatzes' },
+        { status: 500 }
+      );
+    }
+
+    // Credits zum User-Account hinzufügen
+    const { error: creditError } = await supabase.rpc('add_credits', {
+      p_user_id: purchaseData.user_id,
+      p_credits_to_add: purchaseData.credits_purchased,
+      p_description: `PayPal-Kauf: ${purchaseData.credits_purchased} Credits`,
+      p_purchase_id: purchaseData.id,
+    });
+
+    if (creditError) {
+      console.error('Failed to add credits:', creditError);
+      return NextResponse.json(
+        { error: 'Credits konnten nicht gutgeschrieben werden' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      transactionId,
+      credits: purchaseData.credits_purchased,
+      amount: purchaseData.price_paid,
+    });
+
+  } catch (error) {
+    console.error('Capture Payment Error:', error);
+    return NextResponse.json(
+      { error: 'Interner Server-Fehler' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

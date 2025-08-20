@@ -102,17 +102,57 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
         }
       }}
       onApprove={async (data) => {
-        // Die Zahlung wird über die capture-payment Route abgewickelt
-        // PayPal leitet automatisch zur return_url weiter
+        setIsProcessing(true);
         
-        toast({
-          title: "Zahlung erfolgreich",
-          description: "Sie werden zur Bestätigung weitergeleitet...",
-        });
+        try {
+          console.log('PayPal onApprove data:', data);
+          
+          // PayPal-Zahlung erfassen
+          const captureResponse = await fetch('/api/paypal/capture-payment', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              orderID: data.orderID,
+              payerID: data.payerID,
+            }),
+          });
 
-        // Optional: Custom success handling hier
-        if (onSuccess) {
-          onSuccess();
+          if (!captureResponse.ok) {
+            const errorData = await captureResponse.json();
+            throw new Error(errorData.error || 'Fehler beim Erfassen der Zahlung');
+          }
+
+          const result = await captureResponse.json();
+          
+          toast({
+            title: "Zahlung erfolgreich!",
+            description: `${creditPackage.credits} Credits wurden zu Ihrem Konto hinzugefügt.`,
+          });
+
+          if (onSuccess) {
+            onSuccess();
+          }
+          
+          // Nach erfolgreicher Zahlung zur Bestätigung weiterleiten
+          window.location.href = `/dashboard?payment=success&credits=${creditPackage.credits}&amount=${creditPackage.price_euros}`;
+          
+        } catch (error) {
+          console.error('Capture payment error:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
+          
+          toast({
+            title: "Fehler bei der Zahlung",
+            description: `Die Zahlung konnte nicht abgeschlossen werden: ${errorMessage}`,
+            variant: "destructive",
+          });
+          
+          if (onError) {
+            onError(errorMessage);
+          }
+        } finally {
+          setIsProcessing(false);
         }
       }}
       onError={(err) => {
