@@ -10,11 +10,16 @@ interface PayPalOrderRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('create-order: Starting request processing');
+    
     const body: PayPalOrderRequest = await request.json();
     const { packageId, credits, price } = body;
 
+    console.log('create-order: Request body:', { packageId, credits, price });
+
     // Validierung
     if (!packageId || !credits || !price) {
+      console.log('create-order: Validation failed - missing parameters');
       return NextResponse.json(
         { error: 'Fehlende Parameter: packageId, credits oder price' },
         { status: 400 }
@@ -46,16 +51,21 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    console.log('create-order: Checking user authentication');
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
+      console.log('create-order: Authentication failed:', authError);
       return NextResponse.json(
         { error: 'Nicht autorisiert' },
         { status: 401 }
       );
     }
 
+    console.log('create-order: User authenticated:', user.id);
+
     // Credit-Paket validieren
+    console.log('create-order: Validating credit package:', packageId);
     const { data: packageData, error: packageError } = await supabase
       .from('credit_packages')
       .select('*')
@@ -64,14 +74,18 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (packageError || !packageData) {
+      console.log('create-order: Package validation failed:', packageError);
       return NextResponse.json(
         { error: 'Ungültiges Credit-Paket' },
         { status: 400 }
       );
     }
 
+    console.log('create-order: Package validated:', packageData);
+
     // Preis validieren
     if (packageData.price_euros !== price) {
+      console.log('create-order: Price validation failed:', { expected: packageData.price_euros, received: price });
       return NextResponse.json(
         { error: 'Preis stimmt nicht überein' },
         { status: 400 }
@@ -79,38 +93,51 @@ export async function POST(request: NextRequest) {
     }
 
     // Purchase Record erstellen
-    const { data: purchaseData, error: purchaseError } = await supabase
+    console.log('create-order: Creating purchase record');
+    const purchaseData = {
+      user_id: user.id,
+      package_id: packageId,
+      credits_purchased: credits,
+      price_paid: price,
+      payment_status: 'pending',
+      payment_method: 'paypal'
+    };
+
+    console.log('create-order: Purchase data to insert:', purchaseData);
+
+    const { data: insertedPurchase, error: purchaseError } = await supabase
       .from('credit_purchases')
-      .insert({
-        user_id: user.id,
-        package_id: packageId,
-        credits_purchased: credits,
-        price_paid: price,
-        payment_status: 'pending',
-        payment_method: 'paypal'
-      })
+      .insert(purchaseData)
       .select()
       .single();
 
     if (purchaseError) {
-      console.error('Error creating purchase record:', purchaseError);
+      console.error('create-order: Error creating purchase record:', purchaseError);
+      console.error('create-order: Error details:', {
+        code: purchaseError.code,
+        message: purchaseError.message,
+        details: purchaseError.details,
+        hint: purchaseError.hint
+      });
       return NextResponse.json(
-        { error: 'Fehler beim Erstellen des Kauf-Records' },
+        { error: `Fehler beim Erstellen des Kauf-Records: ${purchaseError.message}` },
         { status: 500 }
       );
     }
 
+    console.log('create-order: Purchase record created successfully:', insertedPurchase);
+
     // Erfolgreiche Antwort
     return NextResponse.json({
       success: true,
-      purchaseId: purchaseData.id,
+      purchaseId: insertedPurchase.id,
       message: 'Purchase record created successfully'
     });
 
   } catch (error) {
-    console.error('Error in create-order:', error);
+    console.error('create-order: Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Interner Server-Fehler' },
+      { error: `Interner Server-Fehler: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
