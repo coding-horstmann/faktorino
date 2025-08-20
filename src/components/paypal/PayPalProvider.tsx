@@ -26,6 +26,7 @@ export function PayPalProvider({ children }: PayPalProviderProps) {
     'components': 'buttons,funding-eligibility',
     'enable-funding': 'venmo,paylater,card',
     'disable-funding': '',
+    'buyer-country': 'DE',
   };
 
   return (
