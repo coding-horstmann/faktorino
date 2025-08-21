@@ -1,0 +1,54 @@
+[1mdiff --git a/src/app/(components)/credit-purchase-modal.tsx b/src/app/(components)/credit-purchase-modal.tsx[m
+[1mindex a3d22d8..b74a14c 100644[m
+[1m--- a/src/app/(components)/credit-purchase-modal.tsx[m
+[1m+++ b/src/app/(components)/credit-purchase-modal.tsx[m
+[36m@@ -17,7 +17,6 @@[m [mimport { PayPalPaymentButtons } from '@/components/paypal/PayPalPaymentButtons';[m
+ interface PurchaseFormData {[m
+   firstName: string;[m
+   lastName: string;[m
+[31m-  email: string;[m
+   street: string;[m
+   postalCode: string;[m
+   city: string;[m
+[36m@@ -38,7 +37,6 @@[m [mexport function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre[m
+   const [formData, setFormData] = useState<PurchaseFormData>({[m
+     firstName: '',[m
+     lastName: '',[m
+[31m-    email: '',[m
+     street: '',[m
+     postalCode: '',[m
+     city: '',[m
+[36m@@ -102,11 +100,6 @@[m [mexport function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre[m
+     if (!formData.lastName.trim()) {[m
+       newErrors.lastName = 'Nachname ist erforderlich';[m
+     }[m
+[31m-    if (!formData.email.trim()) {[m
+[31m-      newErrors.email = 'E-Mail ist erforderlich';[m
+[31m-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {[m
+[31m-      newErrors.email = 'Ungültige E-Mail-Adresse';[m
+[31m-    }[m
+     if (!formData.street.trim()) {[m
+       newErrors.street = 'Straße und Hausnummer sind erforderlich';[m
+     }[m
+[36m@@ -271,21 +264,6 @@[m [mexport function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre[m
+                   </div>[m
+                 </div>[m
+ [m
+[31m-                <div>[m
+[31m-                  <Label htmlFor="email">E-Mail *</Label>[m
+[31m-                  <Input[m
+[31m-                    id="email"[m
+[31m-                    name="email"[m
+[31m-                    type="email"[m
+[31m-                    value={formData.email}[m
+[31m-                    onChange={handleInputChange}[m
+[31m-                    className={cn(errors.email && "border-red-500")}[m
+[31m-                  />[m
+[31m-                  {errors.email && ([m
+[31m-                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>[m
+[31m-                  )}[m
+[31m-                </div>[m
+[31m-[m
+                 <div>[m
+                   <Label htmlFor="street">Straße & Hausnummer *</Label>[m
+                   <Input[m
