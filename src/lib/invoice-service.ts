@@ -12,7 +12,7 @@ export class InvoiceService {
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(10000)
+      .limit(20000)
 
     if (error) {
       console.error('Error fetching invoices:', error)
