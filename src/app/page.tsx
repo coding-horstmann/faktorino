@@ -1,9 +1,10 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Check, Download, FileUp, GanttChartSquare } from "lucide-react";
+import { Check, Download, FileUp, GanttChartSquare, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 
 const TrustIcon = ({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) => (
@@ -24,6 +25,56 @@ const Step = ({ icon, title, description }: { icon: React.ReactNode, title: stri
         <h3 className="text-xl font-semibold mb-2">{title}</h3>
         <p className="text-muted-foreground">{description}</p>
     </div>
+);
+
+const PricingCard = ({ 
+    title, 
+    subtitle, 
+    price, 
+    billing, 
+    features, 
+    isPopular = false 
+}: { 
+    title: string, 
+    subtitle: string, 
+    price: string, 
+    billing: string, 
+    features: string[], 
+    isPopular?: boolean 
+}) => (
+    <Card className={`relative ${isPopular ? 'border-primary shadow-lg' : ''}`}>
+        {isPopular && (
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
+                    Beliebt
+                </span>
+            </div>
+        )}
+        <CardHeader className="text-center pb-4">
+            <CardTitle className="text-2xl font-bold">{title}</CardTitle>
+            <p className="text-muted-foreground">{subtitle}</p>
+        </CardHeader>
+        <CardContent className="text-center">
+            <div className="mb-6">
+                <div className="text-4xl font-bold mb-2">{price}</div>
+                <p className="text-sm text-muted-foreground">{billing}</p>
+            </div>
+            <div className="space-y-3 mb-8">
+                {features.map((feature, index) => (
+                    <div key={index} className="flex items-center justify-center gap-2">
+                        <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                    </div>
+                ))}
+            </div>
+            <Button asChild className="w-full" size="lg">
+                <Link href="/register">
+                    Kostenlos testen
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                </Link>
+            </Button>
+        </CardContent>
+    </Card>
 );
 
 
@@ -90,6 +141,63 @@ export default function Home() {
                         title="3. Rechnungen erhalten"
                         description="Das Tool generiert automatisch alle Rechnungen, die du als PDF herunterladen kannst."
                    />
+                </div>
+            </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section className="py-20 bg-secondary rounded-lg">
+            <div className="container mx-auto">
+                <div className="text-center mb-12">
+                    <h2 className="text-3xl font-bold mb-4">Wähle dein perfektes Credit-Paket</h2>
+                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                        Kaufe Credits für deine Rechnungen. Je mehr Credits du kaufst, desto günstiger wird es pro Rechnung.
+                    </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                    <PricingCard
+                        title="Starter Paket"
+                        subtitle="Für Einsteiger"
+                        price="7,99 €"
+                        billing="500 Credits • ~0,0160€ pro Credit"
+                        features={[
+                            "500 Credits für Rechnungen",
+                            "Grundlegende Rechnungsvorlagen",
+                            "E-Mail Support",
+                            "Standard-Export-Formate",
+                            "Einmalzahlung - keine Abo"
+                        ]}
+                    />
+                    <PricingCard
+                        title="Professional Paket"
+                        subtitle="Für aktive Shops"
+                        price="9,99 €"
+                        billing="1.000 Credits • ~0,0100€ pro Credit"
+                        features={[
+                            "1.000 Credits für Rechnungen",
+                            "Erweiterte Rechnungsvorlagen",
+                            "Prioritäts-Support",
+                            "Alle Export-Formate",
+                            "Automatische Backup-Funktion",
+                            "Einmalzahlung - keine Abo"
+                        ]}
+                        isPopular={true}
+                    />
+                    <PricingCard
+                        title="Business Paket"
+                        subtitle="Für große Shops"
+                        price="19,99 €"
+                        billing="3.000 Credits • ~0,0067€ pro Credit"
+                        features={[
+                            "3.000 Credits für Rechnungen",
+                            "Alle Rechnungsvorlagen",
+                            "24/7 Premium Support",
+                            "API-Zugang",
+                            "Erweiterte Analytics",
+                            "Individuelle Anpassungen",
+                            "Einmalzahlung - keine Abo"
+                        ]}
+                    />
                 </div>
             </div>
         </section>
