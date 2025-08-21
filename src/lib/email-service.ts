@@ -371,25 +371,25 @@ Vielen Dank für Ihr Vertrauen!
                 <p>Kaufbetrag: <strong>${data.purchaseData.purchaseAmount}</strong></p>
             </div>
             
-            <h3>Kundendaten</h3>
-            <table class="details-table">
-                <tr>
-                    <th>Name:</th>
-                    <td>${data.userName}</td>
-                </tr>
-                <tr>
-                    <th>E-Mail:</th>
-                    <td>${data.userEmail}</td>
-                </tr>
-                ${data.userBillingData.company ? `<tr><th>Firma:</th><td>${data.userBillingData.company}</td></tr>` : ''}
-                ${data.userBillingData.firstName ? `<tr><th>Vorname:</th><td>${data.userBillingData.firstName}</td></tr>` : ''}
-                ${data.userBillingData.lastName ? `<tr><th>Nachname:</th><td>${data.userBillingData.lastName}</td></tr>` : ''}
-                ${data.userBillingData.address ? `<tr><th>Adresse:</th><td>${data.userBillingData.address}</td></tr>` : ''}
-                ${data.userBillingData.city ? `<tr><th>Stadt:</th><td>${data.userBillingData.city}</td></tr>` : ''}
-                ${data.userBillingData.postalCode ? `<tr><th>PLZ:</th><td>${data.userBillingData.postalCode}</td></tr>` : ''}
-                ${data.userBillingData.country ? `<tr><th>Land:</th><td>${data.userBillingData.country}</td></tr>` : ''}
-                ${data.userBillingData.vatNumber ? `<tr><th>USt-IdNr.:</th><td>${data.userBillingData.vatNumber}</td></tr>` : ''}
-            </table>
+                         <h3>Kundendaten</h3>
+             <table class="details-table">
+                 <tr>
+                     <th>Name:</th>
+                     <td>${data.userName}</td>
+                 </tr>
+                 <tr>
+                     <th>E-Mail:</th>
+                     <td>${data.userEmail}</td>
+                 </tr>
+                 ${data.userBillingData.company && data.userBillingData.company.trim() ? `<tr><th>Firma:</th><td>${data.userBillingData.company}</td></tr>` : ''}
+                 ${data.userBillingData.firstName && data.userBillingData.firstName.trim() ? `<tr><th>Vorname:</th><td>${data.userBillingData.firstName}</td></tr>` : ''}
+                 ${data.userBillingData.lastName && data.userBillingData.lastName.trim() ? `<tr><th>Nachname:</th><td>${data.userBillingData.lastName}</td></tr>` : ''}
+                 ${data.userBillingData.address && data.userBillingData.address.trim() ? `<tr><th>Adresse:</th><td>${data.userBillingData.address}</td></tr>` : ''}
+                 ${data.userBillingData.city && data.userBillingData.city.trim() ? `<tr><th>Stadt:</th><td>${data.userBillingData.city}</td></tr>` : ''}
+                 ${data.userBillingData.postalCode && data.userBillingData.postalCode.trim() ? `<tr><th>PLZ:</th><td>${data.userBillingData.postalCode}</td></tr>` : ''}
+                 ${data.userBillingData.country && data.userBillingData.country.trim() ? `<tr><th>Land:</th><td>${data.userBillingData.country}</td></tr>` : ''}
+                 ${data.userBillingData.vatNumber && data.userBillingData.vatNumber.trim() ? `<tr><th>USt-IdNr.:</th><td>${data.userBillingData.vatNumber}</td></tr>` : ''}
+             </table>
             
             <h3>Transaktionsdetails</h3>
             <table class="details-table">
@@ -419,27 +419,27 @@ Vielen Dank für Ihr Vertrauen!
 </body>
 </html>`;
 
-    const textContent = `
-Neuer Credit-Kauf
-
-KUNDENDATEN:
-- Name: ${data.userName}
-- E-Mail: ${data.userEmail}
-${data.userBillingData.company ? `- Firma: ${data.userBillingData.company}` : ''}
-${data.userBillingData.firstName ? `- Vorname: ${data.userBillingData.firstName}` : ''}
-${data.userBillingData.lastName ? `- Nachname: ${data.userBillingData.lastName}` : ''}
-${data.userBillingData.address ? `- Adresse: ${data.userBillingData.address}` : ''}
-${data.userBillingData.city ? `- Stadt: ${data.userBillingData.city}` : ''}
-${data.userBillingData.postalCode ? `- PLZ: ${data.userBillingData.postalCode}` : ''}
-${data.userBillingData.country ? `- Land: ${data.userBillingData.country}` : ''}
-${data.userBillingData.vatNumber ? `- USt-IdNr.: ${data.userBillingData.vatNumber}` : ''}
-
-TRANSAKTIONSDETAILS:
-- Kaufbetrag: ${data.purchaseData.purchaseAmount}
-- Credits erhalten: ${data.purchaseData.creditsAdded}
-- Transaktions-ID: ${data.purchaseData.transactionId}
-- Datum: ${data.purchaseData.date}
-`;
+         const textContent = `
+ Neuer Credit-Kauf
+ 
+ KUNDENDATEN:
+ - Name: ${data.userName}
+ - E-Mail: ${data.userEmail}
+ ${data.userBillingData.company && data.userBillingData.company.trim() ? `- Firma: ${data.userBillingData.company}` : ''}
+ ${data.userBillingData.firstName && data.userBillingData.firstName.trim() ? `- Vorname: ${data.userBillingData.firstName}` : ''}
+ ${data.userBillingData.lastName && data.userBillingData.lastName.trim() ? `- Nachname: ${data.userBillingData.lastName}` : ''}
+ ${data.userBillingData.address && data.userBillingData.address.trim() ? `- Adresse: ${data.userBillingData.address}` : ''}
+ ${data.userBillingData.city && data.userBillingData.city.trim() ? `- Stadt: ${data.userBillingData.city}` : ''}
+ ${data.userBillingData.postalCode && data.userBillingData.postalCode.trim() ? `- PLZ: ${data.userBillingData.postalCode}` : ''}
+ ${data.userBillingData.country && data.userBillingData.country.trim() ? `- Land: ${data.userBillingData.country}` : ''}
+ ${data.userBillingData.vatNumber && data.userBillingData.vatNumber.trim() ? `- USt-IdNr.: ${data.userBillingData.vatNumber}` : ''}
+ 
+ TRANSAKTIONSDETAILS:
+ - Kaufbetrag: ${data.purchaseData.purchaseAmount}
+ - Credits erhalten: ${data.purchaseData.creditsAdded}
+ - Transaktions-ID: ${data.purchaseData.transactionId}
+ - Datum: ${data.purchaseData.date}
+ `;
 
     return {
       subject,
