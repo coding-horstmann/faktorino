@@ -214,7 +214,6 @@ export function PayPalPaymentButtons({ creditPackage, billingData, onSuccess, on
           layout: 'vertical',
           color: 'silver',
           shape: 'rect',
-          label: 'sepa',
           height: 40,
         }}
         createOrder={createOrder}
@@ -231,7 +230,6 @@ export function PayPalPaymentButtons({ creditPackage, billingData, onSuccess, on
           layout: 'vertical',
           color: 'black',
           shape: 'rect',
-          label: 'card',
           height: 40,
         }}
         createOrder={createOrder}
