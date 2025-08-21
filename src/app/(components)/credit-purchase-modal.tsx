@@ -17,7 +17,6 @@ import { PayPalPaymentButtons } from '@/components/paypal/PayPalPaymentButtons';
 interface PurchaseFormData {
   firstName: string;
   lastName: string;
-  email: string;
   street: string;
   postalCode: string;
   city: string;
@@ -38,7 +37,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
   const [formData, setFormData] = useState<PurchaseFormData>({
     firstName: '',
     lastName: '',
-    email: '',
     street: '',
     postalCode: '',
     city: '',
@@ -101,11 +99,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
     }
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Nachname ist erforderlich';
-    }
-    if (!formData.email.trim()) {
-      newErrors.email = 'E-Mail ist erforderlich';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Ungültige E-Mail-Adresse';
     }
     if (!formData.street.trim()) {
       newErrors.street = 'Straße und Hausnummer sind erforderlich';
@@ -269,21 +262,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                       <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>
                     )}
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="email">E-Mail *</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className={cn(errors.email && "border-red-500")}
-                  />
-                  {errors.email && (
-                    <p className="text-sm text-red-500 mt-1">{errors.email}</p>
-                  )}
                 </div>
 
                 <div>
