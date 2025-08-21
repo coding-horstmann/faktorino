@@ -68,9 +68,11 @@ export class EmailService {
             margin: 0;
             font-size: 24px;
         }
-        .success-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px auto;
+            display: block;
         }
         .content {
             padding: 20px 0;
@@ -112,21 +114,13 @@ export class EmailService {
             color: #666;
             font-size: 14px;
         }
-        .button {
-            display: inline-block;
-            background-color: #007bff;
-            color: white;
-            padding: 12px 24px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
+
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="success-icon">✅</div>
+            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSJibGFjayIvPgo8ZyBmaWxsPSIjRkY5NzAwIj4KPHBhdGggZD0iTTE1IDEwSDI1VjIwSDE1VjEweiIvPgo8cGF0aCBkPSJNMzAgMTBINDBWMjBIMzBWMHoiLz4KPHBhdGggZD0iTTE1IDI1SDI1VjM1SDE1VjI1eiIvPgo8cGF0aCBkPSJNMzAgMjVINDBWMzVIMzBWMjV6Ii8+CjxwYXRoIGQ9Ik0xNSA0MEgyNVY1MEgxNVY0MHoiLz4KPHBhdGggZD0iTTMwIDQwSDQwVjUwSDMwVjQweiIvPgo8L2c+CjxjaXJjbGUgY3g9IjE1IiBjeT0iNjUiIHI9IjgiIGZpbGw9IiNGRjk3MDAiLz4KPHBhdGggZD0iTTExIDY1TDEzIDY3TDE5IDYxIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+" alt="Logo" class="logo">
             <h1>Credit-Kauf erfolgreich!</h1>
         </div>
         
@@ -138,7 +132,6 @@ export class EmailService {
             <div class="highlight-box">
                 <h3>Gekaufte Credits</h3>
                 <div class="credit-amount">${data.creditsAdded} Credits</div>
-                <p>Ihr neuer Kontostand: <strong>${data.newBalance} Credits</strong></p>
             </div>
             
             <h3>Transaktionsdetails</h3>
@@ -152,10 +145,6 @@ export class EmailService {
                     <td>${data.creditsAdded}</td>
                 </tr>
                 <tr>
-                    <th>Neuer Kontostand:</th>
-                    <td>${data.newBalance} Credits</td>
-                </tr>
-                <tr>
                     <th>Transaktions-ID:</th>
                     <td>${data.transactionId}</td>
                 </tr>
@@ -166,12 +155,6 @@ export class EmailService {
             </table>
             
             <p>Sie können Ihre Credits jetzt für die Rechnungserstellung verwenden.</p>
-            
-            <div style="text-align: center;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" class="button">
-                    Zum Dashboard
-                </a>
-            </div>
         </div>
         
         <div class="footer">
@@ -189,14 +172,11 @@ vielen Dank für Ihren Credit-Kauf!
 
 TRANSAKTIONSDETAILS:
 - Gekaufte Credits: ${data.creditsAdded}
-- Neuer Kontostand: ${data.newBalance} Credits
 - Kaufbetrag: ${data.purchaseAmount}
 - Transaktions-ID: ${data.transactionId}
 - Datum: ${data.date}
 
 Ihre Credits wurden erfolgreich Ihrem Konto hinzugefügt und stehen sofort zur Verfügung.
-
-Besuchen Sie Ihr Dashboard: ${process.env.NEXT_PUBLIC_APP_URL}/dashboard
 
 Bei Fragen wenden Sie sich gerne an unseren Support.
 
