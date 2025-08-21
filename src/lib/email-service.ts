@@ -68,12 +68,7 @@ export class EmailService {
             margin: 0;
             font-size: 24px;
         }
-        .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 15px auto;
-            display: block;
-        }
+
         .content {
             padding: 20px 0;
         }
@@ -120,7 +115,7 @@ export class EmailService {
 <body>
     <div class="container">
         <div class="header">
-            <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSJibGFjayIvPgo8ZyBmaWxsPSIjRkY5NzAwIj4KPHBhdGggZD0iTTE1IDEwSDI1VjIwSDE1VjEweiIvPgo8cGF0aCBkPSJNMzAgMTBINDBWMjBIMzBWMHoiLz4KPHBhdGggZD0iTTE1IDI1SDI1VjM1SDE1VjI1eiIvPgo8cGF0aCBkPSJNMzAgMjVINDBWMzVIMzBWMjV6Ii8+CjxwYXRoIGQ9Ik0xNSA0MEgyNVY1MEgxNVY0MHoiLz4KPHBhdGggZD0iTTMwIDQwSDQwVjUwSDMwVjQweiIvPgo8L2c+CjxjaXJjbGUgY3g9IjE1IiBjeT0iNjUiIHI9IjgiIGZpbGw9IiNGRjk3MDAiLz4KPHBhdGggZD0iTTExIDY1TDEzIDY3TDE5IDYxIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+" alt="Logo" class="logo">
+            <div style="width: 80px; height: 80px; margin: 0 auto 15px auto; background: #FF9700; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; color: white;">✓</div>
             <h1>Credit-Kauf erfolgreich!</h1>
         </div>
         
@@ -155,6 +150,7 @@ export class EmailService {
             </table>
             
             <p>Sie können Ihre Credits jetzt für die Rechnungserstellung verwenden.</p>
+            <p>Sie werden zeitnah eine Rechnung von uns per E-Mail erhalten.</p>
         </div>
         
         <div class="footer">
@@ -177,6 +173,8 @@ TRANSAKTIONSDETAILS:
 - Datum: ${data.date}
 
 Ihre Credits wurden erfolgreich Ihrem Konto hinzugefügt und stehen sofort zur Verfügung.
+
+Sie werden zeitnah eine Rechnung von uns per E-Mail erhalten.
 
 Bei Fragen wenden Sie sich gerne an unseren Support.
 
