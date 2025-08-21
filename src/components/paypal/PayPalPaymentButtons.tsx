@@ -192,7 +192,7 @@ export function PayPalPaymentButtons({ creditPackage, billingData, onSuccess, on
 
   return (
     <div className="space-y-4">
-      {/* PayPal Button */}
+      {/* PayPal Button mit allen Zahlungsmethoden */}
       <PayPalButtons
         style={{
           layout: 'vertical',
@@ -206,38 +206,7 @@ export function PayPalPaymentButtons({ creditPackage, billingData, onSuccess, on
         onError={handleError}
         onCancel={handleCancel}
         disabled={isProcessing}
-      />
-
-      {/* SEPA Lastschrift Button */}
-      <PayPalButtons
-        style={{
-          layout: 'vertical',
-          color: 'silver',
-          shape: 'rect',
-          height: 40,
-        }}
-        createOrder={createOrder}
-        onApprove={onApprove}
-        onError={handleError}
-        onCancel={handleCancel}
-        disabled={isProcessing}
-        fundingSource="sepa"
-      />
-
-      {/* Debit-/Kreditkarte Button */}
-      <PayPalButtons
-        style={{
-          layout: 'vertical',
-          color: 'black',
-          shape: 'rect',
-          height: 40,
-        }}
-        createOrder={createOrder}
-        onApprove={onApprove}
-        onError={handleError}
-        onCancel={handleCancel}
-        disabled={isProcessing}
-        fundingSource="card"
+        forceReRender={[creditPackage.id]} // Verhindert doppelte Rendering
       />
 
       {/* PayPal Processing Info */}
