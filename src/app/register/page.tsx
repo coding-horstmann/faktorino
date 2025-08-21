@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from '@/lib/supabase';
 import { useToast } from "@/hooks/use-toast";
+import { useRecaptcha } from '@/hooks/useRecaptcha';
+import { executeAndVerifyRecaptcha } from '@/lib/recaptcha-service';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -25,6 +27,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const router = useRouter();
   const { toast } = useToast();
+  const { executeRecaptcha, isLoaded } = useRecaptcha();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -67,6 +70,14 @@ export default function RegisterPage() {
     }
 
     try {
+      // reCAPTCHA-Verifizierung vor der Registrierung
+      const recaptchaResult = await executeAndVerifyRecaptcha(executeRecaptcha, 'register');
+      
+      if (!recaptchaResult.success) {
+        setError('Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -206,7 +217,7 @@ export default function RegisterPage() {
             )}
            
             <div className="pt-4">
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full" size="lg" disabled={loading || !isLoaded}>
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Registrieren
               </Button>

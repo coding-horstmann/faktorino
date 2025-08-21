@@ -5,6 +5,7 @@ import { SiteHeader } from '@/components/layout/header';
 import { SiteFooter } from '@/components/layout/footer';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PayPalProvider } from '@/components/paypal/PayPalProvider';
+import ReCaptchaProvider from '@/components/recaptcha/ReCaptchaProvider';
 import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -26,11 +27,13 @@ export default function RootLayout({
       <body className="font-body antialiased flex flex-col min-h-screen">
         <AuthProvider>
           <PayPalProvider>
-            <SiteHeader />
-            <main className="flex-grow flex justify-center items-start p-4 sm:p-8 md:p-12">
-                {children}
-            </main>
-            <SiteFooter />
+            <ReCaptchaProvider>
+              <SiteHeader />
+              <main className="flex-grow flex justify-center items-start p-4 sm:p-8 md:p-12">
+                  {children}
+              </main>
+              <SiteFooter />
+            </ReCaptchaProvider>
           </PayPalProvider>
         </AuthProvider>
         <Toaster />

@@ -10,6 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useRecaptcha } from '@/hooks/useRecaptcha';
+import { executeAndVerifyRecaptcha } from '@/lib/recaptcha-service';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 const contactFormSchema = z.object({
   name: z.string().min(1, { message: "Bitte geben Sie Ihren Namen ein." }),
@@ -21,11 +25,27 @@ type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export default function KontaktPage() {
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const { executeRecaptcha, isLoaded } = useRecaptcha();
   const { register, handleSubmit, formState: { errors }, reset } = useForm<ContactFormValues>({
     resolver: zodResolver(contactFormSchema),
   });
 
-  const onSubmit: SubmitHandler<ContactFormValues> = (data) => {
+  const onSubmit: SubmitHandler<ContactFormValues> = async (data) => {
+    setLoading(true);
+
+    try {
+      // reCAPTCHA-Verifizierung vor dem Senden
+      const recaptchaResult = await executeAndVerifyRecaptcha(executeRecaptcha, 'contact');
+      
+      if (!recaptchaResult.success) {
+        toast({
+          title: "Fehler",
+          description: "Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+          variant: "destructive",
+        });
+        return;
+      }
     // Hier würde die Logik zum Senden der E-Mail (z.B. über eine Server Action mit Brevo) stehen.
     // Fürs Erste simulieren wir den Erfolg.
     console.log(data);
@@ -36,6 +56,15 @@ export default function KontaktPage() {
     });
     
     reset();
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Es ist ein Fehler beim Senden der Nachricht aufgetreten.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,7 +93,10 @@ export default function KontaktPage() {
                         <Textarea id="message" {...register("message")} placeholder="Ihre Nachricht an uns..." />
                         {errors.message && <p className="text-sm text-destructive">{errors.message.message}</p>}
                     </div>
-                    <Button type="submit" className="w-full">Nachricht senden</Button>
+                    <Button type="submit" className="w-full" disabled={loading || !isLoaded}>
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Nachricht senden
+                    </Button>
                 </form>
             </CardContent>
         </Card>

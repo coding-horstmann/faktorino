@@ -32,6 +32,15 @@ PAYPAL_CLIENT_SECRET=your_paypal_client_secret
 NEXT_PUBLIC_PAYPAL_ENVIRONMENT=sandbox # oder "live" für Produktion
 ```
 
+### Google reCAPTCHA (NEU)
+```env
+# Google reCAPTCHA v3 Site Key (öffentlich)
+NEXT_PUBLIC_RECAPTCHA_SITE_KEY=your_recaptcha_site_key_here
+
+# Google reCAPTCHA v3 Secret Key (privat, nur server-seitig)
+RECAPTCHA_SECRET_KEY=your_recaptcha_secret_key_here
+```
+
 ### App Konfiguration
 ```env
 # Basis-URL der Anwendung (für E-Mail-Links)
@@ -42,11 +51,13 @@ NEXT_PUBLIC_APP_URL=https://yourdomain.vercel.app
 
 ### Lokale Entwicklung (.env.local)
 - [ ] Alle Brevo-Variablen gesetzt
+- [ ] Google reCAPTCHA Keys gesetzt
 - [ ] NEXT_PUBLIC_APP_URL auf localhost:9002
 - [ ] PayPal auf "sandbox" gesetzt
 
 ### Vercel Produktion
 - [ ] Brevo-Variablen in Vercel Environment Variables
+- [ ] Google reCAPTCHA Keys in Vercel Environment Variables
 - [ ] NEXT_PUBLIC_APP_URL auf Produktions-Domain
 - [ ] PayPal auf "live" oder "sandbox" je nach Umgebung
 - [ ] Nach Variablen-Update: Redeploy durchführen

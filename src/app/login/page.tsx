@@ -11,6 +11,8 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from '@/lib/supabase';
 import { useToast } from "@/hooks/use-toast";
+import { useRecaptcha } from '@/hooks/useRecaptcha';
+import { executeAndVerifyRecaptcha } from '@/lib/recaptcha-service';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,6 +22,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const router = useRouter();
   const { toast } = useToast();
+  const { executeRecaptcha, isLoaded } = useRecaptcha();
 
   // Prefetch Dashboard für schnellere Navigation nach Login
   useEffect(() => {
@@ -58,6 +61,14 @@ export default function LoginPage() {
     setError('');
 
     try {
+      // reCAPTCHA-Verifizierung vor dem Login
+      const recaptchaResult = await executeAndVerifyRecaptcha(executeRecaptcha, 'login');
+      
+      if (!recaptchaResult.success) {
+        setError('Sicherheitsüberprüfung fehlgeschlagen. Bitte versuchen Sie es erneut.');
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -160,7 +171,7 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !isLoaded}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Anmelden
             </Button>
