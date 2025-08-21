@@ -144,32 +144,19 @@ export async function POST(request: NextRequest) {
 
     // Admin-Benachrichtigung senden
     try {
-      // UserInfo-Daten abrufen
-      const userProfile = await UserService.getUserProfile(user.id);
-      
-      // Admin-Benachrichtigung immer senden, auch ohne UserInfo-Daten
+      // Rechnungsdaten aus dem Kauf verwenden (nicht UserInfo)
       const adminNotificationResult = await EmailService.sendAdminNotification({
-        userEmail: user.email!,
-        userName: user.user_metadata?.full_name || user.email!,
-        userBillingData: userProfile ? {
-          company: userProfile.name,
-          firstName: userProfile.name?.split(' ')[0] || '',
-          lastName: userProfile.name?.split(' ').slice(1).join(' ') || '',
-          address: userProfile.address,
-          city: userProfile.city,
-          postalCode: userProfile.city?.match(/\d{5}/)?.[0] || '',
+        userEmail: user.email!, // Registrierungs-E-Mail verwenden
+        userName: `${purchaseData.billing_first_name} ${purchaseData.billing_last_name}`.trim() || user.user_metadata?.full_name || user.email!,
+        userBillingData: {
+          company: '', // Keine Firma im Credit-Kauf-Formular
+          firstName: purchaseData.billing_first_name || '',
+          lastName: purchaseData.billing_last_name || '',
+          address: purchaseData.billing_street || '',
+          city: purchaseData.billing_city || '',
+          postalCode: purchaseData.billing_postal_code || '',
           country: 'Deutschland', // Standard für deutsche Nutzer
-          vatNumber: userProfile.vat_id || userProfile.tax_number || ''
-        } : {
-          // Leere Rechnungsdaten wenn keine UserInfo vorhanden
-          company: '',
-          firstName: '',
-          lastName: '',
-          address: '',
-          city: '',
-          postalCode: '',
-          country: '',
-          vatNumber: ''
+          vatNumber: purchaseData.billing_vat_id || ''
         },
         purchaseData: {
           creditsAdded: purchaseData.credits_purchased,

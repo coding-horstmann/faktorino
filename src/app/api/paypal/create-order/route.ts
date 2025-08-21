@@ -6,6 +6,15 @@ interface PayPalOrderRequest {
   packageId: string;
   credits: number;
   price: number;
+  billingData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    street: string;
+    postalCode: string;
+    city: string;
+    vatId: string;
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -13,7 +22,7 @@ export async function POST(request: NextRequest) {
     console.log('create-order: Starting request processing');
     
     const body: PayPalOrderRequest = await request.json();
-    const { packageId, credits, price } = body;
+    const { packageId, credits, price, billingData } = body;
 
     console.log('create-order: Request body:', { packageId, credits, price });
 
@@ -99,8 +108,14 @@ export async function POST(request: NextRequest) {
       package_id: packageId,
       credits_purchased: credits,
       price_paid: price,
-      payment_status: 'pending'
-      // payment_method entfernt, da Spalte nicht existiert
+      payment_status: 'pending',
+      billing_first_name: billingData.firstName,
+      billing_last_name: billingData.lastName,
+      billing_email: billingData.email,
+      billing_street: billingData.street,
+      billing_postal_code: billingData.postalCode,
+      billing_city: billingData.city,
+      billing_vat_id: billingData.vatId
     };
 
     console.log('create-order: Purchase data to insert:', purchaseData);

@@ -383,6 +383,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                 
                 <PayPalButton
                   creditPackage={selectedPackage}
+                  billingData={formData}
                   onSuccess={handlePayPalSuccess}
                   onError={handlePayPalError}
                 />

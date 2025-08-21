@@ -8,11 +8,20 @@ import { Loader2 } from 'lucide-react';
 
 interface PayPalButtonProps {
   creditPackage: CreditPackage;
+  billingData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    street: string;
+    postalCode: string;
+    city: string;
+    vatId: string;
+  };
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
 
-export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButtonProps) {
+export function PayPalButton({ creditPackage, billingData, onSuccess, onError }: PayPalButtonProps) {
   const [{ isPending, isRejected }] = usePayPalScriptReducer();
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
@@ -64,6 +73,7 @@ export function PayPalButton({ creditPackage, onSuccess, onError }: PayPalButton
               packageId: creditPackage.id,
               credits: creditPackage.credits,
               price: creditPackage.price_euros,
+              billingData: billingData,
             }),
           });
 
