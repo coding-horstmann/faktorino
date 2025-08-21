@@ -25,6 +25,27 @@ export interface SendEmailParams {
   };
 }
 
+export interface AdminNotificationParams {
+  userEmail: string;
+  userName: string;
+  userBillingData: {
+    company?: string;
+    firstName?: string;
+    lastName?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+    vatNumber?: string;
+  };
+  purchaseData: {
+    creditsAdded: number;
+    purchaseAmount: string;
+    transactionId: string;
+    date: string;
+  };
+}
+
 export class EmailService {
   /**
    * Erstellt HTML-Template für Credit-Bestätigung
@@ -115,7 +136,6 @@ export class EmailService {
 <body>
     <div class="container">
         <div class="header">
-            <div style="width: 80px; height: 80px; margin: 0 auto 15px auto; background: #FF9700; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; color: white;">✓</div>
             <h1>Credit-Kauf erfolgreich!</h1>
         </div>
         
@@ -250,5 +270,228 @@ Vielen Dank für Ihr Vertrauen!
         date: new Date().toLocaleDateString('de-DE')
       }
     });
+  }
+
+  /**
+   * Erstellt HTML-Template für Admin-Benachrichtigung
+   */
+  private static createAdminNotificationTemplate(data: AdminNotificationParams): EmailTemplate {
+    const subject = `Neuer Credit-Kauf: ${data.userName} - ${data.purchaseData.creditsAdded} Credits`;
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuer Credit-Kauf</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            margin: -20px -20px 20px -20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .highlight-box {
+            background-color: #f8f9fa;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .credit-amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #28a745;
+            margin: 10px 0;
+        }
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .details-table th,
+        .details-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .details-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Neuer Credit-Kauf</h1>
+        </div>
+        
+        <div class="content">
+            <p>Ein neuer Credit-Kauf wurde erfolgreich abgeschlossen.</p>
+            
+            <div class="highlight-box">
+                <h3>Kaufdetails</h3>
+                <div class="credit-amount">${data.purchaseData.creditsAdded} Credits</div>
+                <p>Kaufbetrag: <strong>${data.purchaseData.purchaseAmount}</strong></p>
+            </div>
+            
+            <h3>Kundendaten</h3>
+            <table class="details-table">
+                <tr>
+                    <th>Name:</th>
+                    <td>${data.userName}</td>
+                </tr>
+                <tr>
+                    <th>E-Mail:</th>
+                    <td>${data.userEmail}</td>
+                </tr>
+                ${data.userBillingData.company ? `<tr><th>Firma:</th><td>${data.userBillingData.company}</td></tr>` : ''}
+                ${data.userBillingData.firstName ? `<tr><th>Vorname:</th><td>${data.userBillingData.firstName}</td></tr>` : ''}
+                ${data.userBillingData.lastName ? `<tr><th>Nachname:</th><td>${data.userBillingData.lastName}</td></tr>` : ''}
+                ${data.userBillingData.address ? `<tr><th>Adresse:</th><td>${data.userBillingData.address}</td></tr>` : ''}
+                ${data.userBillingData.city ? `<tr><th>Stadt:</th><td>${data.userBillingData.city}</td></tr>` : ''}
+                ${data.userBillingData.postalCode ? `<tr><th>PLZ:</th><td>${data.userBillingData.postalCode}</td></tr>` : ''}
+                ${data.userBillingData.country ? `<tr><th>Land:</th><td>${data.userBillingData.country}</td></tr>` : ''}
+                ${data.userBillingData.vatNumber ? `<tr><th>USt-IdNr.:</th><td>${data.userBillingData.vatNumber}</td></tr>` : ''}
+            </table>
+            
+            <h3>Transaktionsdetails</h3>
+            <table class="details-table">
+                <tr>
+                    <th>Kaufbetrag:</th>
+                    <td>${data.purchaseData.purchaseAmount}</td>
+                </tr>
+                <tr>
+                    <th>Credits erhalten:</th>
+                    <td>${data.purchaseData.creditsAdded}</td>
+                </tr>
+                <tr>
+                    <th>Transaktions-ID:</th>
+                    <td>${data.purchaseData.transactionId}</td>
+                </tr>
+                <tr>
+                    <th>Datum:</th>
+                    <td>${data.purchaseData.date}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <div class="footer">
+            <p>Diese E-Mail wurde automatisch generiert.</p>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    const textContent = `
+Neuer Credit-Kauf
+
+KUNDENDATEN:
+- Name: ${data.userName}
+- E-Mail: ${data.userEmail}
+${data.userBillingData.company ? `- Firma: ${data.userBillingData.company}` : ''}
+${data.userBillingData.firstName ? `- Vorname: ${data.userBillingData.firstName}` : ''}
+${data.userBillingData.lastName ? `- Nachname: ${data.userBillingData.lastName}` : ''}
+${data.userBillingData.address ? `- Adresse: ${data.userBillingData.address}` : ''}
+${data.userBillingData.city ? `- Stadt: ${data.userBillingData.city}` : ''}
+${data.userBillingData.postalCode ? `- PLZ: ${data.userBillingData.postalCode}` : ''}
+${data.userBillingData.country ? `- Land: ${data.userBillingData.country}` : ''}
+${data.userBillingData.vatNumber ? `- USt-IdNr.: ${data.userBillingData.vatNumber}` : ''}
+
+TRANSAKTIONSDETAILS:
+- Kaufbetrag: ${data.purchaseData.purchaseAmount}
+- Credits erhalten: ${data.purchaseData.creditsAdded}
+- Transaktions-ID: ${data.purchaseData.transactionId}
+- Datum: ${data.purchaseData.date}
+`;
+
+    return {
+      subject,
+      htmlContent,
+      textContent
+    };
+  }
+
+  /**
+   * Sendet Admin-Benachrichtigung nach Credit-Kauf
+   */
+  static async sendAdminNotification(params: AdminNotificationParams): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!process.env.BREVO_API_KEY) {
+        console.error('BREVO_API_KEY nicht gesetzt');
+        return { success: false, error: 'E-Mail Service nicht konfiguriert' };
+      }
+
+      if (!process.env.BREVO_SENDER_EMAIL || !process.env.BREVO_SENDER_NAME) {
+        console.error('BREVO_SENDER_EMAIL oder BREVO_SENDER_NAME nicht gesetzt');
+        return { success: false, error: 'Sender-Konfiguration fehlt' };
+      }
+
+      const template = this.createAdminNotificationTemplate(params);
+
+      const sendSmtpEmail = new brevo.SendSmtpEmail();
+      sendSmtpEmail.subject = template.subject;
+      sendSmtpEmail.htmlContent = template.htmlContent;
+      sendSmtpEmail.textContent = template.textContent;
+      sendSmtpEmail.sender = {
+        name: process.env.BREVO_SENDER_NAME,
+        email: process.env.BREVO_SENDER_EMAIL
+      };
+      sendSmtpEmail.to = [{
+        email: 'kontakt@faktorino.de',
+        name: 'Faktorino Support'
+      }];
+
+      console.log('Sending admin notification email to: kontakt@faktorino.de');
+      
+      const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+      
+      console.log('Admin notification email sent successfully:', result.response?.data);
+      
+      return { success: true };
+
+    } catch (error) {
+      console.error('Fehler beim Senden der Admin-Benachrichtigung:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unbekannter Fehler beim E-Mail-Versand' 
+      };
+    }
   }
 }

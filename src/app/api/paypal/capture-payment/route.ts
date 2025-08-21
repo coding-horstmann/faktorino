@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { EmailService } from '@/lib/email-service';
+import { UserService } from '@/lib/user-service';
 import { redirect } from 'next/navigation';
 
 interface PayPalCaptureRequest {
@@ -139,6 +140,53 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error('Unerwarteter Fehler beim E-Mail-Versand:', emailError);
       // E-Mail-Fehler soll den Kaufprozess nicht unterbrechen
+    }
+
+    // Admin-Benachrichtigung senden
+    try {
+      // UserInfo-Daten abrufen
+      const userProfile = await UserService.getUserProfile(user.id);
+      
+      if (userProfile) {
+        const adminNotificationResult = await EmailService.sendAdminNotification({
+          userEmail: user.email!,
+          userName: user.user_metadata?.full_name || user.email!,
+          userBillingData: {
+            company: userProfile.name,
+            firstName: userProfile.name?.split(' ')[0] || '',
+            lastName: userProfile.name?.split(' ').slice(1).join(' ') || '',
+            address: userProfile.address,
+            city: userProfile.city,
+            postalCode: userProfile.city?.match(/\d{5}/)?.[0] || '',
+            country: 'Deutschland', // Standard für deutsche Nutzer
+            vatNumber: userProfile.vat_id || userProfile.tax_number || ''
+          },
+          purchaseData: {
+            creditsAdded: purchaseData.credits_purchased,
+            purchaseAmount: `€${purchaseData.price_paid.toFixed(2)}`,
+            transactionId: orderID,
+            date: new Date().toLocaleDateString('de-DE', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+          }
+        });
+
+        if (!adminNotificationResult.success) {
+          console.error('Fehler beim Senden der Admin-Benachrichtigung:', adminNotificationResult.error);
+          // Admin-Benachrichtigung-Fehler soll den Kaufprozess nicht unterbrechen
+        } else {
+          console.log('Admin-Benachrichtigung erfolgreich gesendet an: kontakt@faktorino.de');
+        }
+      } else {
+        console.log('Keine UserInfo-Daten gefunden, Admin-Benachrichtigung übersprungen');
+      }
+    } catch (adminEmailError) {
+      console.error('Unerwarteter Fehler beim Admin-E-Mail-Versand:', adminEmailError);
+      // Admin-E-Mail-Fehler soll den Kaufprozess nicht unterbrechen
     }
 
     // Erfolgreiche Antwort
