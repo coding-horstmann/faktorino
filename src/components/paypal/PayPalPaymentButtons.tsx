@@ -212,7 +212,7 @@ export function PayPalPaymentButtons({ creditPackage, billingData, onSuccess, on
       <PayPalButtons
         style={{
           layout: 'vertical',
-          color: 'blue',
+          color: 'silver',
           shape: 'rect',
           label: 'sepa',
           height: 40,
