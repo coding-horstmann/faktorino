@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { CreditService, type CreditPackage } from '@/lib/credit-service';
-import { PayPalButton } from '@/components/paypal/PayPalButton';
+import { PayPalPaymentButtons } from '@/components/paypal/PayPalPaymentButtons';
 
 interface PurchaseFormData {
   firstName: string;
@@ -46,7 +46,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
   });
   const [errors, setErrors] = useState<Partial<PurchaseFormData>>({});
   const [loading, setLoading] = useState(true);
-  const [currentStep, setCurrentStep] = useState<'packages' | 'form' | 'payment'>('packages');
+  const [currentStep, setCurrentStep] = useState<'packages' | 'form'>('packages');
 
   console.log('CreditPurchaseModal - Rendering:', { isOpen, currentStep, selectedPackage: selectedPackage?.name });
 
@@ -121,17 +121,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleContinueToPayment = () => {
-    if (!validateForm()) {
-      toast({
-        title: "Eingabefehler",
-        description: "Bitte füllen Sie alle Pflichtfelder korrekt aus.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setCurrentStep('payment');
-  };
+
 
   const handlePayPalSuccess = () => {
     if (onPurchaseComplete) {
@@ -146,7 +136,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
       description: `PayPal-Fehler: ${error}`,
       variant: "destructive",
     });
-    setCurrentStep('form');
   };
 
   const formatPrice = (price: number) => {
@@ -161,9 +150,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
   };
 
   const handleBack = () => {
-    if (currentStep === 'payment') {
-      setCurrentStep('form');
-    } else if (currentStep === 'form') {
+    if (currentStep === 'form') {
       setCurrentStep('packages');
       setSelectedPackage(null);
     }
@@ -237,14 +224,21 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
 
           {currentStep === 'form' && selectedPackage && (
             <>
+              {/* Bestellübersicht */}
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-2">Gewähltes Paket:</h4>
-                <div className="flex justify-between items-center">
-                  <span className="text-blue-800">{selectedPackage.name} - {selectedPackage.credits.toLocaleString('de-DE')} Credits</span>
-                  <span className="font-bold text-blue-900">{formatPrice(selectedPackage.price_euros)}</span>
+                <h4 className="font-semibold text-blue-900 mb-2">Bestellübersicht</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-blue-800">{selectedPackage.name}</span>
+                    <span className="font-bold text-blue-900">{formatPrice(selectedPackage.price_euros)}</span>
+                  </div>
+                  <div className="text-sm text-blue-700">
+                    {selectedPackage.credits.toLocaleString('de-DE')} Credits • Inkl. MwSt.
+                  </div>
                 </div>
               </div>
 
+              {/* Rechnungsdaten */}
               <div className="space-y-4">
                 <h3 className="font-semibold">Rechnungsdaten eingeben</h3>
                 
@@ -350,38 +344,11 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={handleBack}>
-                  Zurück
-                </Button>
-                <Button onClick={handleContinueToPayment} className="flex-1">
-                  Weiter zu PayPal
-                </Button>
-              </div>
-            </>
-          )}
-
-          {currentStep === 'payment' && selectedPackage && (
-            <>
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mb-4">
-                <h4 className="font-semibold text-blue-900 mb-2">Bestellübersicht</h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-blue-800">{selectedPackage.name}</span>
-                    <span className="font-bold text-blue-900">{formatPrice(selectedPackage.price_euros)}</span>
-                  </div>
-                  <div className="text-sm text-blue-700">
-                    {selectedPackage.credits.toLocaleString('de-DE')} Credits • Inkl. MwSt.
-                  </div>
-                </div>
-              </div>
-
-              <div className="text-center mb-4">
-                <p className="text-gray-600 mb-4">
-                  Klicken Sie auf den PayPal-Button, um Ihre Zahlung abzuschließen:
-                </p>
+              {/* PayPal-Zahlungsbuttons */}
+              <div className="space-y-4">
+                <h3 className="font-semibold">Zahlungsmethode wählen</h3>
                 
-                <PayPalButton
+                <PayPalPaymentButtons
                   creditPackage={selectedPackage}
                   billingData={formData}
                   onSuccess={handlePayPalSuccess}
@@ -390,7 +357,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               </div>
 
               <Button variant="outline" onClick={handleBack} className="w-full">
-                Zurück
+                Zurück zur Paketauswahl
               </Button>
             </>
           )}
