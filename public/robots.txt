@@ -1,0 +1,29 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://faktorino.de/sitemap.xml
+
+# Crawl-delay für freundliches Crawling
+Crawl-delay: 1
+
+# Spezifische Regeln für verschiedene Bots
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+# Verhindere Crawling von Admin-Bereichen (falls vorhanden)
+Disallow: /admin/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /static/
+
+# Erlaube wichtige Ressourcen
+Allow: /images/
+Allow: /css/
+Allow: /js/

@@ -64,7 +64,38 @@ const PricingCard = ({
 export default function Home() {
 
   return (
-    <div className="w-full">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "faktorino",
+            "description": "Automatische Etsy Rechnungserstellung - Erstellen Sie professionelle Rechnungen in Sekunden",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "url": "https://faktorino.de",
+            "offers": {
+              "@type": "Offer",
+              "price": "7.99",
+              "priceCurrency": "EUR",
+              "description": "Starter Paket - 500 Credits für 500 Rechnungen"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.8",
+              "ratingCount": "150"
+            },
+            "provider": {
+              "@type": "Organization",
+              "name": "faktorino",
+              "url": "https://faktorino.de"
+            }
+          })
+        }}
+      />
+      <div className="w-full">
         {/* Hero Section */}
         <section className="text-center py-20">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-black mb-4 font-headline">
@@ -273,7 +304,8 @@ export default function Home() {
                       </div>
                   </div>
               </div>
-          </section>
-    </div>
-  );
-}
+                     </section>
+      </div>
+    </>
+   );
+ }
