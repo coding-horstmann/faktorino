@@ -107,21 +107,21 @@ export default function Home() {
             <div className="container mx-auto text-center">
                                  <h2 className="text-3xl font-bold mb-10 text-black">Rechnungen erstellen in 3 einfachen Schritten</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                   <Step 
-                        icon={<GanttChartSquare size={48} />}
-                        title="1. Daten eingeben"
-                        description="Gib einmalig deine Firmendaten ein, die auf den Rechnungen erscheinen sollen."
-                   />
-                    <Step 
-                        icon={<Download size={48} />}
-                        title="2. CSV hochladen"
-                        description="Lade die Bestell-CSV von Etsy herunter und ziehe sie per Drag & Drop in unser Tool."
-                   />
-                    <Step 
-                        icon={<FileUp size={48} />}
-                        title="3. Rechnungen erhalten"
-                        description="Das Tool generiert automatisch alle Rechnungen, die du als PDF herunterladen kannst."
-                   />
+                                       <Step 
+                         icon={<GanttChartSquare size={48} />}
+                         title="1. Firmendaten eingeben"
+                         description="Geben Sie einmalig die Firmendaten ein, die auf den Rechnungen erscheinen sollen."
+                    />
+                     <Step 
+                         icon={<Download size={48} />}
+                         title="2. Etsy-CSV-Datei hochladen"
+                         description="Importieren Sie die von Etsy bereitgestellte Verkaufsdatei."
+                    />
+                     <Step 
+                         icon={<FileUp size={48} />}
+                         title="3. Rechnungen herunterladen"
+                         description="Mit nur einem Klick erhalten Sie Ihre fertigen Rechnungen als PDF."
+                    />
                 </div>
             </div>
         </section>
