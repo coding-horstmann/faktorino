@@ -21,9 +21,9 @@ export function SiteFooter() {
                 <p className="text-sm text-muted-foreground">
                     Ihr smartes Tool für die automatisierte Erstellung von Etsy-Rechnungen.
                 </p>
-                <a href="mailto:kontakt@etsybuchhalter.de" className="text-sm hover:underline">
-                    kontakt@etsybuchhalter.de
-                </a>
+                                 <a href="mailto:kontakt@faktorino.de" className="text-sm hover:underline">
+                     kontakt@faktorino.de
+                 </a>
             </div>
             
             <div className="flex flex-col gap-2 text-sm">
