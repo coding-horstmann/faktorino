@@ -102,7 +102,7 @@ export default function Home() {
                 Etsy Rechnungen automatisch erstellen – schnell & einfach
             </h1>
             <p className="text-lg md:text-xl text-black mb-8 max-w-2xl mx-auto">
-                Mit faktorino konvertieren Sie Ihre CSV-Datei zu fertigen Rechnungen – in nur wenigen Klicks.
+                Mit faktorino konvertieren Sie Ihre CSV-Datei zu Rechnungen – in nur wenigen Klicks.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild size="lg">
