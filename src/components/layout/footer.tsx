@@ -14,7 +14,7 @@ export function SiteFooter() {
                     <img 
                       src="/images/logo.svg" 
                       alt="EtsyBuchhalter Logo" 
-                      className="h-6 w-auto"
+                      className="h-8 w-auto"
                     />
                     <span className="inline-block font-bold">EtsyBuchhalter</span>
                 </Link>
