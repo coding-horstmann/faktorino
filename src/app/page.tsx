@@ -95,7 +95,7 @@ export default function Home() {
                     <Link href="/register">Rechnungen erstellen (30 Rechnungen gratis)</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                    <Link href="/login">Jetzt kostenlos testen</Link>
+                    <Link href="/login">Anmelden</Link>
                 </Button>
             </div>
         </section>
