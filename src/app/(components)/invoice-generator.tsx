@@ -735,7 +735,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                   <Info className="h-4 w-4" />
                   <AlertTitle className="font-semibold">Wo finde ich die CSV-Datei?</AlertTitle>
                   <AlertDescription className="text-blue-700">
-                    Etsy-Dashboard → Shop-Manager → Einstellungen → Optionen → Daten herunterladen → Typ: <span className="underline font-semibold">Bestellte Artikel</span>
+                    Etsy-Dashboard → Shop-Manager → Einstellungen → Optionen → Daten herunterladen → Typ: Bestellte Artikel auswählen → Zeitraum angeben → „CSV herunterladen" klicken.
                   </AlertDescription>
                 </Alert>
             </CardContent>
