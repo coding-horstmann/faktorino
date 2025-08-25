@@ -167,7 +167,7 @@ function formatDate(dateStr: string): string {
     const parts = dateStr.match(/(\d+)/g);
     let date: Date;
     if (parts && parts.length === 3) {
-      // Assuming MM/DD/YY or similar, which is common in Etsy CSVs
+      // Assuming MM/DD/YY or similar, which is common in Etsy-CSVs
       const month = parseInt(parts[0], 10);
       const day = parseInt(parts[1], 10);
       let year = parseInt(parts[2], 10);
