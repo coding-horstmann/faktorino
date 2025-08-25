@@ -29,40 +29,23 @@ const Step = ({ icon, title, description }: { icon: React.ReactNode, title: stri
 
 const PricingCard = ({ 
     title, 
-    subtitle, 
     price, 
-    billing, 
-    features, 
-    isPopular = false 
+    features 
 }: { 
     title: string, 
-    subtitle: string, 
     price: string, 
-    billing: string, 
-    features: string[], 
-    isPopular?: boolean 
+    features: string[]
 }) => (
-    <Card className={`relative ${isPopular ? 'border-primary shadow-lg' : ''}`}>
-        {isPopular && (
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-medium">
-                    Beliebt
-                </span>
-            </div>
-        )}
+    <Card className="h-full flex flex-col">
         <CardHeader className="text-center pb-4">
-            <CardTitle className="text-2xl font-bold">{title}</CardTitle>
-            <p className="text-muted-foreground">{subtitle}</p>
+            <CardTitle className="text-xl font-bold">{title}</CardTitle>
+            <p className="text-lg font-semibold text-primary">{price}</p>
         </CardHeader>
-        <CardContent className="text-center">
-            <div className="mb-6">
-                <div className="text-4xl font-bold mb-2">{price}</div>
-                <p className="text-sm text-muted-foreground">{billing}</p>
-            </div>
-            <div className="space-y-3 mb-8">
+        <CardContent className="flex-1 flex flex-col">
+            <div className="space-y-3 mb-6 flex-1">
                 {features.map((feature, index) => (
-                    <div key={index} className="flex items-center justify-center gap-2">
-                        <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                    <div key={index} className="flex items-start gap-2">
+                        <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
                         <span className="text-sm">{feature}</span>
                     </div>
                 ))}
@@ -129,57 +112,44 @@ export default function Home() {
         {/* Pricing Section */}
         <section className="py-20 bg-secondary rounded-lg">
             <div className="container mx-auto">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold mb-4 text-black">Wähle dein perfektes Credit-Paket</h2>
-                    <p className="text-lg text-black max-w-2xl mx-auto">
-                        Kaufe Credits für deine Rechnungen. Je mehr Credits du kaufst, desto günstiger wird es pro Rechnung.
-                    </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                    <PricingCard
-                        title="Starter Paket"
-                        subtitle="Für Einsteiger"
-                        price="7,99 €"
-                        billing="500 Credits • ~0,0160€ pro Credit"
-                        features={[
-                            "500 Credits für Rechnungen",
-                            "Grundlegende Rechnungsvorlagen",
-                            "E-Mail Support",
-                            "Standard-Export-Formate",
-                            "Einmalzahlung - keine Abo"
-                        ]}
-                    />
-                    <PricingCard
-                        title="Professional Paket"
-                        subtitle="Für aktive Shops"
-                        price="9,99 €"
-                        billing="1.000 Credits • ~0,0100€ pro Credit"
-                        features={[
-                            "1.000 Credits für Rechnungen",
-                            "Erweiterte Rechnungsvorlagen",
-                            "Prioritäts-Support",
-                            "Alle Export-Formate",
-                            "Automatische Backup-Funktion",
-                            "Einmalzahlung - keine Abo"
-                        ]}
-                        isPopular={true}
-                    />
-                    <PricingCard
-                        title="Business Paket"
-                        subtitle="Für große Shops"
-                        price="19,99 €"
-                        billing="3.000 Credits • ~0,0067€ pro Credit"
-                        features={[
-                            "3.000 Credits für Rechnungen",
-                            "Alle Rechnungsvorlagen",
-                            "24/7 Premium Support",
-                            "API-Zugang",
-                            "Erweiterte Analytics",
-                            "Individuelle Anpassungen",
-                            "Einmalzahlung - keine Abo"
-                        ]}
-                    />
-                </div>
+                                 <div className="text-center mb-12">
+                     <h2 className="text-3xl font-bold mb-4 text-black">Unsere Pakete für Etsy Shops</h2>
+                 </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                     <PricingCard
+                         title="Starter Paket – 7,99 € (einmalig)"
+                         price=""
+                         features={[
+                             "500 Credits für Rechnungen",
+                             "Preis pro Rechnung: ~0,016 €",
+                             "Nutzung für umsatzsteuerpflichtige Shops & Kleinunternehmer:innen",
+                             "Rechnungen als PDF-Download",
+                             "Einmalzahlung – kein Abo"
+                         ]}
+                     />
+                     <PricingCard
+                         title="Professional Paket – 9,99 € (einmalig)"
+                         price=""
+                         features={[
+                             "1.000 Credits für Rechnungen",
+                             "Preis pro Rechnung: ~0,010 €",
+                             "Nutzung für umsatzsteuerpflichtige Shops & Kleinunternehmer:innen",
+                             "Rechnungen als PDF-Download",
+                             "Einmalzahlung – kein Abo"
+                         ]}
+                     />
+                     <PricingCard
+                         title="Business Paket – 19,99 € (einmalig)"
+                         price=""
+                         features={[
+                             "3.000 Credits für Rechnungen",
+                             "Preis pro Rechnung: ~0,0067 €",
+                             "Nutzung für umsatzsteuerpflichtige Shops & Kleinunternehmer:innen",
+                             "Rechnungen als PDF-Download",
+                             "Einmalzahlung – kein Abo"
+                         ]}
+                     />
+                 </div>
             </div>
         </section>
         
