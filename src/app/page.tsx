@@ -126,11 +126,11 @@ export default function Home() {
                          title="1. Firmendaten eingeben"
                          description="Geben Sie einmalig die Firmendaten ein, die auf den Rechnungen erscheinen sollen."
                     />
-                     <Step 
+                                          <Step 
                          icon={<Download size={48} />}
                          title="2. Etsy-CSV-Datei hochladen"
-                         description="Importieren Sie die von Etsy bereitgestellte Verkaufsdatei."
-                    />
+                         description="Unser Etsy CSV Konverter verarbeitet Ihre Verkaufsdaten automatisch und erstellt im Hintergrund die Rechnungen vor."
+                     />
                      <Step 
                          icon={<FileUp size={48} />}
                          title="3. Rechnungen herunterladen"
@@ -305,15 +305,10 @@ export default function Home() {
                               Egal ob Sie ein kleiner Etsy-Shop mit wenigen Verkäufen pro Monat sind oder bereits ein wachsender Store mit hunderten Bestellungen: faktorino passt sich an. Mit flexiblen Paketen (500, 1.000 oder 3.000 Rechnungen) zahlen Sie nur einmal und haben die volle Freiheit.
                           </p>
                           
-                          <h3 className="text-xl font-bold mt-8 mb-4">Vorteile auch für Steuerberater:innen</h3>
-                          <p>
-                              Nicht nur Etsy Shops profitieren von faktorino. Auch Steuerberater:innen sparen Zeit, wenn Mandanten ihre Etsy-Daten direkt in fertige Rechnungen umwandeln können. Das schafft Klarheit, Übersicht und spart wertvolle Ressourcen.
-                          </p>
-                          
-                          <h3 className="text-xl font-bold mt-8 mb-4">Mehr Zeit fürs Wesentliche</h3>
-                          <p>
-                              Das Ziel von faktorino ist klar: weniger Aufwand für Administration, mehr Fokus auf das, was wirklich zählt. Statt Rechnungen zu schreiben, haben Sie Zeit für Ihre Produkte, Ihr Marketing und Ihre Kund:innen.
-                          </p>
+                                                     <h3 className="text-xl font-bold mt-8 mb-4">Vorteile auch für Steuerberater:innen</h3>
+                           <p>
+                               Nicht nur Etsy Shops profitieren von faktorino. Auch Steuerberater:innen sparen Zeit, wenn Mandanten ihre Etsy-Daten direkt in fertige Rechnungen umwandeln können. Das schafft Klarheit, Übersicht und spart wertvolle Ressourcen.
+                           </p>
                       </div>
                   </div>
               </div>
