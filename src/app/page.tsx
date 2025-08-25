@@ -148,7 +148,7 @@ export default function Home() {
                  </div>
                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                      <PricingCard
-                         title="Starter Paket – 7,99 € (einmalig)"
+                         title="Starter Paket – 7,99 €"
                          price=""
                          features={[
                              "500 Credits für 500 Rechnungen",
@@ -159,7 +159,7 @@ export default function Home() {
                          ]}
                      />
                      <PricingCard
-                         title="Professional Paket – 9,99 € (einmalig)"
+                         title="Professional Paket – 9,99 €"
                          price=""
                          features={[
                              "1.000 Credits für 1.000 Rechnungen",
@@ -170,7 +170,7 @@ export default function Home() {
                          ]}
                      />
                      <PricingCard
-                         title="Business Paket – 19,99 € (einmalig)"
+                         title="Business Paket – 19,99 €"
                          price=""
                          features={[
                              "3.000 Credits für 3.000 Rechnungen",
