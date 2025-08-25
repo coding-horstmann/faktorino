@@ -46,7 +46,7 @@ export function SiteHeader() {
               alt="EtsyBuchhalter Logo" 
               className="h-12 w-auto"
             />
-            <span className="inline-block font-bold uppercase text-xl" style={{ color: '#17427b' }}>FAKTORINO</span>
+            <span className="inline-block font-bold uppercase text-xl text-black">FAKTORINO</span>
         </Link>
         
         <nav className="flex items-center space-x-2">
