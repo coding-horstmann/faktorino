@@ -153,28 +153,57 @@ export default function Home() {
             </div>
         </section>
         
-        {/* FAQ Section */}
-        <section className="py-12 bg-secondary rounded-lg">
-             <div className="container mx-auto max-w-3xl">
-                <h2 className="text-3xl font-bold text-center mb-8">Häufig gestellte Fragen (FAQ)</h2>
-                <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="item-1">
-                        <AccordionTrigger className="text-lg">Wie viele Rechnungen kann ich pro Monat erstellen?</AccordionTrigger>
-                        <AccordionContent className="text-base">
-                            Du kannst bis zu 10.000 Rechnungen pro Monat generieren. Das sollte auch für sehr aktive Shops problemlos ausreichen.
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="item-2">
-                        <AccordionTrigger className="text-lg">Wo finde ich die richtige CSV-Datei bei Etsy?</AccordionTrigger>
-                        <AccordionContent className="text-base">
-                            Gehe in deinem Etsy-Dashboard zu: <br />
-                            <strong>Shop-Manager → Einstellungen → Optionen → Daten herunterladen</strong>. <br />
-                            Wähle dort im Bereich "Bestellungen" als Typ **"Bestellte Artikel"** aus. Anschließend kannst du den gewünschten Monat und das Jahr auswählen und die CSV herunterladen.
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-             </div>
-        </section>
+                 {/* FAQ Section */}
+         <section className="py-12 bg-secondary rounded-lg">
+              <div className="container mx-auto max-w-3xl">
+                 <h2 className="text-3xl font-bold text-center mb-8">Häufig gestellte Fragen (FAQ)</h2>
+                 <Accordion type="single" collapsible className="w-full">
+                     <AccordionItem value="item-1">
+                         <AccordionTrigger className="text-lg">Was macht faktorino genau?</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             faktorino ist ein spezialisiertes Tool, das automatisch Etsy Rechnungen erstellt. Statt jede Rechnung manuell zu schreiben, laden Sie einfach Ihre Etsy-CSV-Datei hoch, geben Ihre Daten ein und erhalten sofort fertige Rechnungen als PDFs.
+                         </AccordionContent>
+                     </AccordionItem>
+                     <AccordionItem value="item-2">
+                         <AccordionTrigger className="text-lg">Kann ich faktorino kostenlos testen?</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             Ja. Sie können faktorino unverbindlich testen und bis zu 30 Etsy Rechnungen kostenlos erstellen. Erst danach benötigen Sie ein Paket.
+                         </AccordionContent>
+                     </AccordionItem>
+                     <AccordionItem value="item-3">
+                         <AccordionTrigger className="text-lg">Für welche Verkäufer:innen eignet sich faktorino?</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             faktorino funktioniert sowohl für umsatzsteuerpflichtige Verkäufer:innen als auch für diejenigen, die unter die Kleinunternehmerregelung fallen.
+                         </AccordionContent>
+                     </AccordionItem>
+                     <AccordionItem value="item-4">
+                         <AccordionTrigger className="text-lg">In welchem Format werden die Rechnungen ausgegeben?</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             Alle Rechnungen stehen Ihnen als PDF-Download zur Verfügung.
+                         </AccordionContent>
+                     </AccordionItem>
+                     <AccordionItem value="item-5">
+                         <AccordionTrigger className="text-lg">Wie lange dauert die Erstellung meiner Etsy Rechnungen?</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             Sobald die CSV-Datei hochgeladen ist, erstellt faktorino Ihre Rechnungen innerhalb weniger Sekunden.
+                         </AccordionContent>
+                     </AccordionItem>
+                     <AccordionItem value="item-6">
+                         <AccordionTrigger className="text-lg">Kann ich Rechnungen auch manuell bearbeiten?</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             Ja. faktorino erstellt Ihre Rechnungen automatisch, Sie können diese aber jederzeit individuell anpassen.
+                         </AccordionContent>
+                     </AccordionItem>
+                     <AccordionItem value="item-7">
+                         <AccordionTrigger className="text-lg">Wo finde ich die nötige Etsy-CSV-Datei?</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             Im Etsy-Dashboard unter:<br />
+                             Shop-Manager → Einstellungen → Optionen → Daten herunterladen → Typ: Bestellte Artikel auswählen → Zeitraum angeben → „CSV herunterladen" klicken.
+                         </AccordionContent>
+                     </AccordionItem>
+                 </Accordion>
+              </div>
+         </section>
         
                  {/* Trust Icons Section */}
          <section className="py-12 bg-secondary rounded-lg">
