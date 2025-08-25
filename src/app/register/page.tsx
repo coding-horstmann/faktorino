@@ -115,7 +115,7 @@ export default function RegisterPage() {
     <div className="w-full max-w-lg space-y-6">
       <div className="text-center">
         <h1 className="text-3xl font-bold">Jetzt registrieren</h1>
-        <p className="text-muted-foreground">Starten Sie Ihren 14-tägigen kostenlosen Test</p>
+        <p className="text-muted-foreground">Jetzt kostenlos testen</p>
       </div>
 
       <Card className="bg-secondary/50">
@@ -125,19 +125,19 @@ export default function RegisterPage() {
           <CardContent className="space-y-3">
              <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0"/>
-                <p>14 Tage kostenlos und unverbindlich testen.</p>
+                <p>30 Rechnungen kostenlos erstellen</p>
              </div>
              <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0"/>
-                <p>Bis zu 10.000 Rechnungen pro Monat generieren.</p>
+                <p>Rechnungen als PDF-Download</p>
              </div>
              <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0"/>
-                <p>Automatische Steuerberechnung für physische & digitale Produkte.</p>
+                <p>Nutzung für umsatzsteuerpflichtige Shops & Kleinunternehmer:innen</p>
              </div>
              <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-primary mt-0.5 shrink-0"/>
-                <p>DSGVO-konforme Datenverarbeitung.</p>
+                <p>DSGVO-konforme Datenverarbeitung</p>
              </div>
           </CardContent>
       </Card>
