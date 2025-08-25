@@ -92,7 +92,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild size="lg">
-                    <Link href="/register">Rechnungen erstellen (30 Rechnungen gratis)</Link>
+                    <Link href="/register">30 Rechnungen gratis erstellen</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
                     <Link href="/login">Anmelden</Link>
