@@ -119,7 +119,7 @@ export function SiteHeader() {
               alt="faktorino Logo" 
               className="h-12 w-auto"
             />
-            <span className="inline-block font-bold uppercase text-xl text-black">FAKTORINO</span>
+                                  <span className="inline-block font-bold text-xl text-black">faktorino</span>
         </Link>
         
         {/* Desktop Navigation */}

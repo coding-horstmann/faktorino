@@ -16,7 +16,7 @@ export function SiteFooter() {
                        alt="faktorino Logo" 
                        className="h-10 w-auto"
                      />
-                     <span className="inline-block font-bold uppercase text-xl text-black">FAKTORINO</span>
+                     <span className="inline-block font-bold text-xl text-black">faktorino</span>
                  </Link>
                 <p className="text-sm text-muted-foreground">
                     Ihr smartes Tool für die automatisierte Erstellung von Etsy-Rechnungen.
