@@ -123,8 +123,8 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
 
         {/* Warnung bei niedrigen Credits */}
         {currentCredits < 10 && (
-          <div className="mt-4 p-3 bg-white bg-opacity-70 rounded-lg border" style={{ borderColor: '#e61c15' }}>
-            <div className="flex items-center gap-2" style={{ color: '#e61c15' }}>
+          <div className="mt-4 p-3 bg-white bg-opacity-70 rounded-lg border" style={{ borderColor: '#cd0d07' }}>
+            <div className="flex items-center gap-2" style={{ color: '#cd0d07' }}>
               <CreditCard className="h-4 w-4" />
               <span className="font-medium text-sm">
                 Niedrige Credits! Kaufen Sie jetzt nach, um weiterhin Rechnungen erstellen zu können.
