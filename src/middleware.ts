@@ -40,7 +40,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Allow access to public pages
-  const publicPaths = ['/login', '/register', '/agb', '/datenschutz', '/impressum', '/kontakt', '/']
+  const publicPaths = ['/login', '/register', '/agb', '/datenschutz', '/impressum', '/']
   const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   // Allow authenticated users to access welcome page

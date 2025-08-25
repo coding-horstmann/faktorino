@@ -11,7 +11,11 @@ export function SiteFooter() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex flex-col gap-2">
                 <Link href="/" className="flex items-center space-x-2 mb-2">
-                    <BookCopy className="h-6 w-6 text-primary" />
+                    <img 
+                      src="/images/logo.svg" 
+                      alt="EtsyBuchhalter Logo" 
+                      className="h-6 w-auto"
+                    />
                     <span className="inline-block font-bold">EtsyBuchhalter</span>
                 </Link>
                 <p className="text-sm text-muted-foreground">
@@ -26,7 +30,6 @@ export function SiteFooter() {
                 <h4 className="font-semibold">Navigation</h4>
                 <Link href="/register" className="text-muted-foreground hover:underline">Registrieren</Link>
                 <Link href="/login" className="text-muted-foreground hover:underline">Anmelden</Link>
-                <Link href="/kontakt" className="text-muted-foreground hover:underline">Kontakt</Link>
             </div>
 
             <div className="flex flex-col gap-2 text-sm">

@@ -185,7 +185,7 @@ export default function WelcomePage() {
 
       <div className="text-center text-sm text-muted-foreground space-y-2">
         <p>
-          Haben Sie Fragen? Besuchen Sie unsere <Link href="/kontakt" className="underline hover:text-primary">Kontakt-Seite</Link>.
+          Haben Sie Fragen? Schreiben Sie uns eine E-Mail an kontakt@etsybuchhalter.de
         </p>
         <p>
           Nach dem 14-tägigen Testzeitraum endet der Zugang automatisch, sofern kein aktives Abo abgeschlossen wurde. Das Abo kostet 4,99 € pro Monat und kann jederzeit gekündigt werden.
