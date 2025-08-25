@@ -162,7 +162,7 @@ export default function Home() {
                          title="Professional Paket – 9,99 € (einmalig)"
                          price=""
                          features={[
-                             "1.000 Credits für 1000 Rechnungen",
+                             "1.000 Credits für 1.000 Rechnungen",
                              "Preis pro Rechnung: ~0,010 €",
                              "Nutzung für umsatzsteuerpflichtige Shops & Kleinunternehmer:innen",
                              "Rechnungen als PDF-Download",
@@ -173,7 +173,7 @@ export default function Home() {
                          title="Business Paket – 19,99 € (einmalig)"
                          price=""
                          features={[
-                             "3.000 Credits für 3000 Rechnungen",
+                             "3.000 Credits für 3.000 Rechnungen",
                              "Preis pro Rechnung: ~0,0067 €",
                              "Nutzung für umsatzsteuerpflichtige Shops & Kleinunternehmer:innen",
                              "Rechnungen als PDF-Download",
