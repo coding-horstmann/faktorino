@@ -46,7 +46,7 @@ export function SiteHeader() {
               alt="EtsyBuchhalter Logo" 
               className="h-10 w-auto"
             />
-            <span className="inline-block font-bold">EtsyBuchhalter</span>
+            <span className="inline-block font-bold">Faktorino</span>
         </Link>
         
         <nav className="flex items-center space-x-2">
