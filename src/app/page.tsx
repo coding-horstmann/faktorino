@@ -84,10 +84,10 @@ export default function Home() {
     <div className="w-full">
         {/* Hero Section */}
         <section className="text-center py-20">
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-foreground mb-4 font-headline">
-                Automatisierte Rechnungen für deinen <span className="text-primary">Etsy</span>-Shop
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-black mb-4 font-headline">
+                Etsy Rechnungen automatisch erstellen – schnell & einfach mit <span className="text-primary">faktorino</span>
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-black mb-8 max-w-2xl mx-auto">
                 Spare wertvolle Zeit und erstelle mit wenigen Klicks professionelle und korrekte Rechnungen für alle deine Etsy-Verkäufe.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -124,7 +124,7 @@ export default function Home() {
         {/* Step-by-Step Section */}
         <section className="py-20">
             <div className="container mx-auto text-center">
-                <h2 className="text-3xl font-bold mb-10">In 3 einfachen Schritten zur fertigen Rechnung</h2>
+                <h2 className="text-3xl font-bold mb-10 text-black">In 3 einfachen Schritten zur fertigen Rechnung</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                    <Step 
                         icon={<GanttChartSquare size={48} />}
@@ -149,8 +149,8 @@ export default function Home() {
         <section className="py-20 bg-secondary rounded-lg">
             <div className="container mx-auto">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold mb-4">Wähle dein perfektes Credit-Paket</h2>
-                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    <h2 className="text-3xl font-bold mb-4 text-black">Wähle dein perfektes Credit-Paket</h2>
+                    <p className="text-lg text-black max-w-2xl mx-auto">
                         Kaufe Credits für deine Rechnungen. Je mehr Credits du kaufst, desto günstiger wird es pro Rechnung.
                     </p>
                 </div>
