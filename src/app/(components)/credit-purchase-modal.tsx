@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { CreditService, type CreditPackage } from '@/lib/credit-service';
 import { PayPalPaymentButtons } from '@/components/paypal/PayPalPaymentButtons';
+import Link from 'next/link';
 
 interface PurchaseFormData {
   firstName: string;
@@ -229,6 +230,19 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                     {selectedPackage.credits.toLocaleString('de-DE')} Credits • Inkl. MwSt.
                   </div>
                 </div>
+              </div>
+
+              {/* Datenschutz und AGB Hinweis */}
+              <div className="text-xs text-gray-600 text-center">
+                Mit dem Kauf erklären Sie sich mit der{' '}
+                <Link href="/datenschutz" className="text-blue-600 hover:underline" target="_blank">
+                  Datenschutzerklärung
+                </Link>
+                {' '}und den{' '}
+                <Link href="/agb" className="text-blue-600 hover:underline" target="_blank">
+                  Allgemeinen Geschäftsbedingungen
+                </Link>
+                {' '}einverstanden.
               </div>
 
               {/* Rechnungsdaten */}
