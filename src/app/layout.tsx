@@ -12,8 +12,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 
 export const metadata: Metadata = {
-  title: 'EtsyBuchhalter',
-  description: 'Ihr smartes Tool für die automatisierte Etsy-Buchhaltung.',
+  title: 'Etsy Rechnungen automatisch erstellen | faktorino Rechnungstool',
+  description: 'Mit faktorino erstellen Sie Etsy Rechnungen in wenigen Sekunden. CSV hochladen, Daten eingeben und fertige Rechnungen als PDF herunterladen – schnell, einfach und effizient.',
 };
 
 export default function RootLayout({
