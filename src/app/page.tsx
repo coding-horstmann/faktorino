@@ -85,14 +85,14 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center py-20">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-black mb-4 font-headline">
-                Etsy Rechnungen automatisch erstellen – schnell & einfach mit <span className="text-primary">faktorino</span>
+                Etsy Rechnungen automatisch erstellen – schnell & einfach
             </h1>
             <p className="text-lg md:text-xl text-black mb-8 max-w-2xl mx-auto">
-                Spare wertvolle Zeit und erstelle mit wenigen Klicks professionelle und korrekte Rechnungen für alle deine Etsy-Verkäufe.
+                Ihre Verkäufe, Ihre Daten, Ihre Rechnungen – in nur wenigen Klicks zum Download.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild size="lg">
-                    <Link href="/register">Jetzt 14 Tage kostenlos testen</Link>
+                    <Link href="/register">Jetzt kostenlos Rechnungen erstellen (30 Credits gratis)</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
                     <Link href="/login">Bereits Kunde? Anmelden</Link>
