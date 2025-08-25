@@ -2,31 +2,32 @@
 export default function ImpressumPage() {
   return (
     <div className="prose dark:prose-invert max-w-3xl mx-auto">
-      <h1>Impressum</h1>
+      <h1>IMPRESSUM</h1>
       
       <h2>Angaben gemäß § 5 TMG</h2>
       <p>
-        Max Mustermann<br/>
-        Musterstraße 123<br/>
-        12345 Musterstadt
+        faktorino – Niklas Maximilian Heinrich Horstmann<br/>
+        Ückendorfer Straße 95<br/>
+        45886 Gelsenkirchen<br/>
+        Deutschland
       </p>
       
       <h2>Kontakt</h2>
       <p>
-        Telefon: +49 (0) 123 456789<br/>
-        E-Mail: max.mustermann@example.com
+        Telefon: 01747205407<br/>
+        E-Mail: kontakt@faktorino.de
       </p>
 
       <h2>Umsatzsteuer-ID</h2>
       <p>
-        Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:<br/>
-        DE123456789
+        Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz: DE350314022
       </p>
 
-      <h2>Redaktionell verantwortlich</h2>
+      <h2>Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV:</h2>
       <p>
-        Max Mustermann<br/>
-        Anschrift wie oben
+        Niklas Maximilian Heinrich Horstmann<br/>
+        Ückendorfer Straße 95<br/>
+        45886 Gelsenkirchen
       </p>
     </div>
   );
