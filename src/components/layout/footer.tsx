@@ -10,14 +10,14 @@ export function SiteFooter() {
       <div className="container">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex flex-col gap-2">
-                <Link href="/" className="flex items-center space-x-2 mb-2">
-                    <img 
-                      src="/images/logo.svg" 
-                      alt="EtsyBuchhalter Logo" 
-                      className="h-10 w-auto"
-                    />
-                    <span className="inline-block font-bold">EtsyBuchhalter</span>
-                </Link>
+                                 <Link href="/" className="flex items-center space-x-2 mb-2">
+                     <img 
+                       src="/images/logo.svg" 
+                       alt="faktorino Logo" 
+                       className="h-10 w-auto"
+                     />
+                     <span className="inline-block font-bold uppercase text-xl text-black">FAKTORINO</span>
+                 </Link>
                 <p className="text-sm text-muted-foreground">
                     Ihr smartes Tool für die automatisierte Erstellung von Etsy-Rechnungen.
                 </p>
