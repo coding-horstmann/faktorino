@@ -106,16 +106,16 @@ export default function Home() {
                 <TrustIcon
                     icon={<Check className="w-6 h-6" />}
                     title="DSGVO-konform"
-                    description="Sichere Verarbeitung deiner Daten auf deutschen Servern."
+                    description="Sichere Verarbeitung Ihrer Daten auf deutschen Servern."
                 />
                 <TrustIcon
                     icon={<Check className="w-6 h-6" />}
                     title="Transparent & Fair"
-                    description="Nach 14 Tagen nur 4,99 €/Monat. Jederzeit kündbar."
+                    description="Einmalige Zahlung – kein Abo."
                 />
                  <TrustIcon
                     icon={<Check className="w-6 h-6" />}
-                    title="Flexibel für dein Business"
+                    title="Flexibel für Ihr Business"
                     description="Rechnungen mit oder ohne USt. (Kleinunternehmer)."
                 />
             </div>
