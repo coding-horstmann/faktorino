@@ -19,7 +19,7 @@ export function SiteFooter() {
                     <span className="inline-block font-bold">EtsyBuchhalter</span>
                 </Link>
                 <p className="text-sm text-muted-foreground">
-                    Ihr smartes Tool für die automatisierte Etsy-Buchhaltung.
+                    Ihr smartes Tool für die automatisierte Etsy-Rechnungserstellung.
                 </p>
                 <a href="mailto:kontakt@etsybuchhalter.de" className="text-sm hover:underline">
                     kontakt@etsybuchhalter.de
