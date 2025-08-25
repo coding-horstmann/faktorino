@@ -112,7 +112,7 @@ export function CreditDisplay({ showPurchaseButton = true }: CreditDisplayProps)
         {/* Credit-Anzahl */}
         <div className="text-center">
           <div className="text-3xl font-bold text-gray-900 mb-2">
-            {currentCredits.toLocaleString('de-DE')} Credits verfügbar
+            {currentCredits.toLocaleString('de-DE')} Credits
           </div>
           <p className="text-sm text-gray-600 font-medium">
             Sie können noch {currentCredits.toLocaleString('de-DE')} Rechnungen erstellen
