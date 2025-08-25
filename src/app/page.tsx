@@ -129,7 +129,7 @@ export default function Home() {
                                           <Step 
                          icon={<Download size={48} />}
                          title="2. Etsy-CSV-Datei hochladen"
-                         description="Unser Etsy CSV Konverter verarbeitet Ihre Verkaufsdaten automatisch und erstellt im Hintergrund die Rechnungen vor."
+                         description="Unser Etsy CSV Konverter verarbeitet Ihre Verkaufsdaten automatisch und erstellt im Hintergrund die Rechnungen."
                      />
                      <Step 
                          icon={<FileUp size={48} />}
@@ -289,15 +289,16 @@ export default function Home() {
                               Stundenlang Daten kopieren, Rechnungen einzeln speichern oder manuell anpassen – das gehört der Vergangenheit an. faktorino reduziert den Aufwand auf wenige Klicks: CSV hochladen, Rechnungen erstellen, fertig.
                           </p>
                           
-                          <h3 className="text-xl font-bold mt-8 mb-4">PDF-Download und volle Kontrolle</h3>
-                          <p>
-                              Alle Rechnungen stehen Ihnen im PDF-Format zur Verfügung – ideal für die eigene Ablage, den Versand an Kund:innen oder für die Zusammenarbeit mit Steuerberater:innen. Falls Anpassungen nötig sind, können Sie jede Rechnung individuell bearbeiten.
-                          </p>
                       </div>
                       
                       <div className="prose dark:prose-invert">
                           <p>
                               Ob Sie als umsatzsteuerpflichtige:r Verkäufer:in arbeiten oder die Kleinunternehmerregelung nutzen – faktorino unterstützt beide Varianten. So können alle Etsy Shops unabhängig von ihrer steuerlichen Situation das Tool sofort einsetzen.
+                          </p>
+                          
+                          <h3 className="text-xl font-bold mt-8 mb-4">PDF-Download und volle Kontrolle</h3>
+                          <p>
+                              Alle Rechnungen stehen Ihnen im PDF-Format zur Verfügung – ideal für die eigene Ablage, den Versand an Kund:innen oder für die Zusammenarbeit mit Steuerberater:innen. Falls Anpassungen nötig sind, können Sie jede Rechnung individuell bearbeiten.
                           </p>
                           
                           <h3 className="text-xl font-bold mt-8 mb-4">Für Shops jeder Größe geeignet</h3>
