@@ -40,7 +40,7 @@ export function SiteFooter() {
             </div>
         </div>
         <div className="mt-8 text-center text-sm text-muted-foreground">
-                &copy; {new Date().getFullYear()} EtsyBuchhalter. Alle Rechte vorbehalten.
+                &copy; {new Date().getFullYear()} faktorino. Alle Rechte vorbehalten.
         </div>
       </div>
     </footer>
