@@ -136,10 +136,6 @@ export default function LoginPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Anmelden</CardTitle>
-          <CardDescription>
-            Melden Sie sich mit Ihren Zugangsdaten an
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
