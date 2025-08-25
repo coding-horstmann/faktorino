@@ -230,10 +230,11 @@ export default function Home() {
           <section className="py-20">
               <div className="container mx-auto max-w-6xl">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                      <div className="prose dark:prose-invert">
-                          <p>
-                              Wer auf Etsy verkauft, kennt die Herausforderung: Mit jeder Bestellung steigt auch die Arbeit rund um die Rechnungen. Viele Verkäufer:innen schreiben Rechnungen noch manuell – mit Tabellen, Vorlagen oder Copy & Paste. Das kostet Zeit, ist fehleranfällig und macht wenig Freude. faktorino bietet die Lösung.
-                          </p>
+                                             <div className="prose dark:prose-invert">
+                           <h2 className="text-2xl font-bold mb-6">Etsy Rechnungen einfach erstellen – mit faktorino Zeit sparen</h2>
+                           <p>
+                               Wer auf Etsy verkauft, kennt die Herausforderung: Mit jeder Bestellung steigt auch die Arbeit rund um die Rechnungen. Viele Verkäufer:innen schreiben Rechnungen noch manuell – mit Tabellen, Vorlagen oder Copy & Paste. Das kostet Zeit, ist fehleranfällig und macht wenig Freude. faktorino bietet die Lösung.
+                           </p>
                           
                           <p>
                               Mit faktorino erstellen Sie Etsy Rechnungen automatisch. Alles, was Sie brauchen, ist die CSV-Datei aus Ihrem Etsy-Dashboard. Einmal hochgeladen, generiert das Tool innerhalb weniger Sekunden fertige Rechnungen zum Download.
@@ -268,11 +269,6 @@ export default function Home() {
                           <h3 className="text-xl font-bold mt-8 mb-4">Mehr Zeit fürs Wesentliche</h3>
                           <p>
                               Das Ziel von faktorino ist klar: weniger Aufwand für Administration, mehr Fokus auf das, was wirklich zählt. Statt Rechnungen zu schreiben, haben Sie Zeit für Ihre Produkte, Ihr Marketing und Ihre Kund:innen.
-                          </p>
-                          
-                          <h3 className="text-xl font-bold mt-8 mb-4">Ihr Partner für Etsy Rechnungen</h3>
-                          <p>
-                              faktorino ist ein schlankes Tool mit einem klaren Nutzen: Etsy Rechnungen automatisch und zuverlässig erstellen. Ohne Abo, ohne versteckte Kosten, jederzeit als PDF-Download.
                           </p>
                       </div>
                   </div>
