@@ -44,9 +44,9 @@ export function SiteHeader() {
             <img 
               src="/images/logo.svg" 
               alt="EtsyBuchhalter Logo" 
-              className="h-10 w-auto"
+              className="h-12 w-auto"
             />
-            <span className="inline-block font-bold uppercase" style={{ color: '#17427b' }}>FAKTORINO</span>
+            <span className="inline-block font-bold uppercase text-xl" style={{ color: '#17427b' }}>FAKTORINO</span>
         </Link>
         
         <nav className="flex items-center space-x-2">
