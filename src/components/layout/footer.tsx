@@ -3,8 +3,11 @@
 
 import Link from 'next/link';
 import { BookCopy } from 'lucide-react';
+import { useCookies } from '@/contexts/CookieContext';
 
 export function SiteFooter() {
+  const { openSettings } = useCookies();
+
   return (
     <footer className="border-t py-6 md:py-8">
       <div className="container">
@@ -37,6 +40,12 @@ export function SiteFooter() {
                 <Link href="/impressum" className="text-muted-foreground hover:underline">Impressum</Link>
                 <Link href="/datenschutz" className="text-muted-foreground hover:underline">Datenschutzerklärung</Link>
                 <Link href="/agb" className="text-muted-foreground hover:underline">AGB</Link>
+                <button 
+                  onClick={openSettings}
+                  className="text-muted-foreground hover:underline text-left"
+                >
+                  Cookie-Einstellungen
+                </button>
             </div>
         </div>
         <div className="mt-8 text-center text-sm text-muted-foreground">

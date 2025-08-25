@@ -6,6 +6,7 @@ import { SiteFooter } from '@/components/layout/footer';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PayPalProvider } from '@/components/paypal/PayPalProvider';
 import ReCaptchaProvider from '@/components/recaptcha/ReCaptchaProvider';
+import { CookieProvider, CookieBanner, CookieSettings, CookieManager } from '@/components/cookie';
 import { Inter } from 'next/font/google'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -45,11 +46,16 @@ export default function RootLayout({
         <AuthProvider>
           <PayPalProvider>
             <ReCaptchaProvider>
-              <SiteHeader />
-              <main className="flex-grow flex justify-center items-start p-4 sm:p-8 md:p-12">
-                  {children}
-              </main>
-              <SiteFooter />
+              <CookieProvider>
+                <SiteHeader />
+                <main className="flex-grow flex justify-center items-start p-4 sm:p-8 md:p-12">
+                    {children}
+                </main>
+                <SiteFooter />
+                <CookieBanner />
+                <CookieSettings />
+                <CookieManager />
+              </CookieProvider>
             </ReCaptchaProvider>
           </PayPalProvider>
         </AuthProvider>
