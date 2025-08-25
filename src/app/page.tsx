@@ -92,34 +92,15 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild size="lg">
-                    <Link href="/register">Jetzt kostenlos Rechnungen erstellen (30 Credits gratis)</Link>
+                    <Link href="/register">Rechnungen erstellen (30 Rechnungen gratis)</Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
-                    <Link href="/login">Bereits Kunde? Anmelden</Link>
+                    <Link href="/login">Jetzt kostenlos testen</Link>
                 </Button>
             </div>
         </section>
 
-        {/* Trust Icons Section */}
-        <section className="py-12 bg-secondary rounded-lg">
-            <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-                <TrustIcon
-                    icon={<Check className="w-6 h-6" />}
-                    title="DSGVO-konform"
-                    description="Sichere Verarbeitung Ihrer Daten auf deutschen Servern."
-                />
-                <TrustIcon
-                    icon={<Check className="w-6 h-6" />}
-                    title="Transparent & Fair"
-                    description="Einmalige Zahlung – kein Abo."
-                />
-                 <TrustIcon
-                    icon={<Check className="w-6 h-6" />}
-                    title="Flexibel für Ihr Business"
-                    description="Rechnungen mit oder ohne USt. (Kleinunternehmer)."
-                />
-            </div>
-        </section>
+
 
         {/* Step-by-Step Section */}
         <section className="py-20">
@@ -225,15 +206,36 @@ export default function Home() {
              </div>
         </section>
         
-        {/* SEO Text Section */}
-        <section className="py-20">
-            <div className="container mx-auto max-w-3xl prose dark:prose-invert">
-                <h2 className="text-2xl font-bold">Warum die Automatisierung deiner Etsy-Buchhaltung entscheidend ist</h2>
-                <p>
-                    Als Etsy-Verkäufer kennst du das: Deine Leidenschaft liegt im Herstellen und Verkaufen einzigartiger Produkte, nicht in der Buchhaltung. Doch eine saubere Rechnungslegung ist entscheidend für den Erfolg deines Shops. Manuell Rechnungen zu erstellen ist nicht nur zeitaufwändig, sondern auch fehleranfällig. Jede Minute, die du mit administrativen Aufgaben verbringst, ist eine Minute, die du nicht in dein Kerngeschäft investieren kannst. Unser Tool nimmt dir diese Last ab.
-                </p>
-            </div>
-        </section>
+                 {/* Trust Icons Section */}
+         <section className="py-12 bg-secondary rounded-lg">
+             <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+                 <TrustIcon
+                     icon={<Check className="w-6 h-6" />}
+                     title="DSGVO-konform"
+                     description="Sichere Verarbeitung Ihrer Daten auf deutschen Servern."
+                 />
+                 <TrustIcon
+                     icon={<Check className="w-6 h-6" />}
+                     title="Transparent & Fair"
+                     description="Einmalige Zahlung – kein Abo."
+                 />
+                  <TrustIcon
+                     icon={<Check className="w-6 h-6" />}
+                     title="Flexibel für Ihr Business"
+                     description="Rechnungen mit oder ohne USt. (Kleinunternehmer)."
+                 />
+             </div>
+         </section>
+         
+         {/* SEO Text Section */}
+         <section className="py-20">
+             <div className="container mx-auto max-w-3xl prose dark:prose-invert">
+                 <h2 className="text-2xl font-bold">Warum die Automatisierung deiner Etsy-Buchhaltung entscheidend ist</h2>
+                 <p>
+                     Als Etsy-Verkäufer kennst du das: Deine Leidenschaft liegt im Herstellen und Verkaufen einzigartiger Produkte, nicht in der Buchhaltung. Doch eine saubere Rechnungslegung ist entscheidend für den Erfolg deines Shops. Manuell Rechnungen zu erstellen ist nicht nur zeitaufwändig, sondern auch fehleranfällig. Jede Minute, die du mit administrativen Aufgaben verbringst, ist eine Minute, die du nicht in dein Kerngeschäft investieren kannst. Unser Tool nimmt dir diese Last ab.
+                 </p>
+             </div>
+         </section>
     </div>
   );
 }

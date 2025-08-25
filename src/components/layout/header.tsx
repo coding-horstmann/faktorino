@@ -97,7 +97,7 @@ export function SiteHeader() {
                   <Link prefetch href="/login">Jetzt kostenlos testen</Link>
                 </Button>
                 <Button asChild>
-                  <Link prefetch href="/register">Kostenlos Rechnungen erstellen (30 Credits gratis)</Link>
+                  <Link prefetch href="/register">Jetzt kostenlos testen</Link>
                 </Button>
               </>
             )}
