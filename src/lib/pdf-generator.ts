@@ -71,7 +71,7 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     const infoBlockY = headerY > 60 ? headerY : 60;
     
     // Definiere die Breite der Tabelle - diese wird für die Ausrichtung der Kopfzeile verwendet
-    const tableWidth = 190; // Breite der Tabelle (etwas kleiner als die Seite)
+    const tableWidth = 170; // Reduzierte Breite der Tabelle (kleiner als die Seite)
     const tableRightEdge = 20 + tableWidth; // Rechte Kante der Tabelle (20 = linker Rand)
     
     doc.setFontSize(16);
@@ -125,7 +125,7 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
 
     const summaryX = 125;
     let summaryY = finalY + 10;
-    const valueX = 195;
+    const valueX = tableRightEdge; // Verwende die gleiche rechte Kante wie die Tabelle
 
     doc.setFontSize(10);
     doc.text('Zwischensumme (Netto):', summaryX, summaryY);
