@@ -292,7 +292,7 @@ function DashboardContent() {
         type: 'signup',
         email: user.email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: `https://www.faktorino.de/auth/callback`
         }
       });
 

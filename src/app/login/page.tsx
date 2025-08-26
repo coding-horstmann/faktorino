@@ -107,7 +107,7 @@ export default function LoginPage() {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `https://www.faktorino.de/reset-password`,
       });
 
       if (error) {
