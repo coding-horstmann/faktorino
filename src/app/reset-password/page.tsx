@@ -26,17 +26,33 @@ function ResetPasswordForm() {
     const accessToken = hashParams.get('access_token');
     const refreshToken = hashParams.get('refresh_token');
 
-    if (accessToken && refreshToken) {
+    // Also check query parameters (Supabase sometimes sends tokens as query params)
+    const queryAccessToken = searchParams.get('access_token');
+    const queryRefreshToken = searchParams.get('refresh_token');
+
+    const finalAccessToken = accessToken || queryAccessToken;
+    const finalRefreshToken = refreshToken || queryRefreshToken;
+
+    if (finalAccessToken && finalRefreshToken) {
       // Set the session with the tokens from the email
       supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
+        access_token: finalAccessToken,
+        refresh_token: finalRefreshToken
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Session setup error:', error);
+          setError('Ungültiger oder abgelaufener Reset-Link. Bitte fordern Sie einen neuen an.');
+        }
       });
     } else {
-      // No valid reset link
-      setError('Ungültiger oder abgelaufener Reset-Link. Bitte fordern Sie einen neuen an.');
+      // Check if we're already authenticated (user might have clicked the link multiple times)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) {
+          setError('Ungültiger oder abgelaufener Reset-Link. Bitte fordern Sie einen neuen an.');
+        }
+      });
     }
-  }, []);
+  }, [searchParams]);
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
