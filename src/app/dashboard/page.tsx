@@ -207,6 +207,15 @@ function DashboardContent() {
       reader.readAsDataURL(file);
     }
   };
+
+  const handleLogoRemove = () => {
+    setUserInfo({ ...userInfo, logo: null });
+    // Reset file input
+    const fileInput = document.getElementById('logo') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
   
   const saveAndCheckUserInfo = async () => {
     if (!user) return;
@@ -423,7 +432,21 @@ function DashboardContent() {
                       <div className="space-y-2">
                         <Label htmlFor="logo">Ihr Logo (max. 2MB)</Label>
                         <div className="flex items-center gap-4">
-                           {userInfo.logo && <img src={userInfo.logo} alt="Logo Preview" className="h-16 w-16 object-contain border p-1 rounded-md" />}
+                           {userInfo.logo && (
+                             <div className="relative">
+                               <img src={userInfo.logo} alt="Logo Preview" className="h-16 w-16 object-contain border p-1 rounded-md" />
+                               <Button
+                                 type="button"
+                                 variant="destructive"
+                                 size="sm"
+                                 onClick={handleLogoRemove}
+                                 className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
+                                 title="Logo entfernen"
+                               >
+                                 <X className="h-3 w-3" />
+                               </Button>
+                             </div>
+                           )}
                           <Input id="logo" name="logo" type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="max-w-xs" />
                         </div>
                       </div>
