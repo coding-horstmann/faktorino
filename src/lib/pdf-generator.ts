@@ -72,8 +72,11 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     const title = 'Rechnung';
-    // Positioniere "Rechnung" rechts mit den Labels ausgerichtet
-    doc.text(title, 120, infoBlockY - 10, { align: 'right' });
+    // Positioniere "Rechnung" exakt an der rechten Kante der Werte (infoXEnd)
+    // So schließt es mit Rechnungs-Nr., Rechnungsdatum und Leistungsdatum ab
+    // sowie konsistent mit rechten Spaltenüberschriften wie "Gesamt (Netto)".
+    // infoXEnd ist unten als 200 definiert.
+    doc.text(title, 200, infoBlockY - 10, { align: 'right' });
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
