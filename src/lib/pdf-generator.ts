@@ -69,19 +69,21 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
 
 
     const infoBlockY = headerY > 60 ? headerY : 60;
+    
+    // Definiere die Breite der Tabelle - diese wird für die Ausrichtung der Kopfzeile verwendet
+    const tableWidth = 190; // Breite der Tabelle (etwas kleiner als die Seite)
+    const tableRightEdge = 20 + tableWidth; // Rechte Kante der Tabelle (20 = linker Rand)
+    
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     const title = 'Rechnung';
-    // Positioniere "Rechnung" exakt an der rechten Kante der Werte (infoXEnd)
-    // So schließt es mit Rechnungs-Nr., Rechnungsdatum und Leistungsdatum ab
-    // sowie konsistent mit rechten Spaltenüberschriften wie "Gesamt (Netto)".
-    // infoXEnd ist unten als 200 definiert.
-    doc.text(title, 200, infoBlockY - 10, { align: 'right' });
+    // Positioniere "Rechnung" exakt an der rechten Kante der Tabelle
+    doc.text(title, tableRightEdge, infoBlockY - 10, { align: 'right' });
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     let infoX = 120;
-    let infoXEnd = 200;
+    let infoXEnd = tableRightEdge; // Verwende die rechte Kante der Tabelle
 
     doc.text(`Rechnungs-Nr.:`, infoX, infoBlockY);
     doc.text(`${invoice.invoiceNumber}`, infoXEnd, infoBlockY, {align: 'right'});
@@ -114,7 +116,9 @@ export async function generatePdf(invoice: Invoice, userInfo: UserInfo, outputTy
         body: tableRows,
         startY: infoBlockY + 20,
         theme: 'striped',
-        headStyles: { fillColor: [30, 30, 30] }
+        headStyles: { fillColor: [30, 30, 30] },
+        margin: { left: 20, right: 20 }, // Konsistente Ränder
+        tableWidth: tableWidth // Verwende die definierte Tabellenbreite
     });
 
     const finalY = (doc as any).lastAutoTable.finalY;
