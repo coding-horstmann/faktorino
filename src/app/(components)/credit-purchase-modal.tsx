@@ -203,7 +203,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                           {packageItem.credits.toLocaleString('de-DE')} Credits
                         </div>
                         <div className="text-xs text-gray-500">
-                          ~{pricePerCredit}€ pro Credit
+                          ~{pricePerCredit}€ pro Rechnung
                         </div>
                         <Button className="w-full mt-3" size="sm">
                           Auswählen

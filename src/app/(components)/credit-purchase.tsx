@@ -136,7 +136,7 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
                         {packageItem.credits.toLocaleString('de-DE')} Credits
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        ~{pricePerCredit}€ pro Credit
+                        ~{pricePerCredit}€ pro Rechnung
                       </div>
                     </div>
                     
