@@ -286,10 +286,15 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     if (!editingInvoice || !user) return;
 
     try {
+      const formatDateForDB = (dateStr: string) => {
+        const [day, month, year] = dateStr.split('.');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      };
+
       const updatedInvoice = await InvoiceService.updateInvoice(editingInvoice.id, {
         invoice_number: editingInvoice.invoiceNumber,
-        order_date: editingInvoice.orderDate,
-        service_date: editingInvoice.serviceDate,
+        order_date: formatDateForDB(editingInvoice.orderDate),
+        service_date: formatDateForDB(editingInvoice.serviceDate),
         buyer_name: editingInvoice.buyerName,
         buyer_address: editingInvoice.buyerAddress,
         country: editingInvoice.country,
