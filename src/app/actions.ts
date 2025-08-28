@@ -49,11 +49,7 @@ export type Invoice = z.infer<typeof invoiceSchema>;
 export type Summary = z.infer<typeof summarySchema>;
 export type ProcessCsvOutput = z.infer<typeof processCsvOutputSchema>;
 
-export type BankTransaction = {
-    date: string;
-    description: string;
-    amount: number;
-}
+// Alte Kontoauszugs-Logik entfernt; BankTransaction wird nicht mehr benötigt
 
 const EU_COUNTRIES = new Set([
   'austria', 'belgium', 'bulgaria', 'croatia', 'cyprus', 'czech republic', 
@@ -251,6 +247,22 @@ export async function generateInvoicesAction(
         }
     }
 
+    // Etsy-spezifische Kopfzeilen validieren, um falsche CSVs frühzeitig abzufangen
+    const requiredHeaderGroups: string[][] = [
+        ['order id', 'bestellnummer', 'sale id'],
+        ['item total', 'artikelsumme'],
+        ['ship country', 'versandland', 'shiptocountry', 'shippingcountry', 'country']
+    ];
+
+    const presentGroups = requiredHeaderGroups.reduce((count, group) => {
+        const isPresent = group.some(key => normalizedHeaderMap[normalizeKey(key)] !== undefined);
+        return count + (isPresent ? 1 : 0);
+    }, 0);
+
+    if (presentGroups < 2) {
+        return { data: null, error: "Die hochgeladene CSV scheint nicht der Etsy-Bestell-Export zu sein. Bitte laden Sie die Etsy-Bestell-CSV hoch (Shop-Manager → Einstellungen → Daten herunterladen → Typ: Bestellte Artikel)." };
+    }
+
     const existingInvoiceIds = new Set(existingInvoices.map(inv => inv.id));
     
     const rowsByOrderId = new Map<string, any[]>();
@@ -261,6 +273,10 @@ export async function generateInvoicesAction(
         rowsByOrderId.set(orderId, []);
       }
       rowsByOrderId.get(orderId)!.push(row);
+    }
+
+    if (rowsByOrderId.size === 0) {
+      return { data: null, error: 'In der CSV wurden keine Bestellungen gefunden. Vergewissern Sie sich, dass Sie die Etsy-Bestell-CSV hochgeladen haben und die Datei Bestelldaten enthält.' };
     }
 
     const invoiceDrafts: Omit<Invoice, 'invoiceNumber'>[] = [];
@@ -514,130 +530,6 @@ export async function generateInvoicesAction(
   }
 }
 
-export async function processBankStatementAction(csvData: string): Promise<{ totalAmount?: number; transactions?: BankTransaction[]; foundEtsyTransaction?: boolean; error?: string; }> {
-    try {
-        // Validierung der CSV-Daten
-        if (!csvData || csvData.trim().length === 0) {
-            return { error: "Die Kontoauszug-Datei ist leer oder enthält keine gültigen Daten." };
-        }
-
-        const parseResult = Papa.parse<string[]>(csvData, {
-            skipEmptyLines: true,
-            header: false,
-            dynamicTyping: false,
-        });
-
-        // Prüfe auf kritische Parsing-Fehler
-        if (parseResult.errors.length > 0) {
-            const criticalErrors = parseResult.errors.filter(error => 
-                error.type === 'Delimiter' || error.type === 'FieldMismatch'
-            );
-            if (criticalErrors.length > 0) {
-                return { error: "Die Kontoauszug-Datei hat ein ungültiges CSV-Format und kann nicht verarbeitet werden." };
-            }
-        }
-
-        console.log("CSV parsing result:", parseResult);
-
-        const data = parseResult.data as unknown as string[][];
-
-        const headerKeywords = {
-            amount: ['betrag', 'amount', 'summe'],
-            description: ['verwendungszweck', 'beschreibung', 'buchungstext', 'text', 'auftraggeber', 'empfänger', 'beguenstigter/zahlungspflichtiger', 'name', 'auftraggeber / empfänger', 'begünstiger/zahlungspflichtiger'],
-            date: ['datum', 'date', 'buchungstag', 'valuta']
-        };
-
-        let headerRowIndex = -1;
-        let headers: string[] = [];
-        let maxScore = 0;
-
-        for (let i = 0; i < data.length && i < 15; i++) { 
-            const row = data[i];
-            if (!Array.isArray(row) || row.length < 2) continue;
-            
-            let score = 0;
-            const lowerCaseRow = row.map(cell => String(cell || '').toLowerCase().trim());
-            
-            for (const key in headerKeywords) {
-                if (lowerCaseRow.some(cell => headerKeywords[key as keyof typeof headerKeywords].some(kw => cell.includes(kw)))) {
-                    score++;
-                }
-            }
-            if (score > maxScore && score > 1) { 
-                maxScore = score;
-                headerRowIndex = i;
-                headers = lowerCaseRow;
-            }
-        }
-
-        if (headerRowIndex === -1) {
-            return { error: "Die Kontoauszug-Datei hat ein unbekanntes Format. Es konnten keine Spalten für 'Betrag', 'Datum' oder 'Verwendungszweck' gefunden werden. Bitte stellen Sie sicher, dass es sich um eine gültige Kontoauszug-CSV-Datei handelt." };
-        }
-
-        // Prüfe ob ausreichend Daten vorhanden sind
-        if (data.length <= headerRowIndex + 1) {
-            return { error: 'Die Kontoauszug-Datei enthält keine Transaktionsdaten. Bitte überprüfen Sie, ob die Datei vollständig ist.' };
-        }
-
-        const findIndex = (keywords: string[]): number => {
-            for (const kw of keywords) {
-                const index = headers.findIndex(h => h.includes(kw));
-                if (index !== -1) return index;
-            }
-            return -1;
-        };
-        
-        const amountIndex = findIndex(headerKeywords.amount);
-        const dateIndex = findIndex(headerKeywords.date);
-        const descriptionIndices = headerKeywords.description
-            .map(kw => headers.findIndex(h => h.includes(kw)))
-            .filter(index => index !== -1);
-        const uniqueDescriptionIndices = [...new Set(descriptionIndices)];
-
-        if (amountIndex === -1) return { error: "Konnte die 'Betrag'-Spalte in der CSV nicht finden." };
-        if (uniqueDescriptionIndices.length === 0) return { error: "Konnte keine Spalte für den Verwendungszweck oder die Beschreibung in der CSV finden." };
-        if (dateIndex === -1) return { error: "Konnte die 'Datum'-Spalte in der CSV nicht finden."};
-
-        let totalAmount = 0;
-        let foundEtsyTransaction = false;
-        const transactions: BankTransaction[] = [];
-        const dataStartIndex = headerRowIndex + 1;
-
-        for (let i = dataStartIndex; i < data.length; i++) {
-            const row = data[i];
-            
-            const maxIndex = Math.max(amountIndex, dateIndex, ...uniqueDescriptionIndices);
-            if (!Array.isArray(row) || row.length <= maxIndex) {
-                 continue;
-            }
-            
-            const fullDescription = uniqueDescriptionIndices.map(idx => row[idx] || '').join(' ').toLowerCase();
-            const amountStr = row[amountIndex];
-            const dateValue = row[dateIndex];
-            
-            if (!amountStr || !dateValue || fullDescription.trim() === '' || isNaN(parseFloatSafe(amountStr)) ) {
-                continue; 
-            }
-
-            if (fullDescription.includes('etsy')) {
-                foundEtsyTransaction = true;
-                const amount = parseFloatSafe(amountStr);
-                totalAmount += amount;
-                
-                transactions.push({
-                    date: dateValue || 'N/A',
-                    description: uniqueDescriptionIndices.map(idx => row[idx] || '').join(' '),
-                    amount: amount
-                });
-            }
-        }
-        
-        return { totalAmount, transactions, foundEtsyTransaction };
-
-    } catch (error) {
-        console.error("Error processing bank statement CSV:", error);
-        return { error: 'Ein unerwarteter Fehler ist beim Verarbeiten des Kontoauszugs aufgetreten.' };
-    }
-}
+// processBankStatementAction entfernt – Kontoauszugsverarbeitung ist nicht mehr aktiv
 
 

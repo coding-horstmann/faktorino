@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Scale, Banknote, AlertCircle, CheckCircle2, Loader2, Upload, AlertTriangle, List, FileText, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { processBankStatementAction, type BankTransaction } from '@/app/actions';
+// Kontoauszugsverarbeitung nicht mehr aktiv – Import entfernt
 
 const formSchema = z.object({
   csvFiles: z.any().refine((files) => files?.length >= 1, 'Bitte wählen Sie mindestens eine CSV-Datei aus.'),
@@ -31,6 +31,7 @@ const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 };
 
+// Deaktiviert: Alte Kontoauszugsprüfung wurde entfernt
 export function PayoutValidator({ grossInvoices, totalFees, onPayoutValidated }: PayoutValidatorProps) {
   const [bankStatementTotal, setBankStatementTotal] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
