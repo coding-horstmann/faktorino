@@ -20,6 +20,7 @@ function AccountSettingsContent() {
     const searchParams = useSearchParams();
     const [loading, setLoading] = useState(true);
     const [changingPassword, setChangingPassword] = useState(false);
+    const [emailChangeRequested, setEmailChangeRequested] = useState(false);
     const [error, setError] = useState('');
 
     
@@ -71,6 +72,8 @@ function AccountSettingsContent() {
         try {
             const { error } = await supabase.auth.updateUser({
                 email: formData.newEmail,
+            }, {
+                emailRedirectTo: `${window.location.origin}/auth/callback?flow=email_change`
             });
 
             if (error) {
@@ -80,8 +83,10 @@ function AccountSettingsContent() {
 
             toast({
                 title: "E-Mail-Änderung beantragt",
-                description: "Eine Bestätigungs-E-Mail wurde an Ihre neue E-Mail-Adresse gesendet.",
+                description: "Bitte bestätige den Link in der neuen E-Mail-Adresse und danach den Link in deiner alten E-Mail-Adresse.",
             });
+
+            setEmailChangeRequested(true);
 
             // Reset new email field
             setFormData(prev => ({
@@ -118,7 +123,9 @@ function AccountSettingsContent() {
                 <CardHeader>
                     <CardTitle>E-Mail-Adresse ändern</CardTitle>
                     <CardDescription>
-                        Ändern Sie hier Ihre Anmelde-E-Mail-Adresse. Sie erhalten eine Bestätigungs-E-Mail.
+                        Ändern Sie hier Ihre Anmelde-E-Mail-Adresse.
+                        Bei sicherer E-Mail-Änderung erhalten Sie zwei E-Mails:
+                        zuerst an die neue Adresse, danach an die alte. Bis zur zweiten Bestätigung bleibt die alte Adresse für den Login aktiv.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -152,6 +159,15 @@ function AccountSettingsContent() {
                             E-Mail-Adresse ändern
                         </Button>
                     </form>
+                    {emailChangeRequested && (
+                        <div className="mt-4">
+                            <Alert>
+                                <AlertDescription>
+                                    Wir haben dir eine E-Mail an deine neue Adresse geschickt. Bitte klicke zuerst dort auf „E-Mail-Änderung bestätigen“. Anschließend erhältst du eine zweite E-Mail an deine alte Adresse – bestätige auch diese, um die Änderung final abzuschließen.
+                                </AlertDescription>
+                            </Alert>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
