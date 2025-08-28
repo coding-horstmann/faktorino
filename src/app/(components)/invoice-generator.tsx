@@ -84,14 +84,22 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
       }
 
       try {
+        const formatDateFromDB = (dbDate: string) => {
+          // Expecting YYYY-MM-DD, convert to DD.MM.YYYY
+          if (!dbDate) return '';
+          if (dbDate.includes('.')) return dbDate; // already in display format
+          const [year, month, day] = dbDate.split('-');
+          if (year && month && day) return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
+          return dbDate;
+        };
         const dbInvoices = await InvoiceService.getUserInvoices(user.id);
 
         // Convert database format to app format
         const convertedInvoices: Invoice[] = dbInvoices.map(dbInvoice => ({
           id: dbInvoice.id,
           invoiceNumber: dbInvoice.invoice_number,
-          orderDate: dbInvoice.order_date,
-          serviceDate: dbInvoice.service_date,
+          orderDate: formatDateFromDB(dbInvoice.order_date),
+          serviceDate: formatDateFromDB(dbInvoice.service_date),
           buyerName: dbInvoice.buyer_name,
           buyerAddress: dbInvoice.buyer_address,
           country: dbInvoice.country,
@@ -604,7 +612,31 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                         // Don't fail the whole process if credit tracking fails
                     }
 
-                    updateInvoices([...invoices, ...invoicesToCreate].sort((a, b) => {
+                    // Map saved DB rows to UI invoices (use real UUIDs and convert dates for display)
+                    const formatDateFromDB = (dbDate: string) => {
+                      if (!dbDate) return '';
+                      if (dbDate.includes('.')) return dbDate;
+                      const [year, month, day] = dbDate.split('-');
+                      if (year && month && day) return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
+                      return dbDate;
+                    };
+                    const savedUiInvoices: Invoice[] = savedInvoices.map(db => ({
+                      id: db.id,
+                      invoiceNumber: db.invoice_number,
+                      orderDate: formatDateFromDB(db.order_date),
+                      serviceDate: formatDateFromDB(db.service_date),
+                      buyerName: db.buyer_name,
+                      buyerAddress: db.buyer_address,
+                      country: db.country,
+                      countryClassification: db.country_classification,
+                      netTotal: db.net_total,
+                      vatTotal: db.vat_total,
+                      grossTotal: db.gross_total,
+                      taxNote: db.tax_note,
+                      items: db.items
+                    }));
+
+                    updateInvoices([...invoices, ...savedUiInvoices].sort((a, b) => {
                         const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
                         const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
                         if (dateA !== dateB) return dateA - dateB;
