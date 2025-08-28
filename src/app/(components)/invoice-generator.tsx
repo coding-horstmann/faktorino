@@ -286,15 +286,33 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     if (!editingInvoice || !user) return;
 
     try {
-      const formatDateForDB = (dateStr: string) => {
-        const [day, month, year] = dateStr.split('.');
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      const toDbDate = (dateStr: string | undefined) => {
+        if (!dateStr) return undefined;
+        // Already in YYYY-MM-DD
+        if (dateStr.includes('-')) return dateStr;
+        // Common UI format DD.MM.YYYY
+        if (dateStr.includes('.')) {
+          const parts = dateStr.split('.');
+          if (parts.length === 3) {
+            const [day, month, year] = parts;
+            if (year && month && day) {
+              return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            }
+          }
+        }
+        // Fallback: try Date parsing
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) {
+          const y = String(parsed.getFullYear());
+          const m = String(parsed.getMonth() + 1).padStart(2, '0');
+          const d = String(parsed.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        }
+        return undefined;
       };
 
-      const updatedInvoice = await InvoiceService.updateInvoice(editingInvoice.id, {
+      const updates: any = {
         invoice_number: editingInvoice.invoiceNumber,
-        order_date: formatDateForDB(editingInvoice.orderDate),
-        service_date: formatDateForDB(editingInvoice.serviceDate),
         buyer_name: editingInvoice.buyerName,
         buyer_address: editingInvoice.buyerAddress,
         country: editingInvoice.country,
@@ -304,7 +322,13 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
         gross_total: editingInvoice.grossTotal,
         tax_note: editingInvoice.taxNote,
         items: editingInvoice.items
-      });
+      };
+      const orderDateDb = toDbDate(editingInvoice.orderDate);
+      const serviceDateDb = toDbDate(editingInvoice.serviceDate);
+      if (orderDateDb) updates.order_date = orderDateDb;
+      if (serviceDateDb) updates.service_date = serviceDateDb;
+
+      const updatedInvoice = await InvoiceService.updateInvoice(editingInvoice.id, updates);
 
       if (updatedInvoice) {
         updateInvoices(
