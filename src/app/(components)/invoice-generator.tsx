@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info, Check, X, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Loader2, AlertTriangle, Upload, FileText, Download, PieChart, Euro, Trash2, Pencil, DownloadCloud, FileArchive, Info, X, Search, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -65,7 +65,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const [isZipping, setIsZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
-  const [editingInvoiceNumber, setEditingInvoiceNumber] = useState<{ id: string; number: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   // monthlyUsage entfernt - jetzt Credit-System
   const [sortField, setSortField] = useState<'orderDate' | 'invoiceNumber'>('orderDate');
@@ -617,41 +616,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     }
   }
   
-  const handleInvoiceNumberSave = async () => {
-    if (!editingInvoiceNumber || !user) return;
-
-    try {
-      const updatedInvoice = await InvoiceService.updateInvoice(editingInvoiceNumber.id, {
-        invoice_number: editingInvoiceNumber.number
-      });
-
-      if (updatedInvoice) {
-        updateInvoices(
-          invoices.map((inv) =>
-            inv.id === editingInvoiceNumber.id ? { ...inv, invoiceNumber: editingInvoiceNumber.number } : inv
-          )
-        );
-        setEditingInvoiceNumber(null);
-        toast({
-          title: "Rechnungsnummer aktualisiert",
-          description: "Die Rechnungsnummer wurde erfolgreich geändert.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Fehler",
-          description: "Die Rechnungsnummer konnte nicht aktualisiert werden.",
-        });
-      }
-    } catch (error) {
-      console.error('Error updating invoice number:', error);
-      toast({
-        variant: "destructive",
-        title: "Fehler",
-        description: "Ein Fehler beim Aktualisieren ist aufgetreten.",
-      });
-    }
-  };
+  
 
   return (
     <div className="space-y-6">
@@ -885,23 +850,9 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                                     {filteredInvoices.map((invoice) => (
                                         <TableRow key={invoice.id}>
                                             <TableCell className="font-medium">
-                                            {editingInvoiceNumber?.id === invoice.id ? (
-                                                <div className="flex items-center gap-1 w-[200px]">
-                                                <Input
-                                                    value={editingInvoiceNumber.number}
-                                                    onChange={(e) =>
-                                                    setEditingInvoiceNumber({ ...editingInvoiceNumber, number: e.target.value })
-                                                    }
-                                                    className="h-8"
-                                                />
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700" onClick={handleInvoiceNumberSave}><Check className="h-4 w-4"/></Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" onClick={() => setEditingInvoiceNumber(null)}><X className="h-4 w-4"/></Button>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => setEditingInvoiceNumber({ id: invoice.id, number: invoice.invoiceNumber })}>
+                                                <div className="flex items-center gap-2">
                                                 {invoice.invoiceNumber}
                                                 </div>
-                                            )}
                                             </TableCell>
                                             <TableCell>{invoice.orderDate}</TableCell>
                                             <TableCell>{invoice.buyerName}</TableCell>
