@@ -280,13 +280,13 @@ export default function Home() {
                           
                           <h3 className="text-xl font-bold mt-8 mb-4">Etsy-CSV Konverter mit Rechnungserstellung</h3>
                           <p>
-                              faktorino ist mehr als nur ein Etsy-CSV Konverter – wir wandeln Ihre Verkaufsdaten automatisch in professionelle Rechnungen um. 
-                              Laden Sie Ihre Etsy-CSV-Datei hoch und erhalten Sie sofort fertige Rechnungen als PDF.
+                              faktorino ist mehr als nur ein Etsy-CSV Konverter – wir wandeln Ihre Verkaufsdaten automatisch in Rechnungen um. 
+                              Laden Sie Ihre Etsy-CSV-Datei hoch und erhalten Sie sofort Rechnungen als PDF.
                           </p>
                           
                           <h3 className="text-xl font-bold mt-8 mb-4">Automatisierung statt Handarbeit</h3>
                           <p>
-                              Stundenlang Daten kopieren, Rechnungen einzeln speichern oder manuell anpassen – das gehört der Vergangenheit an. faktorino reduziert den Aufwand auf wenige Klicks: CSV hochladen, Rechnungen erstellen, fertig.
+                              Stundenlang Daten kopieren, Rechnungen einzeln speichern oder manuell anpassen – das gehört der Vergangenheit an. faktorino reduziert den Aufwand auf wenige Klicks: CSV hochladen, Rechnungen erstellen, prüfen, herunterladen.
                           </p>
                           
                       </div>
