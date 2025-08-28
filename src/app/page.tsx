@@ -99,7 +99,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="text-center py-20">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-black mb-4 font-headline">
-                Etsy Rechnungen erstellen – schnell & unkompliziert
+                Etsy Rechnungen erstellen – schnell & einfach
             </h1>
             <p className="text-lg md:text-xl text-black mb-8 max-w-2xl mx-auto">
                 Mit faktorino konvertieren Sie Ihre CSV-Datei zu Rechnungen – in nur wenigen Klicks.
