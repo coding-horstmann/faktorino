@@ -239,6 +239,20 @@ export default function Home() {
                              Statt nur die Daten zu konvertieren, erstellen wir direkt professionelle Rechnungen für Sie.
                          </AccordionContent>
                      </AccordionItem>
+                      <AccordionItem value="item-9">
+                         <AccordionTrigger className="text-lg">Muss ich die erstellten Rechnungen testen??</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             Ja, faktorio dient ausschließlich der Unterstützung bei der Rechnungserstellung.
+                             Es ersetzt keine steuerliche oder rechtliche Beratung.
+                             Für die Richtigkeit, Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist allein der Nutzer verantwortlich.
+                         </AccordionContent>
+                     </AccordionItem>
+                      <AccordionItem value="item-10">
+                         <AccordionTrigger className="text-lg">Unterstützt das Tool das OSS-Verfahren???</AccordionTrigger>
+                         <AccordionContent className="text-base">
+                             Nein. faktorino unterstützt das One-Stop-Shop Verfahren nicht.
+                         </AccordionContent>
+                     </AccordionItem>
                  </Accordion>
               </div>
          </section>
