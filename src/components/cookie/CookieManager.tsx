@@ -80,14 +80,31 @@ export function useAnalytics() {
       timestamp: new Date().toISOString()
     });
     
-    if (hasConsented && preferences.analytics && window.gtag) {
-      console.log('📊 Sending event to Google Analytics:', action);
-      window.gtag('event', action, {
-        event_category: category,
-        event_label: label,
-        value: value
-      });
-      console.log('📊 Event sent successfully');
+    if (hasConsented && preferences.analytics) {
+      if (window.gtag) {
+        console.log('📊 Sending event to Google Analytics:', action);
+        window.gtag('event', action, {
+          event_category: category,
+          event_label: label,
+          value: value
+        });
+        console.log('📊 Event sent successfully');
+      } else {
+        console.warn('📊 gtag not available yet, retrying in 1 second...');
+        // Retry nach 1 Sekunde falls gtag noch nicht geladen ist
+        setTimeout(() => {
+          if (window.gtag) {
+            console.log('📊 Retry successful - sending event:', action);
+            window.gtag('event', action, {
+              event_category: category,
+              event_label: label,
+              value: value
+            });
+          } else {
+            console.error('📊 gtag still not available after retry for event:', action);
+          }
+        }, 1000);
+      }
     } else {
       console.warn('📊 Event NOT sent - missing requirements:', {
         hasConsented,
