@@ -1,7 +1,8 @@
 
 export default function AgbPage() {
   return (
-    <div className="prose dark:prose-invert max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full max-w-3xl mx-auto">
+      <div className="prose dark:prose-invert">
       <h1>Allgemeine Geschäftsbedingungen (AGB)</h1>
       
       <h2>1. Geltungsbereich</h2>
@@ -77,16 +78,17 @@ export default function AgbPage() {
         (2) Ein Rücktritt oder eine Erstattung nach Nutzung der Credits ist ausgeschlossen.
       </p>
       
-      <h2>9. Schlussbestimmungen</h2>
-      <p>
-        (1) Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts.
-      </p>
-      <p>
-        (2) Ausschließlicher Gerichtsstand ist Gelsenkirchen, soweit der Nutzer Kaufmann ist.
-      </p>
-      <p>
-        (3) Sollten einzelne Bestimmungen dieser AGB unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.
-      </p>
-    </div>
-  );
-}
+             <h2>9. Schlussbestimmungen</h2>
+       <p>
+         (1) Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts.
+       </p>
+       <p>
+         (2) Ausschließlicher Gerichtsstand ist Gelsenkirchen, soweit der Nutzer Kaufmann ist.
+       </p>
+       <p>
+         (3) Sollten einzelne Bestimmungen dieser AGB unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.
+       </p>
+       </div>
+     </div>
+   );
+ }

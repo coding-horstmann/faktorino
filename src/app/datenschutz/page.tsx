@@ -1,7 +1,8 @@
 
 export default function DatenschutzPage() {
   return (
-    <div className="prose dark:prose-invert max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="w-full max-w-3xl mx-auto">
+      <div className="prose dark:prose-invert">
       <h1>Datenschutzerklärung</h1>
       
       <p><strong>Datenschutzhinweise gemäß Art. 12 ff. DSGVO</strong></p>
@@ -81,8 +82,9 @@ export default function DatenschutzPage() {
       <h2>8. Datensicherheit</h2>
       <p>Wir setzen technische und organisatorische Maßnahmen ein, um personenbezogene Daten gegen Verlust, Manipulation und unbefugten Zugriff zu schützen.</p>
 
-      <h2>9. Beschwerderecht</h2>
-      <p>Betroffene Personen haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Zuständig ist die Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen.</p>
-    </div>
-  );
-}
+             <h2>9. Beschwerderecht</h2>
+       <p>Betroffene Personen haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren. Zuständig ist die Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen.</p>
+       </div>
+     </div>
+   );
+ }
