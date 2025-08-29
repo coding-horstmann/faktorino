@@ -98,7 +98,7 @@ export function SiteHeader() {
               </Link>
               <Link 
                 href="/register" 
-                className="flex items-center justify-center w-full px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-800 transition-colors"
+                className="flex items-center justify-center w-full px-4 py-2 text-sm bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Jetzt kostenlos testen
