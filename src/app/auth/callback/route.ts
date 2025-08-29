@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Redirect to dashboard
-      return NextResponse.redirect(new URL('/dashboard', requestUrl.origin))
+      // Redirect to dashboard with email confirmation flag
+      return NextResponse.redirect(new URL('/dashboard?email_confirmed=true', requestUrl.origin))
     } catch (error) {
       console.error('Session exchange error:', error)
       return NextResponse.redirect(new URL('/login?error=session_error', requestUrl.origin))

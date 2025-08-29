@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from "@/hooks/use-toast";
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 import { executeAndVerifyRecaptcha } from '@/lib/recaptcha-service';
+import { useCookieEventTracking } from '@/hooks/useCookieAnalytics';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -29,6 +30,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { executeRecaptcha, isLoaded } = useRecaptcha();
+  const { trackRegistration } = useCookieEventTracking();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -96,6 +98,9 @@ export default function RegisterPage() {
         }
         return;
       }
+
+      // Analytics: Registrierung erfolgreich gestartet
+      trackRegistration();
 
       toast({
         title: "Registrierung gestartet",

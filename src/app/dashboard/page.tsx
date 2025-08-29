@@ -15,6 +15,7 @@ import { Building, CheckCircle, AlertCircle, Image as ImageIcon, Mail, X, Loader
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { UserService } from '@/lib/user-service';
+import { useCookieEventTracking } from '@/hooks/useCookieAnalytics';
 import type { UserInfo } from '@/lib/pdf-generator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,13 +31,15 @@ function DashboardContent() {
   const searchParams = useSearchParams();
   const accordionTriggerRef = useRef<HTMLButtonElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const { trackEmailConfirmation } = useCookieEventTracking();
 
-  // PayPal Callback Handling
+  // PayPal Callback Handling und E-Mail-Bestätigung
   useEffect(() => {
     const paymentStatus = searchParams.get('payment');
     const credits = searchParams.get('credits');
     const amount = searchParams.get('amount');
     const message = searchParams.get('message');
+    const emailConfirmed = searchParams.get('email_confirmed');
 
     if (paymentStatus === 'success' && credits && amount) {
       toast({
@@ -96,7 +99,22 @@ function DashboardContent() {
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
-  }, [searchParams, toast]);
+
+    // Analytics: E-Mail-Bestätigung erfolgt
+    if (emailConfirmed === 'true') {
+      trackEmailConfirmation();
+      
+      toast({
+        title: "E-Mail bestätigt!",
+        description: "Ihr Konto ist jetzt vollständig aktiviert.",
+        duration: 5000,
+      });
+      
+      // URL bereinigen
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, trackEmailConfirmation, toast]);
 
   // Auth Guard: Sofortige Umleitung bei fehlendem User
   useEffect(() => {

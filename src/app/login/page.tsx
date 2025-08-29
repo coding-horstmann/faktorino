@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from "@/hooks/use-toast";
 import { useRecaptcha } from '@/hooks/useRecaptcha';
 import { executeAndVerifyRecaptcha } from '@/lib/recaptcha-service';
+import { useCookieEventTracking } from '@/hooks/useCookieAnalytics';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -23,6 +24,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { executeRecaptcha, isLoaded } = useRecaptcha();
+  const { trackLogin } = useCookieEventTracking();
 
   // Prefetch Dashboard für schnellere Navigation nach Login
   useEffect(() => {
@@ -78,6 +80,9 @@ export default function LoginPage() {
         setError(error.message);
         return;
       }
+
+      // Analytics: Login erfolgreich
+      trackLogin();
 
       // Check if this is a new user (first time login)
       const isNewUser = data.user?.created_at && 

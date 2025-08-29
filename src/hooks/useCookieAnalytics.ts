@@ -49,6 +49,10 @@ export function useCookieEventTracking() {
     trackEvent('login', 'user_engagement');
   };
 
+  const trackEmailConfirmation = () => {
+    trackEvent('email_confirmed', 'user_engagement');
+  };
+
   const trackInvoiceGeneration = (count: number) => {
     trackEvent('invoice_generated', 'business', 'invoice_count', count);
   };
@@ -64,6 +68,7 @@ export function useCookieEventTracking() {
   return {
     trackRegistration,
     trackLogin,
+    trackEmailConfirmation,
     trackInvoiceGeneration,
     trackCreditPurchase,
     trackFeatureUsage,
