@@ -83,27 +83,31 @@ export function useAnalytics() {
     if (hasConsented && preferences.analytics) {
       if (window.gtag) {
         console.log('📊 Sending event to Google Analytics:', action);
+        
+        // Verwende beacon transport für zuverlässige Übertragung bei Seitenwechseln
         window.gtag('event', action, {
           event_category: category,
           event_label: label,
-          value: value
+          value: value,
+          transport_type: 'beacon' // Stellt sicher dass Events auch bei Navigation übertragen werden
         });
-        console.log('📊 Event sent successfully');
+        console.log('📊 Event sent with beacon transport');
       } else {
-        console.warn('📊 gtag not available yet, retrying in 1 second...');
-        // Retry nach 1 Sekunde falls gtag noch nicht geladen ist
+        console.warn('📊 gtag not available yet, retrying in 500ms...');
+        // Kurzer Retry falls gtag noch nicht geladen ist
         setTimeout(() => {
           if (window.gtag) {
             console.log('📊 Retry successful - sending event:', action);
             window.gtag('event', action, {
               event_category: category,
               event_label: label,
-              value: value
+              value: value,
+              transport_type: 'beacon'
             });
           } else {
             console.error('📊 gtag still not available after retry for event:', action);
           }
-        }, 1000);
+        }, 500);
       }
     } else {
       console.warn('📊 Event NOT sent - missing requirements:', {

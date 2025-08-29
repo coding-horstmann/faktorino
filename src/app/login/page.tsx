@@ -95,10 +95,7 @@ export default function LoginPage() {
         description: "Sie wurden erfolgreich angemeldet.",
       });
 
-      // Kurzer Delay um sicherzustellen dass Analytics-Event übertragen wird
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 500);
+      router.push('/dashboard');
     } catch (err: any) {
       setError('Ein unerwarteter Fehler ist aufgetreten.');
     } finally {
