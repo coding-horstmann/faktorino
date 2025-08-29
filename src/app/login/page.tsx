@@ -82,7 +82,9 @@ export default function LoginPage() {
       }
 
       // Analytics: Login erfolgreich
+      console.log('📊 About to track login event');
       trackLogin();
+      console.log('📊 Login tracking call completed');
 
       // Check if this is a new user (first time login)
       const isNewUser = data.user?.created_at && 

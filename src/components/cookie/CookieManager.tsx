@@ -69,11 +69,30 @@ export function useAnalytics() {
   const { preferences, hasConsented } = useCookies();
 
   const trackEvent = (action: string, category: string, label?: string, value?: number) => {
+    console.log('📊 Analytics trackEvent called:', {
+      action,
+      category,
+      label,
+      value,
+      hasConsented,
+      analyticsEnabled: preferences.analytics,
+      gtagAvailable: !!window.gtag,
+      timestamp: new Date().toISOString()
+    });
+    
     if (hasConsented && preferences.analytics && window.gtag) {
+      console.log('📊 Sending event to Google Analytics:', action);
       window.gtag('event', action, {
         event_category: category,
         event_label: label,
         value: value
+      });
+      console.log('📊 Event sent successfully');
+    } else {
+      console.warn('📊 Event NOT sent - missing requirements:', {
+        hasConsented,
+        analyticsEnabled: preferences.analytics,
+        gtagAvailable: !!window.gtag
       });
     }
   };

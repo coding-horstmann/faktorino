@@ -100,7 +100,9 @@ export default function RegisterPage() {
       }
 
       // Analytics: Registrierung erfolgreich gestartet
+      console.log('📊 About to track registration event');
       trackRegistration();
+      console.log('📊 Registration tracking call completed');
 
       toast({
         title: "Registrierung gestartet",
