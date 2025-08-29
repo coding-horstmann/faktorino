@@ -70,9 +70,255 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
   const [sortField, setSortField] = useState<'orderDate' | 'invoiceNumber'>('orderDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [showLegalWarning, setShowLegalWarning] = useState(false);
+  const [pendingFormValues, setPendingFormValues] = useState<FormValues | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Funktion zur Prüfung der rechtlichen Warnung
+  const shouldShowLegalWarning = () => {
+    if (!user) return false;
+    
+    const storageKey = `legal_warning_${user.id}`;
+    const lastShown = localStorage.getItem(storageKey);
+    
+    if (!lastShown) return true;
+    
+    const lastShownDate = new Date(lastShown);
+    const now = new Date();
+    const hoursSinceLastShown = (now.getTime() - lastShownDate.getTime()) / (1000 * 60 * 60);
+    
+    return hoursSinceLastShown >= 24;
+  };
+
+  // Funktion zum Speichern der Warnung
+  const markLegalWarningAsShown = () => {
+    if (!user) return;
+    
+    const storageKey = `legal_warning_${user.id}`;
+    localStorage.setItem(storageKey, new Date().toISOString());
+    setShowLegalWarning(false);
+    
+    // Führe die ursprüngliche Form-Submission aus
+    if (pendingFormValues) {
+      processFormSubmission(pendingFormValues);
+      setPendingFormValues(null);
+    }
+  };
+
+  // Funktion zur Verarbeitung der Form-Submission (ohne rechtliche Warnung)
+  const processFormSubmission = async (values: FormValues) => {
+    setIsLoading(true);
+    setError(null);
+    
+    const files = Array.from(values.csvFiles as FileList);
+    const fileReadPromises = files.map(file => file.text());
+
+    try {
+        // Validierung der hochgeladenen Dateien
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                setError(`Die Datei "${file.name}" ist keine CSV-Datei. Bitte wählen Sie nur CSV-Dateien aus.`);
+                setIsLoading(false);
+                return;
+            }
+            if (file.size === 0) {
+                setError(`Die Datei "${file.name}" ist leer. Bitte wählen Sie eine gültige CSV-Datei aus.`);
+                setIsLoading(false);
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) { // 10MB Limit
+                setError(`Die Datei "${file.name}" ist zu groß (max. 10MB). Bitte wählen Sie eine kleinere Datei aus.`);
+                setIsLoading(false);
+                return;
+            }
+        }
+
+        const allCsvContents = await Promise.all(fileReadPromises);
+        
+        // Prüfe jede Datei auf gültigen Inhalt
+        for (let i = 0; i < allCsvContents.length; i++) {
+            const content = allCsvContents[i];
+            if (!content || content.trim().length === 0) {
+                setError(`Die Datei "${files[i].name}" enthält keine gültigen Daten.`);
+                setIsLoading(false);
+                return;
+            }
+            
+            const lines = content.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                setError(`Die Datei "${files[i].name}" enthält zu wenige Daten. Eine gültige CSV-Datei benötigt mindestens eine Header-Zeile und eine Datenzeile.`);
+                setIsLoading(false);
+                return;
+            }
+        }
+        
+        const header = allCsvContents[0].split('\n')[0];
+        const rowsFromAllFiles = allCsvContents.flatMap((content, index) => {
+            const lines = content.split('\n');
+            // Skip header only for subsequent files
+            return index === 0 ? lines.slice(1) : lines.slice(1);
+        }).filter(row => row.trim() !== ''); // Filter out empty rows
+
+        // Join header with all rows, ensuring a newline at the end of the header
+        const combinedCsvData = [header.trim(), ...rowsFromAllFiles].join('\n');
+        
+        if (!combinedCsvData.trim() || rowsFromAllFiles.length === 0) {
+            setError("Die verarbeiteten CSV-Dateien enthalten keine gültigen Datenzeilen. Bitte überprüfen Sie den Inhalt der Dateien.");
+            setIsLoading(false);
+            return;
+        }
+        
+        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, user.id);
+
+        if (response.error) {
+            setError(response.error);
+        } else if (response.data && user) {
+            console.log('InvoiceGenerator: Got response data, user:', user.id);
+            const newInvoices = response.data.invoices;
+            const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
+
+            if (uniqueNewInvoices.length === 0 && newInvoices.length > 0) {
+                setError("Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen.");
+                setIsLoading(false);
+                clearAllFiles();
+                form.reset();
+                return;
+            }
+
+            // **CREDIT-SYSTEM**
+            // Die Credit-Validierung erfolgt bereits in generateInvoicesAction()
+            let invoicesToCreate = uniqueNewInvoices;
+            let limitWarning = response.data.warning || '';
+
+            console.log('InvoiceGenerator: Saving', invoicesToCreate.length, 'new invoices to Supabase');
+
+            // Save new invoices to Supabase
+            try {
+                const invoicesToSave = invoicesToCreate.map(invoice => {
+                    // Convert DD.MM.YYYY to YYYY-MM-DD for database
+                    const formatDateForDB = (dateStr: string) => {
+                        const [day, month, year] = dateStr.split('.');
+                        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                    };
+
+                    return {
+                        // Don't include id - let database generate it
+                        user_id: user.id,
+                        invoice_number: invoice.invoiceNumber,
+                        order_date: formatDateForDB(invoice.orderDate),
+                        service_date: formatDateForDB(invoice.serviceDate),
+                        buyer_name: invoice.buyerName,
+                        buyer_address: invoice.buyerAddress,
+                        country: invoice.country,
+                        country_classification: invoice.countryClassification,
+                        net_total: invoice.netTotal,
+                        vat_total: invoice.vatTotal,
+                        gross_total: invoice.grossTotal,
+                        tax_note: invoice.taxNote,
+                        items: invoice.items
+                    };
+                });
+
+                const savedInvoices = await InvoiceService.createMultipleInvoices(invoicesToSave);
+                console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
+
+                if (savedInvoices.length > 0) {
+                    // **NEUE CREDIT-DEKREMENTIERUNG**
+                    try {
+                        const creditResult = await CreditService.useCredits(
+                            user.id, 
+                            savedInvoices.length, 
+                            `${savedInvoices.length} Rechnungen erstellt`
+                        );
+                        
+                        if (!creditResult.success) {
+                            console.error('Error using credits:', creditResult.error);
+                            // Don't fail the whole process if credit tracking fails, but warn user
+                            toast({
+                                title: "Credits-Update Fehler",
+                                description: "Rechnungen wurden erstellt, aber Credits konnten nicht aktualisiert werden.",
+                                variant: "destructive"
+                            });
+                        }
+                    } catch (creditError) {
+                        console.error('Error updating credits:', creditError);
+                        // Don't fail the whole process if credit tracking fails
+                    }
+
+                    // Map saved DB rows to UI invoices (use real UUIDs and convert dates for display)
+                    const formatDateFromDB = (dbDate: string) => {
+                      if (!dbDate) return '';
+                      if (dbDate.includes('.')) return dbDate;
+                      const [year, month, day] = dbDate.split('-');
+                      if (year && month && day) return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
+                      return dbDate;
+                    };
+                    const savedUiInvoices: Invoice[] = savedInvoices.map(db => ({
+                      id: db.id,
+                      invoiceNumber: db.invoice_number,
+                      orderDate: formatDateFromDB(db.order_date),
+                      serviceDate: formatDateFromDB(db.service_date),
+                      buyerName: db.buyer_name,
+                      buyerAddress: db.buyer_address,
+                      country: db.country,
+                      countryClassification: db.country_classification,
+                      netTotal: db.net_total,
+                      vatTotal: db.vat_total,
+                      grossTotal: db.gross_total,
+                      taxNote: db.tax_note,
+                      items: db.items
+                    }));
+
+                    updateInvoices([...invoices, ...savedUiInvoices].sort((a, b) => {
+                        const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
+                        const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
+                        if (dateA !== dateB) return dateA - dateB;
+                        return a.invoiceNumber.localeCompare(b.invoiceNumber);
+                    }));
+
+                    toast({
+                        title: "Rechnungen erstellt",
+                        description: limitWarning || `${savedInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
+                        variant: limitWarning ? "default" : "default"
+                    });
+
+                    clearAllFiles();
+                    form.reset();
+                } else {
+                    setError("Fehler beim Speichern der Rechnungen. Bitte versuchen Sie es erneut.");
+                }
+            } catch (error) {
+                console.error('Error saving invoices:', error);
+                setError("Fehler beim Speichern der Rechnungen. Bitte versuchen Sie es erneut.");
+            }
+        }
+    } catch (error) {
+        console.error('Error processing CSV:', error);
+        setError("Fehler bei der Verarbeitung der CSV-Datei. Bitte überprüfen Sie das Format der Datei.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
+  // Modifizierte onSubmit-Funktion mit rechtlicher Warnung
+  async function onSubmit(values: FormValues) {
+    if (!onMissingInfo()) {
+        return;
+    }
+    
+    // Prüfe, ob rechtliche Warnung angezeigt werden soll
+    if (shouldShowLegalWarning()) {
+        setPendingFormValues(values);
+        setShowLegalWarning(true);
+        return;
+    }
+    
+    // Normale Verarbeitung ohne Warnung
+    processFormSubmission(values);
+  }
 
   useEffect(() => {
     const loadInvoices = async () => {
@@ -468,217 +714,6 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
     });
   }, [invoices, userInfo, isUserInfoComplete, onMissingInfo, toast]);
 
-  async function onSubmit(values: FormValues) {
-    if (!onMissingInfo()) {
-        return;
-    }
-    
-    setIsLoading(true);
-    setError(null);
-    
-    const files = Array.from(values.csvFiles as FileList);
-    const fileReadPromises = files.map(file => file.text());
-
-    try {
-        // Validierung der hochgeladenen Dateien
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (!file.name.toLowerCase().endsWith('.csv')) {
-                setError(`Die Datei "${file.name}" ist keine CSV-Datei. Bitte wählen Sie nur CSV-Dateien aus.`);
-                setIsLoading(false);
-                return;
-            }
-            if (file.size === 0) {
-                setError(`Die Datei "${file.name}" ist leer. Bitte wählen Sie eine gültige CSV-Datei aus.`);
-                setIsLoading(false);
-                return;
-            }
-            if (file.size > 10 * 1024 * 1024) { // 10MB Limit
-                setError(`Die Datei "${file.name}" ist zu groß (max. 10MB). Bitte wählen Sie eine kleinere Datei aus.`);
-                setIsLoading(false);
-                return;
-            }
-        }
-
-        const allCsvContents = await Promise.all(fileReadPromises);
-        
-        // Prüfe jede Datei auf gültigen Inhalt
-        for (let i = 0; i < allCsvContents.length; i++) {
-            const content = allCsvContents[i];
-            if (!content || content.trim().length === 0) {
-                setError(`Die Datei "${files[i].name}" enthält keine gültigen Daten.`);
-                setIsLoading(false);
-                return;
-            }
-            
-            const lines = content.split('\n').filter(line => line.trim());
-            if (lines.length < 2) {
-                setError(`Die Datei "${files[i].name}" enthält zu wenige Daten. Eine gültige CSV-Datei benötigt mindestens eine Header-Zeile und eine Datenzeile.`);
-                setIsLoading(false);
-                return;
-            }
-        }
-        
-        const header = allCsvContents[0].split('\n')[0];
-        const rowsFromAllFiles = allCsvContents.flatMap((content, index) => {
-            const lines = content.split('\n');
-            // Skip header only for subsequent files
-            return index === 0 ? lines.slice(1) : lines.slice(1);
-        }).filter(row => row.trim() !== ''); // Filter out empty rows
-
-        // Join header with all rows, ensuring a newline at the end of the header
-        const combinedCsvData = [header.trim(), ...rowsFromAllFiles].join('\n');
-        
-        if (!combinedCsvData.trim() || rowsFromAllFiles.length === 0) {
-            setError("Die verarbeiteten CSV-Dateien enthalten keine gültigen Datenzeilen. Bitte überprüfen Sie den Inhalt der Dateien.");
-            setIsLoading(false);
-            return;
-        }
-        
-        const response = await generateInvoicesAction(combinedCsvData, userInfo.taxStatus, user.id);
-
-        if (response.error) {
-            setError(response.error);
-        } else if (response.data && user) {
-            console.log('InvoiceGenerator: Got response data, user:', user.id);
-            const newInvoices = response.data.invoices;
-            const uniqueNewInvoices = newInvoices.filter(newInv => !invoices.some(existing => existing.id === newInv.id));
-
-            if (uniqueNewInvoices.length === 0 && newInvoices.length > 0) {
-                setError("Keine neuen Bestellungen in der CSV-Datei gefunden. Bereits existierende Rechnungen wurden übersprungen.");
-                setIsLoading(false);
-                clearAllFiles();
-                form.reset();
-                return;
-            }
-
-            // **CREDIT-SYSTEM**
-            // Die Credit-Validierung erfolgt bereits in generateInvoicesAction()
-            let invoicesToCreate = uniqueNewInvoices;
-            let limitWarning = response.data.warning || '';
-
-            console.log('InvoiceGenerator: Saving', invoicesToCreate.length, 'new invoices to Supabase');
-
-            // Save new invoices to Supabase
-            try {
-                const invoicesToSave = invoicesToCreate.map(invoice => {
-                    // Convert DD.MM.YYYY to YYYY-MM-DD for database
-                    const formatDateForDB = (dateStr: string) => {
-                        const [day, month, year] = dateStr.split('.');
-                        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                    };
-
-                    return {
-                        // Don't include id - let database generate it
-                        user_id: user.id,
-                        invoice_number: invoice.invoiceNumber,
-                        order_date: formatDateForDB(invoice.orderDate),
-                        service_date: formatDateForDB(invoice.serviceDate),
-                        buyer_name: invoice.buyerName,
-                        buyer_address: invoice.buyerAddress,
-                        country: invoice.country,
-                        country_classification: invoice.countryClassification,
-                        net_total: invoice.netTotal,
-                        vat_total: invoice.vatTotal,
-                        gross_total: invoice.grossTotal,
-                        tax_note: invoice.taxNote,
-                        items: invoice.items
-                    };
-                });
-
-                const savedInvoices = await InvoiceService.createMultipleInvoices(invoicesToSave);
-                console.log('InvoiceGenerator: Saved invoices result:', savedInvoices.length, 'of', invoicesToSave.length);
-
-                if (savedInvoices.length > 0) {
-                    // **NEUE CREDIT-DEKREMENTIERUNG**
-                    try {
-                        const creditResult = await CreditService.useCredits(
-                            user.id, 
-                            savedInvoices.length, 
-                            `${savedInvoices.length} Rechnungen erstellt`
-                        );
-                        
-                        if (!creditResult.success) {
-                            console.error('Error using credits:', creditResult.error);
-                            // Don't fail the whole process if credit tracking fails, but warn user
-                            toast({
-                                title: "Credits-Update Fehler",
-                                description: "Rechnungen wurden erstellt, aber Credits konnten nicht aktualisiert werden.",
-                                variant: "destructive"
-                            });
-                        }
-                    } catch (creditError) {
-                        console.error('Error updating credits:', creditError);
-                        // Don't fail the whole process if credit tracking fails
-                    }
-
-                    // Map saved DB rows to UI invoices (use real UUIDs and convert dates for display)
-                    const formatDateFromDB = (dbDate: string) => {
-                      if (!dbDate) return '';
-                      if (dbDate.includes('.')) return dbDate;
-                      const [year, month, day] = dbDate.split('-');
-                      if (year && month && day) return `${day.padStart(2, '0')}.${month.padStart(2, '0')}.${year}`;
-                      return dbDate;
-                    };
-                    const savedUiInvoices: Invoice[] = savedInvoices.map(db => ({
-                      id: db.id,
-                      invoiceNumber: db.invoice_number,
-                      orderDate: formatDateFromDB(db.order_date),
-                      serviceDate: formatDateFromDB(db.service_date),
-                      buyerName: db.buyer_name,
-                      buyerAddress: db.buyer_address,
-                      country: db.country,
-                      countryClassification: db.country_classification,
-                      netTotal: db.net_total,
-                      vatTotal: db.vat_total,
-                      grossTotal: db.gross_total,
-                      taxNote: db.tax_note,
-                      items: db.items
-                    }));
-
-                    updateInvoices([...invoices, ...savedUiInvoices].sort((a, b) => {
-                        const dateA = new Date(a.orderDate.split('.').reverse().join('-')).getTime();
-                        const dateB = new Date(b.orderDate.split('.').reverse().join('-')).getTime();
-                        if (dateA !== dateB) return dateA - dateB;
-                        return a.invoiceNumber.localeCompare(b.invoiceNumber);
-                    }));
-
-                    toast({
-                        title: "Rechnungen erstellt",
-                        description: limitWarning || `${savedInvoices.length} neue Rechnungen wurden erfolgreich erstellt.`,
-                        variant: limitWarning ? "default" : "default"
-                    });
-                } else {
-                    setError('Rechnungen konnten nicht gespeichert werden.');
-                }
-            } catch (saveError) {
-                console.error('Error saving invoices:', saveError);
-                setError('Fehler beim Speichern der Rechnungen.');
-            }
-
-            clearAllFiles();
-            form.reset();
-        }
-    } catch (err: any) {
-        console.error("Error processing CSV files:", err);
-        let errorMessage = "Fehler beim Verarbeiten der CSV-Dateien.";
-        
-        if (err.name === 'NotReadableError') {
-            errorMessage = "Die ausgewählten Dateien konnten nicht gelesen werden. Bitte überprüfen Sie, ob die Dateien nicht beschädigt sind.";
-        } else if (err.message && err.message.includes('parse')) {
-            errorMessage = "Die CSV-Dateien haben ein ungültiges Format und konnten nicht verarbeitet werden.";
-        } else if (err.message) {
-            errorMessage = `Fehler beim Verarbeiten der CSV-Dateien: ${err.message}`;
-        }
-        
-        setError(errorMessage);
-    } finally {
-        setIsLoading(false);
-    }
-  }
-  
-  
-
   return (
     <div className="space-y-6">
       <Card className="w-full shadow-lg">
@@ -1064,6 +1099,22 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                     <Button onClick={handleUpdateInvoice}>Änderungen speichern</Button>
                 </DialogFooter>
             </DialogContent>
+        </Dialog>
+      )}
+
+      {showLegalWarning && (
+        <Dialog open={showLegalWarning} onOpenChange={setShowLegalWarning}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Rechtliche Warnung</DialogTitle>
+            </DialogHeader>
+            <DialogDescription>
+              Dieses Tool dient ausschließlich der Unterstützung bei der Rechnungserstellung. Es ersetzt keine steuerliche oder rechtliche Beratung. Für die Richtigkeit, Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist allein der Nutzer verantwortlich.
+            </DialogDescription>
+            <DialogFooter>
+              <Button variant="outline" onClick={markLegalWarningAsShown}>Verstanden</Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
       )}
 

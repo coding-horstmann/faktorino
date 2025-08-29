@@ -154,7 +154,7 @@ export default function Home() {
                      <Step 
                          icon={<FileUp size={48} />}
                          title="3. Rechnungen herunterladen"
-                         description="Mit nur einem Klick erhalten Sie Ihre Rechnungen als PDF – erst prüfen, dann herunterladen."
+                         description="Mit nur einem Klick erhalten Sie Ihre Rechnungen als PDF – prüfen, bearbeiten, herunterladen."
                     />
                 </div>
             </div>
