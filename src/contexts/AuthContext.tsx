@@ -71,13 +71,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log('🚪 === LOGOUT DEBUG START ===');
+      
+      // Prüfe localStorage vor dem Logout
+      const preLogoutCookies = localStorage.getItem('cookie-preferences');
+      const preLogoutConsent = localStorage.getItem('cookie-consent-given');
+      console.log('🚪 Pre-logout localStorage:', { preLogoutCookies, preLogoutConsent });
+      
       await supabase.auth.signOut()
       setUser(null)
+      
+      // Prüfe localStorage nach Supabase logout
+      const postSupabaseCookies = localStorage.getItem('cookie-preferences');
+      const postSupabaseConsent = localStorage.getItem('cookie-consent-given');
+      console.log('🚪 Post-supabase localStorage:', { postSupabaseCookies, postSupabaseConsent });
+      
+      console.log('🚪 About to redirect with window.location.replace');
+      
       if (typeof window !== 'undefined') {
         window.location.replace('/')
       }
     } catch (error) {
-      console.error('Error signing out:', error)
+      console.error('🚪 Error signing out:', error)
       setUser(null)
       if (typeof window !== 'undefined') {
         window.location.replace('/')
