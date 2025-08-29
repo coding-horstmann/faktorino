@@ -1103,19 +1103,35 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
       )}
 
       {showLegalWarning && (
-        <Dialog open={showLegalWarning} onOpenChange={setShowLegalWarning}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Rechtliche Warnung</DialogTitle>
-            </DialogHeader>
-            <DialogDescription>
-              Dieses Tool dient ausschließlich der Unterstützung bei der Rechnungserstellung. Es ersetzt keine steuerliche oder rechtliche Beratung. Für die Richtigkeit, Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist allein der Nutzer verantwortlich.
-            </DialogDescription>
-            <DialogFooter>
-              <Button variant="outline" onClick={markLegalWarningAsShown}>Verstanden</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <AlertDialog open={showLegalWarning} onOpenChange={setShowLegalWarning}>
+          <AlertDialogContent className="max-w-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                Hinweis
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-left space-y-4">
+                <p className="font-medium text-foreground">
+                  Dieses Tool dient ausschließlich der Unterstützung bei der Rechnungserstellung.
+                </p>
+                <p>
+                  Es ersetzt keine steuerliche oder rechtliche Beratung. Für die Richtigkeit, 
+                  Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist 
+                  allein der Nutzer verantwortlich.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Diese Warnung wird alle 24 Stunden angezeigt, um Sie an Ihre Verantwortung zu erinnern.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={markLegalWarningAsShown}>
+                Verstanden - Rechnungen generieren
+              </AlertDialogAction>
+              <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
     </div>
