@@ -96,7 +96,7 @@ export default function Home() {
         }}
       />
       <div className="w-full">
-        {/* Hero Section */}
+                {/* Hero Section */}
         <section className="text-center py-20">
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-black mb-4 font-headline">
                 Etsy Rechnungen erstellen – schnell & einfach
@@ -114,7 +114,27 @@ export default function Home() {
             </div>
         </section>
 
-
+        {/* Video Section */}
+        <section className="py-20 bg-secondary">
+            <div className="container mx-auto text-center">
+                <h2 className="text-3xl font-bold mb-8 text-black">So funktioniert faktorino</h2>
+                <p className="text-lg text-muted-foreground mb-12 max-w-2xl mx-auto">
+                    Sehen Sie in diesem kurzen Video, wie einfach es ist, Ihre Etsy-Rechnungen mit faktorino zu erstellen.
+                </p>
+                <div className="max-w-4xl mx-auto">
+                    <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                        <iframe
+                            className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg"
+                            src="https://www.youtube.com/embed/RXKxbYnCCmY"
+                            title="faktorino Tutorial - Etsy Rechnungen erstellen"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        ></iframe>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         {/* Step-by-Step Section */}
         <section className="py-20">
