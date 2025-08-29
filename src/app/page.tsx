@@ -259,8 +259,8 @@ export default function Home() {
                              Statt nur die Daten zu konvertieren, erstellen wir direkt professionelle Rechnungen für Sie.
                          </AccordionContent>
                      </AccordionItem>
-                      <AccordionItem value="item-9">
-                         <AccordionTrigger className="text-lg">Muss ich die erstellten Rechnungen testen?</AccordionTrigger>
+                                           <AccordionItem value="item-9">
+                        <AccordionTrigger className="text-lg">Muss ich die erstellten Rechnungen prüfen?</AccordionTrigger>
                          <AccordionContent className="text-base">
                              Ja, faktorio dient ausschließlich der Unterstützung bei der Rechnungserstellung.
                              Es ersetzt keine steuerliche oder rechtliche Beratung.
