@@ -37,26 +37,53 @@ export function CookieProvider({ children }: { children: React.ReactNode }) {
 
   // Beim ersten Laden prüfen, ob bereits Einverständnis gegeben wurde
   useEffect(() => {
-    const savedPreferences = localStorage.getItem('cookie-preferences');
-    const consentGiven = localStorage.getItem('cookie-consent-given');
-    
-    if (savedPreferences) {
-      const parsed = JSON.parse(savedPreferences);
-      setPreferences(parsed);
-      setHasConsented(true);
-    } else {
-      // Banner anzeigen, wenn noch keine Einverständnis gegeben wurde
-      setShowBanner(true);
+    // Robustere localStorage-Überprüfung
+    const loadCookiePreferences = () => {
+      try {
+        const savedPreferences = localStorage.getItem('cookie-preferences');
+        const consentGiven = localStorage.getItem('cookie-consent-given');
+        
+        console.log('🍪 Loading cookie preferences:', { savedPreferences, consentGiven }); // Debug
+        
+        if (savedPreferences && consentGiven === 'true') {
+          const parsed = JSON.parse(savedPreferences);
+          console.log('🍪 Parsed preferences:', parsed); // Debug
+          setPreferences(parsed);
+          setHasConsented(true);
+          setShowBanner(false);
+        } else {
+          console.log('🍪 No saved preferences found, showing banner'); // Debug
+          // Banner anzeigen, wenn noch keine Einverständnis gegeben wurde
+          setShowBanner(true);
+        }
+      } catch (error) {
+        console.error('🍪 Error loading cookie preferences:', error);
+        // Bei Fehlern Banner anzeigen
+        setShowBanner(true);
+      }
+    };
+
+    // Kleiner Delay um sicherzustellen dass localStorage verfügbar ist
+    if (typeof window !== 'undefined') {
+      setTimeout(loadCookiePreferences, 100);
     }
   }, []);
 
   const updatePreferences = (newPreferences: Partial<CookiePreferences>) => {
     const updated = { ...preferences, ...newPreferences };
+    console.log('🍪 Updating preferences:', updated); // Debug
+    
     setPreferences(updated);
-    localStorage.setItem('cookie-preferences', JSON.stringify(updated));
-    localStorage.setItem('cookie-consent-given', 'true');
-    setHasConsented(true);
-    setShowBanner(false);
+    
+    try {
+      localStorage.setItem('cookie-preferences', JSON.stringify(updated));
+      localStorage.setItem('cookie-consent-given', 'true');
+      setHasConsented(true);
+      setShowBanner(false);
+      console.log('🍪 Preferences saved successfully'); // Debug
+    } catch (error) {
+      console.error('🍪 Error saving cookie preferences:', error);
+    }
   };
 
   const openSettings = () => {
