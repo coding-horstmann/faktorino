@@ -91,7 +91,7 @@ export function SiteHeader() {
             <div className="space-y-3">
               <Link 
                 href="/login" 
-                className="flex items-center justify-center w-full px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-center w-full px-4 py-2 text-sm bg-sky-400 text-white border border-sky-400 rounded-md hover:bg-sky-500 transition-colors"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Anmelden
