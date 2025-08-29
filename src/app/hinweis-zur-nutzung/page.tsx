@@ -5,10 +5,35 @@ export default function HinweisZurNutzungPage() {
         <h1>Hinweis zur Nutzung</h1>
         
         <p>
-          Dieses Tool dient ausschließlich der Unterstützung bei der Rechnungserstellung. 
-          Es ersetzt keine steuerliche oder rechtliche Beratung. Für die Richtigkeit, 
-          Vollständigkeit und rechtliche Gültigkeit der erstellten Rechnungen ist 
-          allein der Nutzer verantwortlich. Das Tool unterstützt das One-Stop-Shop Verfahren nicht.
+          Dieses Tool dient ausschlieÃŸlich der UnterstÃ¼tzung bei der Rechnungserstellung. 
+          Es ersetzt keine steuerliche oder rechtliche Beratung. FÃ¼r die Richtigkeit, 
+          VollstÃ¤ndigkeit und rechtliche GÃ¼ltigkeit der erstellten Rechnungen ist 
+          allein der Nutzer verantwortlich. Das Tool unterstÃ¼tzt das One-Stop-Shop Verfahren nicht.
+        </p>
+
+        <h2>Wichtige Hinweise</h2>
+        
+        <ul>
+          <li>
+            <strong>Keine Rechtsberatung:</strong> Die Nutzung dieses Tools stellt keine 
+            steuerliche oder rechtliche Beratung dar.
+          </li>
+          <li>
+            <strong>Eigene Verantwortung:</strong> Der Nutzer ist fÃ¼r die Richtigkeit 
+            und VollstÃ¤ndigkeit der erstellten Rechnungen verantwortlich.
+          </li>
+          <li>
+            <strong>Rechtliche GÃ¼ltigkeit:</strong> Die rechtliche GÃ¼ltigkeit der 
+            Rechnungen liegt in der Verantwortung des Nutzers.
+          </li>
+        </ul>
+
+        <h2>Empfehlung</h2>
+        
+        <p>
+          Bei Unsicherheiten bezÃ¼glich der steuerlichen oder rechtlichen Aspekte 
+          Ihrer Rechnungen empfehlen wir die Konsultation eines Steuerberaters 
+          oder Rechtsanwalts.
         </p>
       </div>
     </div>

@@ -22,7 +22,8 @@ export default function RegisterPage() {
     passwordConfirm: '',
   });
   const [termsAccepted, setTermsAccepted] = useState<boolean | 'indeterminate'>(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState<boolean | 'indeterminate'>(false);`n  const [usageHintAccepted, setUsageHintAccepted] = useState<boolean | 'indeterminate'>(false);| 'indeterminate'>(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState<boolean | 'indeterminate'>(false);
+  const [usageHintAccepted, setUsageHintAccepted] = useState<boolean | 'indeterminate'>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -63,8 +64,8 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!termsAccepted || !privacyAccepted || !usageHintAccepted) {
-      setError('Bitte stimmen Sie den AGB und der Datenschutzerklärung zu.');
+          if (!termsAccepted || !privacyAccepted || !usageHintAccepted) {
+        setError('Bitte stimmen Sie den AGB, der Datenschutzerklärung und dem Hinweis zur Nutzung zu.');
       setLoading(false);
       return;
     }
@@ -206,6 +207,17 @@ export default function RegisterPage() {
                   />
                   <Label htmlFor="privacy" className="text-sm font-normal">
                       Ich stimme der <Link href="/datenschutz" className="underline hover:text-primary">Datenschutzerklärung</Link> zu. *
+                  </Label>
+              </div>
+               <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="usageHint" 
+                    checked={usageHintAccepted}
+                    onCheckedChange={(checked) => setUsageHintAccepted(checked)}
+                    disabled={loading}
+                  />
+                  <Label htmlFor="usageHint" className="text-sm font-normal">
+                      Ich stimme dem <Link href="/hinweis-zur-nutzung" className="underline hover:text-primary">Hinweis zur Nutzung</Link> zu. *
                   </Label>
               </div>
             </div>
