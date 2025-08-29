@@ -167,7 +167,7 @@ export function SiteHeader() {
               </DropdownMenu>
             ) : (
               <>
-                <Button asChild variant="outline">
+                <Button asChild variant="lightblue">
                   <Link prefetch href="/login">Anmelden</Link>
                 </Button>
                 <Button asChild>

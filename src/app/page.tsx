@@ -108,7 +108,7 @@ export default function Home() {
                 <Button asChild size="lg">
                     <Link href="/register">30 Rechnungen gratis erstellen</Link>
                 </Button>
-                <Button asChild size="lg" variant="outline">
+                <Button asChild size="lg" variant="lightblue">
                     <Link href="/login">Anmelden</Link>
                 </Button>
             </div>
