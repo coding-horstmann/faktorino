@@ -1,7 +1,7 @@
 
 export default function DatenschutzPage() {
   return (
-    <div className="prose dark:prose-invert max-w-3xl mx-auto">
+    <div className="prose dark:prose-invert max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       <h1>Datenschutzerklärung</h1>
       
       <p><strong>Datenschutzhinweise gemäß Art. 12 ff. DSGVO</strong></p>

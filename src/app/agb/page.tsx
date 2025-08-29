@@ -1,7 +1,7 @@
 
 export default function AgbPage() {
   return (
-    <div className="prose dark:prose-invert max-w-3xl mx-auto">
+    <div className="prose dark:prose-invert max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       <h1>Allgemeine Geschäftsbedingungen (AGB)</h1>
       
       <h2>1. Geltungsbereich</h2>
