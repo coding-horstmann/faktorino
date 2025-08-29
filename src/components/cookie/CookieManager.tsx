@@ -69,51 +69,11 @@ export function useAnalytics() {
   const { preferences, hasConsented } = useCookies();
 
   const trackEvent = (action: string, category: string, label?: string, value?: number) => {
-    console.log('📊 Analytics trackEvent called:', {
-      action,
-      category,
-      label,
-      value,
-      hasConsented,
-      analyticsEnabled: preferences.analytics,
-      gtagAvailable: !!window.gtag,
-      timestamp: new Date().toISOString()
-    });
-    
-    if (hasConsented && preferences.analytics) {
-      if (window.gtag) {
-        console.log('📊 Sending event to Google Analytics:', action);
-        
-        // Verwende beacon transport für zuverlässige Übertragung bei Seitenwechseln
-        window.gtag('event', action, {
-          event_category: category,
-          event_label: label,
-          value: value,
-          transport_type: 'beacon' // Stellt sicher dass Events auch bei Navigation übertragen werden
-        });
-        console.log('📊 Event sent with beacon transport');
-      } else {
-        console.warn('📊 gtag not available yet, retrying in 500ms...');
-        // Kurzer Retry falls gtag noch nicht geladen ist
-        setTimeout(() => {
-          if (window.gtag) {
-            console.log('📊 Retry successful - sending event:', action);
-            window.gtag('event', action, {
-              event_category: category,
-              event_label: label,
-              value: value,
-              transport_type: 'beacon'
-            });
-          } else {
-            console.error('📊 gtag still not available after retry for event:', action);
-          }
-        }, 500);
-      }
-    } else {
-      console.warn('📊 Event NOT sent - missing requirements:', {
-        hasConsented,
-        analyticsEnabled: preferences.analytics,
-        gtagAvailable: !!window.gtag
+    if (hasConsented && preferences.analytics && window.gtag) {
+      window.gtag('event', action, {
+        event_category: category,
+        event_label: label,
+        value: value
       });
     }
   };
