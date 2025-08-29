@@ -39,7 +39,7 @@ export function SiteFooter() {
                 <h4 className="font-semibold">Rechtliches</h4>
                 <Link href="/impressum" className="text-muted-foreground hover:underline">Impressum</Link>
                 <Link href="/datenschutz" className="text-muted-foreground hover:underline">Datenschutzerklärung</Link>
-                <Link href="/agb" className="text-muted-foreground hover:underline">AGB</Link>`n                <Link href="/hinweis-zur-nutzung" className="text-muted-foreground hover:underline">Hinweis zur Nutzung</Link>
+                <Link href="/agb" className="text-muted-foreground hover:underline">AGB</Link>
                 <button 
                   onClick={openSettings}
                   className="text-muted-foreground hover:underline text-left"
