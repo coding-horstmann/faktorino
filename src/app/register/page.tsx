@@ -22,7 +22,7 @@ export default function RegisterPage() {
     passwordConfirm: '',
   });
   const [termsAccepted, setTermsAccepted] = useState<boolean | 'indeterminate'>(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState<boolean | 'indeterminate'>(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState<boolean | 'indeterminate'>(false);`n  const [usageHintAccepted, setUsageHintAccepted] = useState<boolean | 'indeterminate'>(false);| 'indeterminate'>(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -63,7 +63,7 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!termsAccepted || !privacyAccepted) {
+    if (!termsAccepted || !privacyAccepted || !usageHintAccepted) {
       setError('Bitte stimmen Sie den AGB und der Datenschutzerklärung zu.');
       setLoading(false);
       return;
