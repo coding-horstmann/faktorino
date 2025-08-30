@@ -173,7 +173,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto mx-2 sm:mx-4 md:mx-auto w-[calc(100vw-1rem)] sm:w-auto">
+      <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto mx-1 sm:mx-4 md:mx-auto w-[calc(100vw-0.5rem)] sm:w-auto p-3 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -181,14 +181,14 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+        <div className="space-y-3 sm:space-y-6">
           {currentStep === 'packages' && (
             <>
               <p className="text-gray-600 text-sm sm:text-base px-2 sm:px-0">
                 Wählen Sie ein Credit-Paket für die Rechnungserstellung
               </p>
 
-              <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
                 {packages.map((packageItem) => {
                   const pricePerCredit = calculatePricePerCredit(packageItem.credits, packageItem.price_euros);
                   
@@ -218,9 +218,16 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
 
           {currentStep === 'form' && selectedPackage && (
             <>
+              {/* Zurück Button */}
+              <div className="flex justify-start mb-2">
+                <Button variant="ghost" onClick={handleBack} className="text-sm p-2">
+                  ← Zurück zur Paketauswahl
+                </Button>
+              </div>
+
               {/* Bestellübersicht */}
-              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                <h4 className="font-semibold text-blue-900 mb-2">Bestellübersicht</h4>
+              <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+                <h4 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Bestellübersicht</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-blue-800">{selectedPackage.name}</span>
@@ -246,10 +253,10 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               </div>
 
               {/* Rechnungsdaten */}
-              <div className="space-y-4">
-                <h3 className="font-semibold">Rechnungsdaten eingeben</h3>
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm sm:text-base">Rechnungsdaten eingeben</h3>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
                     <Label htmlFor="firstName">Vorname *</Label>
                     <Input
@@ -276,7 +283,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                       <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>
                     )}
                   </div>
-                </div>
 
                 <div>
                   <Label htmlFor="street">Straße & Hausnummer *</Label>
@@ -293,7 +299,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   <div>
                     <Label htmlFor="postalCode">PLZ *</Label>
                     <Input
@@ -322,7 +328,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                       <p className="text-sm text-red-500 mt-1">{errors.city}</p>
                     )}
                   </div>
-                </div>
 
                 <div>
                   <Label htmlFor="vatId">USt-IdNr. (optional)</Label>
@@ -348,9 +353,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                 />
               </div>
 
-              <Button variant="outline" onClick={handleBack} className="w-full">
-                Zurück zur Paketauswahl
-              </Button>
+
             </>
           )}
         </div>

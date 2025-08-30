@@ -97,7 +97,7 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
+    <div className="space-y-3 sm:space-y-6 px-1 sm:px-0">
         <div className="text-center">
           <h2 className="text-xl sm:text-2xl font-bold">Credits kaufen</h2>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base px-4 sm:px-0">
@@ -119,7 +119,7 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
         </Alert>
 
         {!selectedPackage ? (
-          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {packages.map((packageItem) => {
               const pricePerCredit = calculatePricePerCredit(packageItem.credits, packageItem.price_euros);
               
