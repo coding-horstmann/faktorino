@@ -156,21 +156,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
     onClose();
   };
 
-  if (loading) {
-    return (
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl">
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p>Lade Credit-Pakete...</p>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto mx-1 sm:mx-4 md:mx-auto w-[calc(100vw-0.5rem)] sm:w-auto p-3 sm:p-6">
@@ -182,7 +167,14 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
         </DialogHeader>
 
         <div className="space-y-3 sm:space-y-6">
-          {currentStep === 'packages' && (
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p>Lade Credit-Pakete...</p>
+              </div>
+            </div>
+          ) : currentStep === 'packages' && (
             <>
               <p className="text-gray-600 text-sm sm:text-base px-2 sm:px-0">
                 Wählen Sie ein Credit-Paket für die Rechnungserstellung
@@ -216,7 +208,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
             </>
           )}
 
-          {currentStep === 'form' && selectedPackage && (
+          {!loading && currentStep === 'form' && selectedPackage && (
             <>
               {/* Zurück Button */}
               <div className="flex justify-start mb-2">
