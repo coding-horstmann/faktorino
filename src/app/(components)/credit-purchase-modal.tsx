@@ -115,8 +115,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
     return Object.keys(newErrors).length === 0;
   };
 
-
-
   const handlePayPalSuccess = () => {
     if (onPurchaseComplete) {
       onPurchaseComplete();
@@ -275,6 +273,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                       <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>
                     )}
                   </div>
+                </div>
 
                 <div>
                   <Label htmlFor="street">Straße & Hausnummer *</Label>
@@ -320,6 +319,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                       <p className="text-sm text-red-500 mt-1">{errors.city}</p>
                     )}
                   </div>
+                </div>
 
                 <div>
                   <Label htmlFor="vatId">USt-IdNr. (optional)</Label>
@@ -344,8 +344,6 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                   onError={handlePayPalError}
                 />
               </div>
-
-
             </>
           )}
         </div>
