@@ -97,10 +97,10 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0">
         <div className="text-center">
-          <h2 className="text-2xl font-bold">Credits kaufen</h2>
-          <p className="text-muted-foreground mt-2">
+          <h2 className="text-xl sm:text-2xl font-bold">Credits kaufen</h2>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base px-4 sm:px-0">
             Wählen Sie ein Credit-Paket für die Rechnungserstellung
           </p>
           <div className="mt-4">
@@ -119,19 +119,19 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
         </Alert>
 
         {!selectedPackage ? (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {packages.map((packageItem) => {
               const pricePerCredit = calculatePricePerCredit(packageItem.credits, packageItem.price_euros);
               
               return (
                 <Card key={packageItem.id} className="relative">
                   <CardHeader className="text-center">
-                    <CardTitle className="text-xl">{packageItem.name}</CardTitle>
+                    <CardTitle className="text-lg sm:text-xl">{packageItem.name}</CardTitle>
                     <CardDescription>{packageItem.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="text-center">
-                      <div className="text-3xl font-bold">{formatPrice(packageItem.price_euros)}</div>
+                      <div className="text-2xl sm:text-3xl font-bold">{formatPrice(packageItem.price_euros)}</div>
                       <div className="text-sm text-muted-foreground">
                         {packageItem.credits.toLocaleString('de-DE')} Credits
                       </div>
