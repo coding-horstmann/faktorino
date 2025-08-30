@@ -228,14 +228,14 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
           {!loading && currentStep === 'form' && selectedPackage && (
             <>
               {/* Zurück Button */}
-              <div className="flex justify-start mb-4 mt-2">
+              <div className="flex justify-start mb-6 mt-4">
                 <Button variant="ghost" onClick={handleBack} className="text-sm p-2">
                   ← Zurück zur Paketauswahl
                 </Button>
               </div>
 
               {/* Bestellübersicht */}
-              <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200">
+              <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-200 mb-6">
                 <h4 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">Bestellübersicht</h4>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
@@ -249,7 +249,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               </div>
 
               {/* Datenschutz und AGB Hinweis */}
-              <div className="text-xs text-gray-600 text-center">
+              <div className="text-xs text-gray-600 text-center mb-6">
                 Mit dem Kauf erklären Sie sich mit der{' '}
                 <Link href="/datenschutz" className="text-blue-600 hover:underline" target="_blank">
                   Datenschutzerklärung
@@ -262,7 +262,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               </div>
 
               {/* Rechnungsdaten */}
-              <div className="space-y-4 mt-4">
+              <div className="space-y-4">
                 <h3 className="font-semibold text-sm sm:text-base">Rechnungsdaten eingeben</h3>
                 
                 <div className="grid grid-cols-1 gap-3">
