@@ -46,6 +46,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
   const [errors, setErrors] = useState<Partial<PurchaseFormData>>({});
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState<'packages' | 'form'>('packages');
+  const [isFormValid, setIsFormValid] = useState(false);
 
   console.log('CreditPurchaseModal - Rendering:', { isOpen, currentStep, selectedPackage: selectedPackage?.name });
 
@@ -86,10 +87,26 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      // Check form validity after update
+      const valid = checkFormValidity(newData);
+      setIsFormValid(valid);
+      return newData;
+    });
     if (errors[name as keyof PurchaseFormData]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const checkFormValidity = (data: PurchaseFormData = formData): boolean => {
+    return !!(
+      data.firstName.trim() &&
+      data.lastName.trim() &&
+      data.street.trim() &&
+      data.postalCode.trim() &&
+      data.city.trim()
+    );
   };
 
   const validateForm = (): boolean => {
@@ -156,7 +173,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[95vh] overflow-y-auto mx-1 sm:mx-4 md:mx-auto w-[calc(100vw-0.5rem)] sm:w-auto p-3 sm:p-6">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-1 sm:mx-4 md:mx-auto w-[calc(100vw-0.5rem)] sm:w-auto p-3 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -178,24 +195,26 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
                 Wählen Sie ein Credit-Paket für die Rechnungserstellung
               </p>
 
-              <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+              <div className="grid gap-3 grid-cols-1 max-h-[60vh] overflow-y-auto">
                 {packages.map((packageItem) => {
                   const pricePerCredit = calculatePricePerCredit(packageItem.credits, packageItem.price_euros);
                   
                   return (
-                    <Card key={packageItem.id} className="relative cursor-pointer hover:shadow-md transition-all" onClick={() => handleSelectPackage(packageItem)}>
-                      <CardContent className="p-3 sm:p-4 text-center">
-                        <div className="text-base sm:text-lg font-bold">{packageItem.name}</div>
-                        <div className="text-xl sm:text-2xl font-bold text-blue-600 my-2">
-                          {formatPrice(packageItem.price_euros)}
+                    <Card key={packageItem.id} className="relative cursor-pointer hover:shadow-md transition-all flex-shrink-0" onClick={() => handleSelectPackage(packageItem)}>
+                      <CardContent className="p-3 sm:p-4 text-center min-h-[140px] flex flex-col justify-between">
+                        <div>
+                          <div className="text-base sm:text-lg font-bold">{packageItem.name}</div>
+                          <div className="text-xl sm:text-2xl font-bold text-blue-600 my-2">
+                            {formatPrice(packageItem.price_euros)}
+                          </div>
+                          <div className="text-sm text-gray-500 mb-1">
+                            {packageItem.credits.toLocaleString('de-DE')} Credits
+                          </div>
+                          <div className="text-xs text-gray-500 mb-3">
+                            ~{pricePerCredit}€ pro Rechnung
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500 mb-2">
-                          {packageItem.credits.toLocaleString('de-DE')} Credits
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          ~{pricePerCredit}€ pro Rechnung
-                        </div>
-                        <Button className="w-full mt-3" size="sm">
+                        <Button className="w-full" size="sm">
                           Auswählen
                         </Button>
                       </CardContent>
@@ -337,12 +356,29 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               <div className="space-y-4">
                 <h3 className="font-semibold">Zahlungsmethode wählen</h3>
                 
-                <PayPalPaymentButtons
-                  creditPackage={selectedPackage}
-                  billingData={formData}
-                  onSuccess={handlePayPalSuccess}
-                  onError={handlePayPalError}
-                />
+                {isFormValid ? (
+                  <PayPalPaymentButtons
+                    creditPackage={selectedPackage}
+                    billingData={formData}
+                    onSuccess={handlePayPalSuccess}
+                    onError={handlePayPalError}
+                  />
+                ) : (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Bitte füllen Sie alle Pflichtfelder (*) aus, um fortzufahren.
+                    </p>
+                    <Button 
+                      onClick={() => {
+                        validateForm(); // Zeigt Fehler an
+                      }}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      Formular überprüfen
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}

@@ -119,7 +119,7 @@ export function CreditPurchase({ onPurchaseComplete, userCredits = 0 }: CreditPu
         </Alert>
 
         {!selectedPackage ? (
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 pb-4">
             {packages.map((packageItem) => {
               const pricePerCredit = calculatePricePerCredit(packageItem.credits, packageItem.price_euros);
               
