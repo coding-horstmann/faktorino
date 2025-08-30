@@ -173,7 +173,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-1 sm:mx-4 md:mx-auto w-[calc(100vw-0.5rem)] sm:w-auto p-3 sm:p-6">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-1 sm:mx-4 md:mx-auto w-[calc(100vw-0.5rem)] sm:w-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -181,7 +181,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 sm:space-y-6">
+        <div className="space-y-4 sm:space-y-6 pb-4">
           {loading ? (
             <div className="flex items-center justify-center p-8">
               <div className="text-center">
@@ -228,7 +228,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
           {!loading && currentStep === 'form' && selectedPackage && (
             <>
               {/* Zurück Button */}
-              <div className="flex justify-start mb-2">
+              <div className="flex justify-start mb-4 mt-2">
                 <Button variant="ghost" onClick={handleBack} className="text-sm p-2">
                   ← Zurück zur Paketauswahl
                 </Button>
@@ -262,7 +262,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               </div>
 
               {/* Rechnungsdaten */}
-              <div className="space-y-3">
+              <div className="space-y-4 mt-4">
                 <h3 className="font-semibold text-sm sm:text-base">Rechnungsdaten eingeben</h3>
                 
                 <div className="grid grid-cols-1 gap-3">
@@ -353,7 +353,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
               </div>
 
               {/* PayPal-Zahlungsbuttons */}
-              <div className="space-y-4">
+              <div className="space-y-4 mt-6 mb-4">
                 <h3 className="font-semibold">Zahlungsmethode wählen</h3>
                 
                 {isFormValid ? (
