@@ -1000,11 +1000,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
       {editingInvoice && (
         <Dialog open={!!editingInvoice} onOpenChange={(isOpen) => !isOpen && closeEditDialog()}>
-            <DialogContent className="sm:max-w-4xl">
-                <DialogHeader>
+            <DialogContent className="sm:max-w-4xl max-h-[95vh] h-[95vh] sm:h-auto flex flex-col">
+                <DialogHeader className="flex-shrink-0">
                     <DialogTitle>Rechnung bearbeiten: {editingInvoice.invoiceNumber}</DialogTitle>
                 </DialogHeader>
-                <ScrollArea className="max-h-[70vh] p-1">
+                <ScrollArea className="flex-1 max-h-none sm:max-h-[70vh] p-1">
                     <div className="space-y-6 p-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -1092,11 +1092,11 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                         </div>
                     </div>
                 </ScrollArea>
-                <DialogFooter>
+                <DialogFooter className="flex-shrink-0 gap-2 pt-4 border-t">
                     <DialogClose asChild>
-                        <Button variant="outline">Abbrechen</Button>
+                        <Button variant="outline" className="flex-1 sm:flex-none">Abbrechen</Button>
                     </DialogClose>
-                    <Button onClick={handleUpdateInvoice}>Änderungen speichern</Button>
+                    <Button onClick={handleUpdateInvoice} className="flex-1 sm:flex-none">Änderungen speichern</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
