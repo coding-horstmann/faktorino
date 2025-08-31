@@ -181,7 +181,7 @@ export function CreditPurchaseModal({ isOpen, onClose, onPurchaseComplete }: Cre
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6 pb-4">
+        <div className="space-y-4 sm:space-y-6 pb-6">
           {loading ? (
             <div className="flex items-center justify-center p-8">
               <div className="text-center">
