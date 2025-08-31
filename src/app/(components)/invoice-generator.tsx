@@ -1000,7 +1000,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
 
       {editingInvoice && (
         <Dialog open={!!editingInvoice} onOpenChange={(isOpen) => !isOpen && closeEditDialog()}>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh] h-[90vh] sm:h-auto flex flex-col">
+            <DialogContent className="sm:max-w-4xl max-h-[85vh] h-[85vh] sm:h-auto flex flex-col">
                 <DialogHeader className="flex-shrink-0 pr-12">
                     <DialogTitle className="text-base sm:text-lg">Rechnung bearbeiten: {editingInvoice.invoiceNumber}</DialogTitle>
                 </DialogHeader>
@@ -1092,7 +1092,7 @@ export function InvoiceGenerator({ userInfo, isUserInfoComplete, onMissingInfo, 
                         </div>
                     </div>
                 </ScrollArea>
-                <DialogFooter className="flex-shrink-0 gap-2 pt-3 pb-1 border-t">
+                <DialogFooter className="flex-shrink-0 gap-2 pt-4 pb-3 border-t">
                     <DialogClose asChild>
                         <Button variant="outline" className="flex-1 sm:flex-none">Abbrechen</Button>
                     </DialogClose>
