@@ -83,7 +83,7 @@ export function useGoogleAdsConversion() {
   const trackGoogleAdsConversion = (conversionName: string, value?: number, currency: string = 'EUR') => {
     if (hasConsented && preferences.marketing && typeof window !== 'undefined' && window.gtag) {
       const conversionData: any = {
-        send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/AW-17515355179/${conversionName}`
+        send_to: `${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}/${conversionName}`
       };
       
       if (value) {
