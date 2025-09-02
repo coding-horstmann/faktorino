@@ -52,15 +52,25 @@ function loadGoogleAnalytics() {
 function loadGoogleAds() {
   // Google Ads Script laden (falls benötigt)
   if (process.env.NEXT_PUBLIC_GOOGLE_ADS_ID) {
+    // Prüfen ob das Script bereits geladen wurde
+    if (document.querySelector(`script[src*="${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}"]`)) {
+      return; // Script bereits geladen
+    }
+
     const script = document.createElement('script');
     script.async = true;
     script.src = `https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GOOGLE_ADS_ID}`;
     document.head.appendChild(script);
 
-    window.gtag('config', process.env.NEXT_PUBLIC_GOOGLE_ADS_ID, {
-      anonymize_ip: true,
-      cookie_flags: 'SameSite=None;Secure'
-    });
+    // Warten bis das Script geladen ist, dann konfigurieren
+    script.onload = () => {
+      if (window.gtag) {
+        window.gtag('config', process.env.NEXT_PUBLIC_GOOGLE_ADS_ID, {
+          anonymize_ip: true,
+          cookie_flags: 'SameSite=None;Secure'
+        });
+      }
+    };
   }
 }
 
